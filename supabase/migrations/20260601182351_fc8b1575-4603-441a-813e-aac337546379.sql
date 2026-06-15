@@ -1,0 +1,1 @@
+UPDATE public.products SET image_url='/__l5e/assets-v1/ca8ac97a-8df0-4233-825f-691d81436ed3/pink-sippy-bottles.jpeg' WHERE name='Pink Sippy Bottle Duo';

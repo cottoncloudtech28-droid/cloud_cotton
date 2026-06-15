@@ -1,0 +1,1 @@
+UPDATE public.products SET image_url='https://jdgkrcxwdcfghqlacjai.supabase.co/storage/v1/object/public/products/pink-sippy-bottles.jpeg' WHERE name='Pink Sippy Bottle Duo';

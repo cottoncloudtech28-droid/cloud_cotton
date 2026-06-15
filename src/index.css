@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 33 100% 98%;
+    --foreground: 270 25% 22%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 270 25% 22%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 25% 22%;
+
+    --primary: 270 55% 70%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 280 80% 85%;
+
+    --secondary: 20 90% 88%;
+    --secondary-foreground: 18 45% 35%;
+
+    --muted: 30 50% 95%;
+    --muted-foreground: 270 15% 50%;
+
+    --accent: 18 100% 86%;
+    --accent-foreground: 18 50% 32%;
+
+    --destructive: 0 75% 65%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 280 30% 92%;
+    --input: 280 30% 92%;
+    --ring: 270 55% 70%;
+
+    --radius: 1.25rem;
+
+    --gradient-hero: linear-gradient(135deg, hsl(270 70% 92%), hsl(20 100% 92%));
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-soft: linear-gradient(180deg, hsl(33 100% 98%), hsl(270 50% 96%));
+    --shadow-cute: 0 10px 30px -12px hsl(270 60% 70% / 0.35);
+    --shadow-soft: 0 4px 14px -4px hsl(20 60% 70% / 0.25);
+    --transition-bounce: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Quicksand', system-ui, sans-serif;
+    background-image: var(--gradient-soft);
+    min-height: 100vh;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Fredoka', 'Quicksand', sans-serif;
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-hero { background-image: var(--gradient-hero); }
+  .bg-gradient-primary { background-image: var(--gradient-primary); }
+  .shadow-cute { box-shadow: var(--shadow-cute); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .transition-bounce { transition: var(--transition-bounce); }
+}
