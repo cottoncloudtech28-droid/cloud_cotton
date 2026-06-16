@@ -8,6 +8,7 @@ import Footer from "@/components/shop/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { placeOrder, getSavedAddresses, addSavedAddress } from "@/lib/api";
@@ -40,16 +41,19 @@ export default function CartPage() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [addressesLoading, setAddressesLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
+    setAddressesLoading(true);
     getSavedAddresses()
       .then((addrs) => {
         setSavedAddresses(addrs);
         const def = addrs.find((a) => a.isDefault) ?? addrs[0];
         if (def) setSelectedAddrId(def.id);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setAddressesLoading(false));
   }, [user]);
 
   const setNew = (k: keyof typeof newAddr, v: string) =>
@@ -91,9 +95,9 @@ export default function CartPage() {
   /* ── Success ── */
   if (orderId) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="container py-20">
+        <main className="flex-1 container py-20">
           <div className="max-w-lg mx-auto text-center space-y-5">
             <div className="mx-auto h-20 w-20 grid place-items-center rounded-full bg-green-100">
               <CheckCircle2 className="h-10 w-10 text-green-500" />
@@ -117,9 +121,9 @@ export default function CartPage() {
   /* ── Empty ── */
   if (items.length === 0) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="container py-20">
+        <main className="flex-1 container py-20">
           <div className="max-w-lg mx-auto text-center space-y-4">
             <div className="text-6xl">🛍️</div>
             <h1 className="text-3xl font-bold">Your cart is empty</h1>
@@ -133,9 +137,9 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="container py-8">
+      <main className="flex-1 container py-8">
         <h1 className="text-4xl font-bold mb-8">Your cart</h1>
 
         <div className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
@@ -227,7 +231,13 @@ export default function CartPage() {
               )}
 
               {/* Saved addresses */}
-              {savedAddresses.length > 0 && (
+              {addressesLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 rounded-2xl" />
+                  ))}
+                </div>
+              ) : savedAddresses.length > 0 && (
                 <div className="space-y-2">
                   {savedAddresses.map((a) => (
                     <button

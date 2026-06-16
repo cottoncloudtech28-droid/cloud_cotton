@@ -12,12 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   Pencil, Trash2, Plus, Upload, X, ImagePlus, Tag, Ruler,
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { apiFetch, uploadFile } from "@/lib/api";
 import type { Product, ProductSize } from "@/lib/types";
 
@@ -199,6 +201,7 @@ export default function AdminPage() {
   const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -208,10 +211,12 @@ export default function AdminPage() {
   }, [user, loading, router]);
 
   const load = async () => {
+    setItemsLoading(true);
     try {
       const data = await apiFetch("/api/products/all");
       setItems(data ?? []);
     } catch (e: any) { toast.error(e.message); }
+    finally { setItemsLoading(false); }
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
@@ -282,7 +287,7 @@ export default function AdminPage() {
     } catch (e: any) { toast.error(e.message); }
   };
 
-  if (loading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (loading) return <AdminPageSkeleton />;
 
   if (!isAdmin) {
     return (
@@ -318,7 +323,7 @@ export default function AdminPage() {
               <div>
                 <h1 className="text-4xl font-bold">Inventory</h1>
                 <p className="text-muted-foreground mt-1">
-                  {items.length} product{items.length !== 1 ? "s" : ""} in catalog
+                  {itemsLoading ? "Loading…" : `${items.length} product${items.length !== 1 ? "s" : ""} in catalog`}
                 </p>
               </div>
               <Button size="lg" onClick={() => router.push("/admin/bulk")}>
@@ -437,8 +442,14 @@ export default function AdminPage() {
 
             {/* ── Product list ────────────────────────────────────────────── */}
             <div className="space-y-3">
-              <h2 className="text-xl font-semibold">All products ({items.length})</h2>
-              {items.map((p) => {
+              <h2 className="text-xl font-semibold">All products ({itemsLoading ? "…" : items.length})</h2>
+              {itemsLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 rounded-xl" />
+                  ))}
+                </div>
+              ) : items.map((p) => {
                 const imgSrc = p.images?.[0] ?? p.image_url;
                 return (
                   <Card key={p.id} className="p-4 flex items-center gap-4">

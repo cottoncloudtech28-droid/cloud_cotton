@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Pencil, Check, X, Upload, Plus } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getCategories, updateCategory, uploadFile, apiFetch } from "@/lib/api";
 import type { Category } from "@/lib/types";
 
@@ -252,7 +253,7 @@ export default function AdminCategoriesPage() {
   const handleCreated = (created: Category) =>
     setCats((prev) => [...prev, created].sort((a, b) => a.sort_order - b.sort_order));
 
-  if (loading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (loading) return <AdminPageSkeleton />;
 
   if (!isAdmin) {
     return (

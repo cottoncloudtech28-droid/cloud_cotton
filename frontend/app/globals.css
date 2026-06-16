@@ -73,4 +73,6 @@
   .shadow-cute { box-shadow: var(--shadow-cute); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .transition-bounce { transition: var(--transition-bounce); }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
 }

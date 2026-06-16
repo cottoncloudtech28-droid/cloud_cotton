@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import {
   apiFetch, getLowStockProducts, getStockLogs, bulkUpdateStock,
 } from "@/lib/api";
@@ -175,7 +176,7 @@ export default function InventoryPage() {
 
   const logPages = Math.ceil(logTotal / 30);
 
-  if (loading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (loading) return <AdminPageSkeleton />;
   if (!isAdmin) return null;
 
   return (

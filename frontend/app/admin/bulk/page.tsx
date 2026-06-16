@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Upload, Wand2, Trash2, Sparkles, RotateCcw } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { apiFetch, uploadFile } from "@/lib/api";
 
 type Row = {
@@ -144,7 +145,7 @@ export default function BulkUploadPage() {
     if (ok === rows.length) setRows([]);
   };
 
-  if (loading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (loading) return <AdminPageSkeleton />;
   if (!isAdmin) {
     return (
       <div className="min-h-screen"><Navbar />

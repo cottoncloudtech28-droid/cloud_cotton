@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,49 +36,62 @@ function OrderCard({ order }: { order: Order }) {
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
   const Icon = cfg.icon;
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+    <Card className="overflow-hidden border border-border/60 shadow-soft rounded-3xl">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 bg-muted/30 border-b border-border/50">
         <div>
-          <p className="font-semibold text-sm">Order #{order.orderId}</p>
+          <p className="font-bold text-sm tracking-tight">Order #{order.orderId}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.text}`}>
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${cfg.bg} ${cfg.text}`}>
           <Icon className="h-3 w-3" />
           {cfg.label}
         </span>
       </div>
-      <Separator className="my-3" />
-      <div className="space-y-3">
-        {order.items.map((item, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-xl bg-muted flex-shrink-0 overflow-hidden border border-border">
-              {item.image_url
-                ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                : <div className="flex items-center justify-center h-full text-2xl">🌸</div>
-              }
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{item.name}</p>
-              <div className="flex flex-wrap gap-2 mt-0.5">
-                {item.size  && <span className="text-xs text-muted-foreground">{item.size}</span>}
-                {item.color && <span className="text-xs text-muted-foreground">{item.color}</span>}
-                <span className="text-xs text-muted-foreground">Qty: {item.qty}</span>
+
+      {/* Items */}
+      <div className="divide-y divide-border/40">
+        {order.items.map((item, i) => {
+          const itemTotal = +(item.price * (1 - item.discount_percent / 100) * item.qty).toFixed(2);
+          return (
+            <div key={i} className="flex items-center gap-4 px-5 py-4">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-hero flex-shrink-0 overflow-hidden border border-border/40">
+                {item.image_url
+                  ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                  : <div className="flex items-center justify-center h-full text-2xl">🌸</div>}
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{item.name}</p>
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  {item.color && (
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border/50">{item.color}</span>
+                  )}
+                  {item.size && (
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border/50">{item.size}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">Qty: {item.qty}</span>
+                </div>
+              </div>
+              <p className="text-sm font-bold shrink-0">₹{itemTotal}</p>
             </div>
-            <p className="text-sm font-semibold flex-shrink-0">
-              ₹{+(item.price * (1 - item.discount_percent / 100) * item.qty).toFixed(2)}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <Separator className="my-3" />
-      <div className="flex items-center justify-between text-sm">
-        <p className="text-muted-foreground truncate max-w-[60%]">
-          {order.address.city}, {order.address.state} — {order.address.fullName}
-        </p>
-        <p className="font-bold text-base">₹{order.total}</p>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-5 py-3.5 bg-muted/20 border-t border-border/50">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary/70" />
+          <span className="text-xs text-muted-foreground truncate">
+            {order.address.city}, {order.address.state} — {order.address.fullName}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-1 shrink-0 ml-4">
+          <span className="text-xs text-muted-foreground">Total</span>
+          <span className="text-base font-extrabold text-foreground">₹{order.total}</span>
+        </div>
       </div>
     </Card>
   );
@@ -196,14 +208,19 @@ export default function ProfilePage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="container py-12 space-y-6">
-          <Skeleton className="h-32 rounded-2xl" />
-          <div className="grid grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+        <main className="flex-1 container py-12 space-y-6">
+          <Skeleton className="h-32 rounded-3xl" />
+          <div className="grid grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-3xl" />)}
+          </div>
+          <Skeleton className="h-12 rounded-full" />
+          <div className="space-y-4">
+            {[1, 2].map((i) => <Skeleton key={i} className="h-48 rounded-3xl" />)}
           </div>
         </main>
+        <Footer />
       </div>
     );
   }
@@ -213,22 +230,22 @@ export default function ProfilePage() {
   const deliveredCount = orders.filter((o) => o.status === "delivered").length;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="container py-8 space-y-6">
+      <main className="flex-1 container py-8 space-y-5">
 
-        {/* ── Profile header ──────────────────────────────────────────────── */}
-        <Card className="p-6">
-          <div className="flex items-center gap-5">
-            <Avatar className="h-20 w-20 border-2 border-primary/30 flex-shrink-0">
-              <AvatarFallback className="bg-primary text-primary-foreground font-bold text-2xl">
+        {/* ── Profile header ── */}
+        <Card className="p-5 rounded-3xl shadow-soft">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16 border-2 border-primary/30 flex-shrink-0">
+              <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold text-xl">
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold truncate">{displayName}</h1>
-              <p className="text-muted-foreground text-sm truncate mt-0.5">{user.email}</p>
-              <Badge variant="outline" className="mt-2 capitalize text-xs px-2.5 rounded-full">
+              <h1 className="text-xl font-bold truncate">{displayName}</h1>
+              <p className="text-muted-foreground text-xs truncate mt-0.5">{user.email}</p>
+              <Badge variant="outline" className="mt-1.5 capitalize text-[10px] px-2 py-0 rounded-full border-primary/30 text-primary">
                 {user.role}
               </Badge>
             </div>
@@ -236,37 +253,37 @@ export default function ProfilePage() {
               variant="outline"
               size="sm"
               onClick={() => { signOut(); router.push("/"); }}
-              className="flex-shrink-0 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-full"
+              className="flex-shrink-0 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-full gap-1.5"
             >
-              <LogOut className="h-4 w-4 mr-1.5" />
+              <LogOut className="h-3.5 w-3.5" />
               Sign out
             </Button>
           </div>
         </Card>
 
-        {/* ── Admin panel shortcut (admins only) ─────────────────────────── */}
+        {/* ── Admin panel shortcut (admins only) ── */}
         {isAdmin && (
-          <Card className="p-5 border-2 border-primary/30 bg-primary/5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <LayoutDashboard className="h-5 w-5 text-primary" />
+          <Card className="p-5 rounded-3xl border-2 border-primary/25 bg-primary/5 shadow-soft">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-9 w-9 rounded-xl bg-gradient-primary grid place-items-center shadow-cute">
+                <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
               </div>
               <div>
-                <p className="font-semibold text-sm">Admin Dashboard</p>
+                <p className="font-bold text-sm">Admin Dashboard</p>
                 <p className="text-xs text-muted-foreground">You have admin access to manage the store</p>
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { label: "Products",   href: "/admin",            icon: Package },
-                { label: "Inventory",  href: "/admin/inventory",  icon: BarChart2 },
-                { label: "Categories", href: "/admin/categories", icon: LayoutGrid },
-                { label: "Bulk Upload",href: "/admin/bulk",       icon: Upload },
+                { label: "Products",    href: "/admin",            icon: Package },
+                { label: "Inventory",   href: "/admin/inventory",  icon: BarChart2 },
+                { label: "Categories",  href: "/admin/categories", icon: LayoutGrid },
+                { label: "Bulk Upload", href: "/admin/bulk",       icon: Upload },
               ].map(({ label, href, icon: Icon }) => (
                 <Link key={href} href={href}>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-background hover:border-primary transition-colors cursor-pointer group">
+                  <div className="flex items-center gap-2 p-3 rounded-2xl border border-border bg-background hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer group">
                     <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                    <span className="text-xs font-medium">{label}</span>
+                    <span className="text-xs font-semibold">{label}</span>
                     <ArrowRight className="h-3 w-3 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </Link>
@@ -275,36 +292,38 @@ export default function ProfilePage() {
           </Card>
         )}
 
-        {/* ── Stats ──────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-4">
+        {/* ── Stats ── */}
+        <div className="grid grid-cols-4 gap-3">
           {[
-            { icon: Package,     label: "Total orders", value: orders.length },
-            { icon: Heart,       label: "Wishlist",     value: wishlist.length },
-            { icon: ShoppingBag, label: "Delivered",    value: deliveredCount },
-            { icon: MapPin,      label: "Addresses",    value: addresses.length },
-          ].map(({ icon: I, label, value }) => (
-            <Card key={label} className="p-4 text-center">
-              <I className="h-6 w-6 text-primary mx-auto mb-1.5" />
-              <p className="text-2xl font-bold">{value}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+            { icon: Package,     label: "Total Orders", value: orders.length,   bg: "bg-purple-50",  iconColor: "text-purple-500" },
+            { icon: Heart,       label: "Wishlist",     value: wishlist.length, bg: "bg-pink-50",    iconColor: "text-pink-500" },
+            { icon: ShoppingBag, label: "Delivered",    value: deliveredCount,  bg: "bg-green-50",   iconColor: "text-green-500" },
+            { icon: MapPin,      label: "Addresses",    value: addresses.length,bg: "bg-amber-50",   iconColor: "text-amber-500" },
+          ].map(({ icon: I, label, value, bg, iconColor }) => (
+            <Card key={label} className="p-4 text-center rounded-3xl shadow-soft border-border/50">
+              <div className={`h-10 w-10 rounded-2xl ${bg} grid place-items-center mx-auto mb-2`}>
+                <I className={`h-5 w-5 ${iconColor}`} />
+              </div>
+              <p className="text-2xl font-extrabold leading-none">{value}</p>
+              <p className="text-[10px] text-muted-foreground mt-1 font-medium">{label}</p>
             </Card>
           ))}
         </div>
 
-        {/* ── Tabs ───────────────────────────────────────────────────────── */}
+        {/* ── Tabs ── */}
         <Tabs defaultValue="orders">
-          <TabsList className="rounded-full p-1 h-auto bg-muted w-full grid grid-cols-4 mb-6">
-            <TabsTrigger value="orders" className="rounded-full text-sm gap-1.5">
-              <Package className="h-4 w-4" /> Orders
+          <TabsList className="rounded-2xl p-1 h-auto bg-muted w-full grid grid-cols-4 mb-5">
+            <TabsTrigger value="orders" className="rounded-xl text-xs sm:text-sm gap-1 sm:gap-1.5 py-2">
+              <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Orders
             </TabsTrigger>
-            <TabsTrigger value="wishlist" className="rounded-full text-sm gap-1.5">
-              <Heart className="h-4 w-4" /> Wishlist
+            <TabsTrigger value="wishlist" className="rounded-xl text-xs sm:text-sm gap-1 sm:gap-1.5 py-2">
+              <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Wishlist
             </TabsTrigger>
-            <TabsTrigger value="addresses" className="rounded-full text-sm gap-1.5">
-              <MapPin className="h-4 w-4" /> Addresses
+            <TabsTrigger value="addresses" className="rounded-xl text-xs sm:text-sm gap-1 sm:gap-1.5 py-2">
+              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Addresses
             </TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-full text-sm gap-1.5">
-              <Settings className="h-4 w-4" /> Settings
+            <TabsTrigger value="settings" className="rounded-xl text-xs sm:text-sm gap-1 sm:gap-1.5 py-2">
+              <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Settings
             </TabsTrigger>
           </TabsList>
 
