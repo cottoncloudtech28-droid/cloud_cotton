@@ -7,7 +7,12 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173"] }));
+const defaultOrigins = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173", "https://cloud-cotton.vercel.app"];
+const allowedOrigins = process.env.FRONTEND_URL
+  ? [...defaultOrigins, ...process.env.FRONTEND_URL.split(",").map((o) => o.trim())]
+  : defaultOrigins;
+
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: "50mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
