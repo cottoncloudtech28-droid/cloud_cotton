@@ -17,6 +17,8 @@ const mapLog = (doc) => {
 
 // GET /api/stocklogs  — admin: paginated log feed
 // ?productId=xxx  filter by product
+// ?reason=order|manual_adjust|...  filter by reason
+// ?dateFrom=ISO&dateTo=ISO  filter by date range
 // ?limit=50&page=1
 router.get("/", verifyToken, requireAdmin, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
@@ -24,6 +26,11 @@ router.get("/", verifyToken, requireAdmin, async (req, res) => {
   const filter = {};
   if (req.query.productId) filter.product = req.query.productId;
   if (req.query.reason)    filter.reason  = req.query.reason;
+  if (req.query.dateFrom || req.query.dateTo) {
+    filter.createdAt = {};
+    if (req.query.dateFrom) filter.createdAt.$gte = new Date(req.query.dateFrom);
+    if (req.query.dateTo)   filter.createdAt.$lte = new Date(req.query.dateTo);
+  }
 
   try {
     const [logs, total] = await Promise.all([

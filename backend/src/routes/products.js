@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const { z } = require("zod");
 const Product = require("../models/Product");
-const StockLog = require("../models/StockLog");
+const StockLog = require("../models/StockLog"); // used for restock recommendations + stock logging
 const { verifyToken, requireAdmin } = require("../middleware/auth");
 
 const sizeZ = z.object({
@@ -234,6 +234,62 @@ router.patch("/:id/stock", verifyToken, requireAdmin, async (req, res) => {
     });
 
     res.json(mapDoc(p));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// GET /api/products/restock-recommendations  — admin: velocity-based restock suggestions
+router.get("/restock-recommendations", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // Aggregate units sold per product in the last 30 days
+    const salesData = await StockLog.aggregate([
+      { $match: { reason: "order", createdAt: { $gte: thirtyDaysAgo }, change: { $lt: 0 } } },
+      { $group: { _id: "$product", totalSold: { $sum: { $abs: "$change" } } } },
+    ]);
+    const salesMap = new Map(salesData.map((d) => [d._id.toString(), d.totalSold]));
+
+    const products = await Product.find({ is_active: true });
+
+    const recommendations = products
+      .map((p) => {
+        const sold30d = salesMap.get(p._id.toString()) || 0;
+        const dailyRate = sold30d / 30;
+        const daysRemaining = dailyRate > 0 ? Math.round(p.stock / dailyRate) : null;
+        const urgency =
+          p.stock === 0 ? "critical"
+          : daysRemaining !== null && daysRemaining < 7 ? "critical"
+          : daysRemaining !== null && daysRemaining < 14 ? "warning"
+          : p.stock <= (p.reorder_point ?? 5) ? "warning"
+          : "ok";
+        const recommendedQty = Math.max(
+          (p.reorder_point ?? 5) * 3,
+          sold30d > 0 ? Math.ceil(sold30d * 1.5) : (p.reorder_point ?? 5) * 2
+        );
+
+        return {
+          id:             p._id.toString(),
+          name:           p.name,
+          sku:            p.sku ?? null,
+          image_url:      p.image_url ?? null,
+          currentStock:   p.stock,
+          reorderPoint:   p.reorder_point ?? 5,
+          sold30d,
+          dailyRate:      Math.round(dailyRate * 10) / 10,
+          daysRemaining,
+          urgency,
+          recommendedQty,
+        };
+      })
+      .filter((r) => r.urgency !== "ok")
+      .sort((a, b) => {
+        const order = { critical: 0, warning: 1, ok: 2 };
+        return order[a.urgency] - order[b.urgency];
+      });
+
+    res.json(recommendations);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

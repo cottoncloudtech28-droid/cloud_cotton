@@ -1,4 +1,7 @@
-import type { Product, Order, OrderItem, Address, SavedAddress, Category, StockLog } from "./types";
+import type {
+  Product, Order, OrderItem, Address, SavedAddress, Category, StockLog,
+  Supplier, PurchaseOrder, RestockRecommendation,
+} from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const TOKEN_KEY = "kcs_token";
@@ -79,6 +82,33 @@ export async function placeOrder(payload: {
   total: number;
 }): Promise<Order> {
   return apiFetch("/api/orders", { method: "POST", body: JSON.stringify(payload) });
+}
+
+// ── Payments (Razorpay) ───────────────────────────────────────────────────────
+export async function createRazorpayOrder(amount: number): Promise<{
+  razorpay_order_id: string;
+  amount: number;
+  currency: string;
+  key_id: string;
+}> {
+  return apiFetch("/api/orders/razorpay/create-order", {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export async function verifyRazorpayPayment(payload: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  items: OrderItem[];
+  address: Address;
+  total: number;
+}): Promise<Order> {
+  return apiFetch("/api/orders/razorpay/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 // ── Wishlist ─────────────────────────────────────────────────────────────────
@@ -166,6 +196,59 @@ export async function deleteSavedAddress(id: string): Promise<SavedAddress[]> {
 
 export async function setDefaultAddress(id: string): Promise<SavedAddress[]> {
   return apiFetch(`/api/users/addresses/${id}/default`, { method: "PATCH" });
+}
+
+// ── Restock Recommendations ───────────────────────────────────────────────────
+export async function getRestockRecommendations(): Promise<RestockRecommendation[]> {
+  return apiFetch("/api/products/restock-recommendations");
+}
+
+// ── Suppliers ─────────────────────────────────────────────────────────────────
+export async function getSuppliers(): Promise<Supplier[]> {
+  return apiFetch("/api/suppliers");
+}
+
+export async function createSupplier(data: Omit<Supplier, "id" | "createdAt">): Promise<Supplier> {
+  return apiFetch("/api/suppliers", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateSupplier(id: string, data: Partial<Omit<Supplier, "id" | "createdAt">>): Promise<Supplier> {
+  return apiFetch(`/api/suppliers/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function deleteSupplier(id: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/suppliers/${id}`, { method: "DELETE" });
+}
+
+// ── Purchase Orders ───────────────────────────────────────────────────────────
+export async function getPurchaseOrders(): Promise<PurchaseOrder[]> {
+  return apiFetch("/api/purchase-orders");
+}
+
+export async function createPurchaseOrder(data: {
+  supplier: string;
+  items: { product: string; productName: string; sku?: string | null; size?: string | null; quantity: number; unitCost: number }[];
+  expectedDelivery?: string | null;
+  notes?: string | null;
+}): Promise<PurchaseOrder> {
+  return apiFetch("/api/purchase-orders", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updatePurchaseOrder(id: string, data: Partial<{
+  supplier: string;
+  items: any[];
+  expectedDelivery: string | null;
+  notes: string | null;
+}>): Promise<PurchaseOrder> {
+  return apiFetch(`/api/purchase-orders/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function updatePOStatus(id: string, status: string): Promise<PurchaseOrder> {
+  return apiFetch(`/api/purchase-orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+}
+
+export async function deletePurchaseOrder(id: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/purchase-orders/${id}`, { method: "DELETE" });
 }
 
 // ── Profile ──────────────────────────────────────────────────────────────────

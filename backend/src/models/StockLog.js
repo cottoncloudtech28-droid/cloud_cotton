@@ -11,10 +11,10 @@ const stockLogSchema = new mongoose.Schema(
     stockAfter:  { type: Number, required: true },
     reason:      {
       type: String,
-      enum: ["order", "manual_adjust", "bulk_update", "restock", "correction"],
+      enum: ["order", "manual_adjust", "bulk_update", "restock", "correction", "cancellation", "return"],
       default: "manual_adjust",
     },
-    orderId:     { type: String, default: null },  // set when reason === "order"
+    orderId:     { type: String, default: null },  // set when reason === "order" or "cancellation"
     note:        { type: String, default: null },
     performedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   },

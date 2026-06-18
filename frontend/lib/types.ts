@@ -44,7 +44,7 @@ export interface OrderItem {
   size: string | null;
 }
 
-export type StockLogReason = "order" | "manual_adjust" | "bulk_update" | "restock" | "correction";
+export type StockLogReason = "order" | "manual_adjust" | "bulk_update" | "restock" | "correction" | "cancellation" | "return";
 
 export interface StockLog {
   id: string;
@@ -78,6 +78,62 @@ export interface SavedAddress extends Address {
 }
 
 export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
+// ── Supplier ──────────────────────────────────────────────────────────────────
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  website: string | null;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// ── Purchase Order ────────────────────────────────────────────────────────────
+export interface PurchaseOrderItem {
+  product: string;
+  productName: string;
+  sku: string | null;
+  size: string | null;
+  quantity: number;
+  unitCost: number;
+}
+
+export type POStatus = "draft" | "sent" | "received" | "cancelled";
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplier: { id: string; name: string } | string;
+  items: PurchaseOrderItem[];
+  status: POStatus;
+  expectedDelivery: string | null;
+  totalCost: number;
+  notes: string | null;
+  receivedAt: string | null;
+  createdAt: string;
+}
+
+// ── Restock Recommendation ────────────────────────────────────────────────────
+export interface RestockRecommendation {
+  id: string;
+  name: string;
+  sku: string | null;
+  image_url: string | null;
+  currentStock: number;
+  reorderPoint: number;
+  sold30d: number;
+  dailyRate: number;
+  daysRemaining: number | null;
+  urgency: "critical" | "warning";
+  recommendedQty: number;
+}
+
+export type PaymentMethod = "razorpay" | "cod";
+export type PaymentStatus = "pending" | "paid" | "failed";
 
 export interface Order {
   id: string;
@@ -86,5 +142,9 @@ export interface Order {
   address: Address;
   total: number;
   status: OrderStatus;
+  payment_method?: PaymentMethod;
+  payment_status?: PaymentStatus;
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
   createdAt: string;
 }

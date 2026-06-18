@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { getOrders, getWishlist, removeFromWishlist, getSavedAddresses, addSavedAddress, updateSavedAddress, deleteSavedAddress, setDefaultAddress } from "@/lib/api";
 import type { Product, Order, OrderStatus, SavedAddress, Address } from "@/lib/types";
@@ -386,72 +387,72 @@ export default function ProfilePage() {
               <p className="text-sm text-muted-foreground">
                 {addresses.length === 0 ? "No saved addresses yet." : `${addresses.length} saved address${addresses.length !== 1 ? "es" : ""}`}
               </p>
-              {!showAddrForm && (
-                <Button size="sm" className="rounded-full bg-gradient-primary text-primary-foreground border-0 gap-1.5" onClick={openNewAddr}>
-                  <Plus className="h-4 w-4" /> Add address
-                </Button>
-              )}
+              <Button size="sm" className="rounded-full bg-gradient-primary text-primary-foreground border-0 gap-1.5" onClick={openNewAddr}>
+                <Plus className="h-4 w-4" /> Add address
+              </Button>
             </div>
 
             {/* Address cards */}
-            {!showAddrForm && (
-              <div className="space-y-3">
-                {addresses.map((a) => (
-                  <Card key={a.id} className={`p-4 border-2 transition-colors ${a.isDefault ? "border-primary/50 bg-primary/5" : "border-border"}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-xs font-bold uppercase tracking-wider text-primary">{a.label}</span>
-                          {a.isDefault && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                              <Star className="h-2.5 w-2.5 fill-amber-400 stroke-amber-400" /> Default
-                            </span>
-                          )}
-                        </div>
-                        <p className="font-semibold">{a.fullName}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {a.line1}{a.line2 ? `, ${a.line2}` : ""}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{a.city}, {a.state} — {a.pincode}</p>
-                        <p className="text-sm text-muted-foreground">{a.phone}</p>
-                      </div>
-                      <div className="flex flex-col gap-1.5 shrink-0">
-                        <Button variant="outline" size="sm" className="rounded-full h-8 text-xs gap-1" onClick={() => openEditAddr(a)}>
-                          <Pencil className="h-3 w-3" /> Edit
-                        </Button>
-                        {!a.isDefault && (
-                          <Button variant="outline" size="sm" className="rounded-full h-8 text-xs gap-1" onClick={() => handleSetDefault(a.id)}>
-                            <Star className="h-3 w-3" /> Set default
-                          </Button>
+            <div className="space-y-3">
+              {addresses.map((a) => (
+                <Card key={a.id} className={`p-4 border-2 transition-colors rounded-3xl shadow-soft ${a.isDefault ? "border-primary/50 bg-primary/5" : "border-border"}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary">{a.label}</span>
+                        {a.isDefault && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            <Star className="h-2.5 w-2.5 fill-amber-400 stroke-amber-400" /> Default
+                          </span>
                         )}
-                        <Button variant="ghost" size="sm" className="rounded-full h-8 text-xs gap-1 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteAddr(a.id)}>
-                          <Trash2 className="h-3 w-3" /> Remove
-                        </Button>
                       </div>
+                      <p className="font-semibold">{a.fullName}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {a.line1}{a.line2 ? `, ${a.line2}` : ""}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{a.city}, {a.state} — {a.pincode}</p>
+                      <p className="text-sm text-muted-foreground">{a.phone}</p>
                     </div>
-                  </Card>
-                ))}
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      <Button variant="outline" size="sm" className="rounded-full h-8 text-xs gap-1" onClick={() => openEditAddr(a)}>
+                        <Pencil className="h-3 w-3" /> Edit
+                      </Button>
+                      {!a.isDefault && (
+                        <Button variant="outline" size="sm" className="rounded-full h-8 text-xs gap-1" onClick={() => handleSetDefault(a.id)}>
+                          <Star className="h-3 w-3" /> Set default
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="rounded-full h-8 text-xs gap-1 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteAddr(a.id)}>
+                        <Trash2 className="h-3 w-3" /> Remove
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
 
-                {addresses.length === 0 && (
-                  <Card className="p-14 text-center">
-                    <MapPin className="h-14 w-14 text-muted-foreground/40 mx-auto mb-4" />
-                    <p className="font-semibold text-lg">No saved addresses</p>
-                    <p className="text-sm text-muted-foreground mt-1">Save an address to speed up checkout.</p>
-                  </Card>
-                )}
-              </div>
-            )}
+              {addresses.length === 0 && (
+                <Card className="p-14 text-center rounded-3xl shadow-soft">
+                  <MapPin className="h-14 w-14 text-muted-foreground/40 mx-auto mb-4" />
+                  <p className="font-semibold text-lg">No saved addresses</p>
+                  <p className="text-sm text-muted-foreground mt-1">Save an address to speed up checkout.</p>
+                </Card>
+              )}
+            </div>
 
-            {/* Add / Edit form */}
-            {showAddrForm && (
-              <Card className="p-5 space-y-4">
-                <h3 className="font-bold text-lg">{editingAddrId ? "Edit address" : "New address"}</h3>
-                <div className="grid grid-cols-2 gap-3">
+            {/* Add / Edit address — modal */}
+            <Dialog open={showAddrForm} onOpenChange={(open) => { if (!open) setShowAddrForm(false); }}>
+              <DialogContent className="rounded-3xl max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold">
+                    {editingAddrId ? "Edit address" : "New address"}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1.5">
                     <Label>Label</Label>
                     <select value={addrForm.label} onChange={(e) => setAF("label", e.target.value)}
                       className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                      {["Home","Work","Other"].map((l) => <option key={l}>{l}</option>)}
+                      {["Home", "Work", "Other"].map((l) => <option key={l}>{l}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1.5">
@@ -487,14 +488,16 @@ export default function ProfilePage() {
                     </select>
                   </div>
                 </div>
-                <div className="flex gap-2 pt-1">
-                  <Button className="flex-1 rounded-full bg-gradient-primary text-primary-foreground border-0" disabled={addrSaving} onClick={handleSaveAddr}>
+                <div className="flex gap-2 pt-2">
+                  <Button className="flex-1 rounded-full bg-gradient-primary text-primary-foreground border-0 h-11" disabled={addrSaving} onClick={handleSaveAddr}>
                     {addrSaving ? "Saving…" : editingAddrId ? "Save changes" : "Save address"}
                   </Button>
-                  <Button variant="outline" className="rounded-full" onClick={() => setShowAddrForm(false)}>Cancel</Button>
+                  <Button variant="outline" className="rounded-full h-11 px-5" onClick={() => setShowAddrForm(false)}>
+                    Cancel
+                  </Button>
                 </div>
-              </Card>
-            )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Settings */}
