@@ -208,7 +208,7 @@ export default function Home() {
         </section>
 
         {/* ── PERKS BAR ── */}
-        <section className="bg-card border-y border-border py-7">
+        {/* <section className="bg-card border-y border-border py-7">
           <div className="container grid grid-cols-2 md:grid-cols-4 gap-6">
             {PERKS.map(({ emoji, title, desc }) => (
               <div key={title} className="flex flex-col sm:flex-row items-center sm:items-start gap-3 text-center sm:text-left">
@@ -222,33 +222,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </section>
-
-        {/* ── SHOP BY CATEGORY ── grid */}
-        <section className="container py-12" id="categories">
-          <div className="text-center mb-8">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-2">Browse collections</p>
-            <h2 className="text-3xl md:text-4xl font-bold">Shop by Category</h2>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-            {CATEGORIES.map((c) => (
-              <Link
-                key={c.slug}
-                href={`/shop?cat=${c.slug}`}
-                className="group flex flex-col items-center justify-center gap-2 p-4 md:p-6 rounded-3xl bg-card shadow-soft hover:shadow-cute transition-bounce hover:-translate-y-1"
-              >
-                <div
-                  className="h-14 w-14 md:h-16 md:w-16 grid place-items-center rounded-2xl text-3xl group-hover:scale-110 transition-bounce shadow-sm"
-                  style={{ backgroundColor: c.bg }}
-                >
-                  {c.emoji}
-                </div>
-                <p className="font-semibold text-center text-xs md:text-sm leading-tight">{c.name}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-
+        </section> */}
       </main>
       <Footer />
     </div>

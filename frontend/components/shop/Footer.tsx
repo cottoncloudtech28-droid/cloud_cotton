@@ -22,8 +22,15 @@ export default function Footer() {
             <li><Link href="/about" className="hover:text-primary">About us</Link></li>
             <li><Link href="/contact" className="hover:text-primary">Contact us</Link></li>
             <li><Link href="/shipping" className="hover:text-primary">Delivery &amp; Shipping</Link></li>
+            <li><Link href="/track-order" className="hover:text-primary">Track your order</Link></li>
+            <li><Link href="/returns" className="hover:text-primary">Returns &amp; Exchanges</Link></li>
+            <li><Link href="/terms" className="hover:text-primary">Terms &amp; Conditions</Link></li>
+            <li><Link href="/privacy" className="hover:text-primary">Privacy Policy</Link></li>
           </ul>
         </div>
+      </div>
+      <div className="container pb-6 text-center text-xs text-muted-foreground/60">
+        &copy; {new Date().getFullYear()} Cotton Cloud Company. All rights reserved.
       </div>
     </footer>
   );

@@ -146,5 +146,22 @@ export interface Order {
   payment_status?: PaymentStatus;
   razorpay_order_id?: string | null;
   razorpay_payment_id?: string | null;
+  trackingNumber?: string | null;
+  cancelledBy?: "customer" | "admin" | null;
+  cancelReason?: string | null;
+  user?: { id: string; email: string; name: string } | string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PublicOrderTrack {
+  orderId: string;
+  status: OrderStatus;
+  trackingNumber: string | null;
+  cancelReason: string | null;
+  payment_method: PaymentMethod;
+  createdAt: string;
+  updatedAt: string;
+  address: { city: string; state: string; pincode: string };
+  items: { name: string; image_url: string | null; qty: number; size: string | null; color: string | null }[];
 }

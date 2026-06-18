@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ export default function Navbar() {
   const { count } = useCart();
   const router = useRouter();
   const [q, setQ] = useState("");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,15 +44,15 @@ export default function Navbar() {
           <Link href="/cart">
             <Button variant="ghost" size="sm" className="relative">
               <ShoppingCart className="h-4 w-4" />
-              {count > 0 && (
+              {mounted && count > 0 && (
                 <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs grid place-items-center">
                   {count}
                 </span>
               )}
             </Button>
           </Link>
-          {isAdmin && <Link href="/admin"><Button variant="secondary" size="sm">Admin</Button></Link>}
-          {user ? (
+          {mounted && isAdmin && <Link href="/admin"><Button variant="secondary" size="sm">Admin</Button></Link>}
+          {mounted && user ? (
             <Link href="/profile">
               <Button variant="ghost" size="sm" className="relative gap-1.5">
                 <UserCircle2 className="h-5 w-5 text-primary" />

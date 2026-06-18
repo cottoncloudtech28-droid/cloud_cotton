@@ -3,9 +3,26 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: "Too many attempts. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { message: "Too many messages sent. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const defaultOrigins = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173", "https://cloud-cotton.vercel.app"];
 const allowedOrigins = process.env.FRONTEND_URL
@@ -16,7 +33,8 @@ app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: "50mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-app.use("/api/auth", require("./routes/auth"));
+app.use("/api/auth", authLimiter, require("./routes/auth"));
+app.use("/api/contact", contactLimiter, require("./routes/contact"));
 app.use("/api/products", require("./routes/products"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/users", require("./routes/users"));

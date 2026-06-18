@@ -53,21 +53,39 @@ const parseBody = (body) => ({
                       : [],
 });
 
-// GET /api/products  — public
+// GET /api/products  — public, with sorting + pagination
 router.get("/", async (req, res) => {
   try {
-    const { cat, q, tag } = req.query;
+    const { cat, q, tag, sort, page, limit } = req.query;
     const filter = { is_active: true };
     if (cat && cat !== "all") filter.category = cat;
     if (tag) filter.tags = { $in: [tag] };
     if (q) {
       filter.$or = [
         { name: { $regex: q, $options: "i" } },
+        { description: { $regex: q, $options: "i" } },
         { tags: { $in: [new RegExp(q, "i")] } },
       ];
     }
-    const products = await Product.find(filter).sort({ createdAt: -1 });
-    res.json(products.map(mapDoc));
+
+    const sortMap = {
+      newest:      { createdAt: -1 },
+      "price-asc": { price: 1 },
+      "price-desc":{ price: -1 },
+      popular:     { discount_percent: -1, createdAt: -1 },
+    };
+    const sortObj = sortMap[sort] || { createdAt: -1 };
+
+    const pageNum  = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(96, Math.max(1, parseInt(limit) || 24));
+    const skip     = (pageNum - 1) * limitNum;
+
+    const [products, total] = await Promise.all([
+      Product.find(filter).sort(sortObj).skip(skip).limit(limitNum),
+      Product.countDocuments(filter),
+    ]);
+
+    res.json({ products: products.map(mapDoc), total, page: pageNum, limit: limitNum });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

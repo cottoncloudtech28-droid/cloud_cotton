@@ -13,6 +13,8 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { placeOrder, getSavedAddresses, addSavedAddress, createRazorpayOrder, verifyRazorpayPayment } from "@/lib/api";
 import type { Address, SavedAddress } from "@/lib/types";
+import ProductCard from "@/components/shop/ProductCard";
+import { getProducts } from "@/lib/api";
 import { Trash2, ShoppingBag, CheckCircle2, MapPin, Package, Plus, Star, CreditCard, Truck } from "lucide-react";
 
 declare global {
@@ -49,6 +51,15 @@ export default function CartPage() {
   const [error, setError] = useState("");
   const [orderId, setOrderId] = useState<string | null>(null);
   const [addressesLoading, setAddressesLoading] = useState(false);
+  const [featured, setFeatured] = useState<import("@/lib/types").Product[]>([]);
+
+  // Load featured products for empty cart upsell
+  useEffect(() => {
+    if (items.length > 0) return;
+    getProducts({ sort: "popular", limit: 4 })
+      .then((data) => setFeatured(data.products ?? []))
+      .catch(() => {});
+  }, [items.length]);
 
   // Load Razorpay checkout script
   useEffect(() => {
@@ -202,13 +213,24 @@ export default function CartPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-1 container py-20">
+        <main className="flex-1 container py-16 space-y-12">
           <div className="max-w-lg mx-auto text-center space-y-4">
             <div className="text-6xl">🛍️</div>
             <h1 className="text-3xl font-bold">Your cart is empty</h1>
             <p className="text-muted-foreground">Add some cuties to get started!</p>
             <Link href="/shop"><Button className="rounded-full bg-gradient-primary text-primary-foreground border-0 mt-2">Start shopping</Button></Link>
           </div>
+          {featured.length > 0 && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Most loved right now</h2>
+                <Link href="/shop" className="text-sm text-primary font-medium hover:underline">See all →</Link>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {featured.map((p) => <ProductCard key={p.id} p={p} />)}
+              </div>
+            </div>
+          )}
         </main>
         <Footer />
       </div>

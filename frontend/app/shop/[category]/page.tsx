@@ -33,17 +33,16 @@ export default function CategoryPage() {
 
     Promise.allSettled([
       getCategory(slug),
-      getProducts({ cat: slug }),
+      getProducts({ cat: slug, limit: 96 }),
     ]).then(([catRes, prodRes]) => {
       if (catRes.status === "rejected") { router.push("/shop"); return; }
       setCategory(catRes.value);
 
       if (prodRes.status === "fulfilled") {
-        const prods = prodRes.value;
+        const prods = prodRes.value.products ?? [];
         setProducts(prods);
         setFiltered(prods);
 
-        // Collect unique tags across all products in this category
         const tagSet = new Set<string>();
         prods.forEach((p) => (p.tags ?? []).forEach((t) => tagSet.add(t)));
         setAllTags(Array.from(tagSet).sort());

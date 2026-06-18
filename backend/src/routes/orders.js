@@ -244,6 +244,188 @@ router.get("/all", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/orders/analytics  — admin: aggregate sales data for dashboard
+router.get("/analytics", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { days = "30" } = req.query;
+    const daysNum = Math.min(365, Math.max(7, parseInt(days) || 30));
+    const since = new Date(Date.now() - daysNum * 24 * 60 * 60 * 1000);
+
+    const allOrders = await Order.find({ status: { $ne: "cancelled" } }).sort({ createdAt: 1 });
+    const recentOrders = allOrders.filter((o) => o.createdAt >= since);
+
+    // Daily revenue for line chart
+    const dailyMap = {};
+    for (let i = 0; i < daysNum; i++) {
+      const d = new Date(Date.now() - (daysNum - 1 - i) * 24 * 60 * 60 * 1000);
+      dailyMap[d.toISOString().slice(0, 10)] = 0;
+    }
+    recentOrders.forEach((o) => {
+      const key = o.createdAt.toISOString().slice(0, 10);
+      if (key in dailyMap) dailyMap[key] += o.total;
+    });
+    const dailyRevenue = Object.entries(dailyMap).map(([date, revenue]) => ({ date, revenue }));
+
+    // Category breakdown
+    const categoryMap = {};
+    allOrders.forEach((o) => {
+      (o.items || []).forEach((item) => {
+        const cat = item.category ?? "unknown";
+        categoryMap[cat] = (categoryMap[cat] || 0) + item.price * (1 - (item.discount_percent || 0) / 100) * item.qty;
+      });
+    });
+    const byCategory = Object.entries(categoryMap)
+      .map(([name, value]) => ({ name, value: Math.round(value) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+
+    // Top products
+    const productMap = {};
+    allOrders.forEach((o) => {
+      (o.items || []).forEach((item) => {
+        const key = item.productId?.toString() ?? item.name;
+        if (!productMap[key]) productMap[key] = { name: item.name, revenue: 0, qty: 0 };
+        productMap[key].revenue += item.price * (1 - (item.discount_percent || 0) / 100) * item.qty;
+        productMap[key].qty += item.qty;
+      });
+    });
+    const topProducts = Object.values(productMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10)
+      .map((p) => ({ ...p, revenue: Math.round(p.revenue) }));
+
+    // Status counts (all time)
+    const statusCounts = await Order.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+
+    // Summary stats
+    const totalRevenue = allOrders.reduce((s, o) => s + o.total, 0);
+    const recentRevenue = recentOrders.reduce((s, o) => s + o.total, 0);
+    const avgOrderValue = allOrders.length > 0 ? totalRevenue / allOrders.length : 0;
+
+    res.json({
+      summary: {
+        totalOrders: allOrders.length,
+        totalRevenue: Math.round(totalRevenue),
+        recentRevenue: Math.round(recentRevenue),
+        avgOrderValue: Math.round(avgOrderValue),
+        recentOrderCount: recentOrders.length,
+        daysNum,
+      },
+      dailyRevenue,
+      byCategory,
+      topProducts,
+      statusCounts: statusCounts.reduce((acc, s) => { acc[s._id] = s.count; return acc; }, {}),
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// GET /api/orders/track/:orderId  — public: look up an order by its human-readable ID
+router.get("/track/:orderId", async (req, res) => {
+  try {
+    const order = await Order.findOne({ orderId: req.params.orderId });
+    if (!order) return res.status(404).json({ message: "Order not found. Check the order ID and try again." });
+
+    // Return limited public info only
+    res.json({
+      orderId:     order.orderId,
+      status:      order.status,
+      trackingNumber: order.trackingNumber ?? null,
+      cancelReason:   order.cancelReason ?? null,
+      payment_method: order.payment_method,
+      createdAt:   order.createdAt,
+      updatedAt:   order.updatedAt,
+      address: {
+        city:    order.address.city,
+        state:   order.address.state,
+        pincode: order.address.pincode,
+      },
+      items: order.items.map((item) => ({
+        name:      item.name,
+        image_url: item.image_url,
+        qty:       item.qty,
+        size:      item.size,
+        color:     item.color,
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /api/orders/:id/cancel  — authenticated user: cancel own pending order
+router.post("/:id/cancel", verifyToken, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (order.user.toString() !== req.user.userId)
+      return res.status(403).json({ message: "You can only cancel your own orders" });
+    if (!["pending", "confirmed"].includes(order.status))
+      return res.status(400).json({ message: `Orders with status "${order.status}" cannot be cancelled` });
+
+    const { reason } = req.body;
+    order.status = "cancelled";
+    order.cancelledBy = "customer";
+    order.cancelReason = reason || null;
+    await order.save();
+
+    // Restore stock (non-blocking)
+    for (const item of order.items) {
+      try {
+        const product = await Product.findById(item.productId);
+        if (!product) continue;
+
+        let stockBefore, stockAfter;
+        if (item.size && product.sizes && product.sizes.length > 0) {
+          const idx = product.sizes.findIndex((sz) => sz.label === item.size);
+          if (idx >= 0) {
+            stockBefore = product.sizes[idx].stock;
+            product.sizes[idx].stock += item.qty;
+            stockAfter = product.sizes[idx].stock;
+            product.stock = product.sizes.reduce((s, sz) => s + sz.stock, 0);
+            product.markModified("sizes");
+          } else {
+            stockBefore = product.stock; product.stock += item.qty; stockAfter = product.stock;
+          }
+        } else {
+          stockBefore = product.stock; product.stock += item.qty; stockAfter = product.stock;
+        }
+        await product.save({ validateBeforeSave: false });
+        await StockLog.create({
+          product: product._id, productName: product.name, sku: product.sku ?? null,
+          size: item.size ?? null, change: item.qty, stockBefore, stockAfter,
+          reason: "cancellation", orderId: order.orderId,
+          note: `Customer cancelled: ${reason || "No reason given"}`,
+          performedBy: req.user.userId,
+        });
+      } catch (_) {}
+    }
+
+    res.json(mapOrder(order));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// PATCH /api/orders/:id/tracking  — admin: set tracking number
+router.patch("/:id/tracking", verifyToken, requireAdmin, async (req, res) => {
+  const { trackingNumber } = req.body;
+  try {
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { trackingNumber: trackingNumber || null },
+      { new: true }
+    );
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    res.json(mapOrder(order));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // PATCH /api/orders/:id/status  — admin: update order status (restores stock on cancellation)
 router.patch("/:id/status", verifyToken, requireAdmin, async (req, res) => {
   const VALID = ["pending", "confirmed", "shipped", "delivered", "cancelled"];

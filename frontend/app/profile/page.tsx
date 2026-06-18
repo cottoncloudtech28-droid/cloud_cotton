@@ -16,13 +16,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
-import { getOrders, getWishlist, removeFromWishlist, getSavedAddresses, addSavedAddress, updateSavedAddress, deleteSavedAddress, setDefaultAddress } from "@/lib/api";
+import { getOrders, getWishlist, removeFromWishlist, getSavedAddresses, addSavedAddress, updateSavedAddress, deleteSavedAddress, setDefaultAddress, cancelOrder } from "@/lib/api";
 import type { Product, Order, OrderStatus, SavedAddress, Address } from "@/lib/types";
 import { toast } from "sonner";
 import {
   Package, Heart, Settings, LogOut, ShoppingBag, Clock,
   CheckCircle2, Truck, XCircle, LayoutDashboard, BarChart2,
   LayoutGrid, Upload, ArrowRight, MapPin, Star, Plus, Pencil, Trash2,
+  ExternalLink, AlertTriangle,
 } from "lucide-react";
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; bg: string; text: string; icon: React.ElementType }> = {
@@ -33,9 +34,44 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; bg: string; text: stri
   cancelled: { label: "Cancelled", bg: "bg-red-100",    text: "text-red-600",    icon: XCircle },
 };
 
-function OrderCard({ order }: { order: Order }) {
+const TIMELINE_STEPS: { status: OrderStatus; label: string }[] = [
+  { status: "pending",   label: "Ordered" },
+  { status: "confirmed", label: "Confirmed" },
+  { status: "shipped",   label: "Shipped" },
+  { status: "delivered", label: "Delivered" },
+];
+
+const STATUS_ORDER: Record<OrderStatus, number> = {
+  pending: 0, confirmed: 1, shipped: 2, delivered: 3, cancelled: -1,
+};
+
+function OrderCard({
+  order, onCancelled,
+}: {
+  order: Order;
+  onCancelled: (id: string) => void;
+}) {
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
   const Icon = cfg.icon;
+  const currentStep = STATUS_ORDER[order.status];
+  const canCancel = order.status === "pending" || order.status === "confirmed";
+  const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    try {
+      await cancelOrder(order.id, "Cancelled by customer");
+      toast.success("Order cancelled and stock restored");
+      setShowCancelConfirm(false);
+      onCancelled(order.id);
+    } catch (e: any) {
+      toast.error(e.message || "Could not cancel order");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   return (
     <Card className="overflow-hidden border border-border/60 shadow-soft rounded-3xl">
       {/* Header */}
@@ -46,11 +82,91 @@ function OrderCard({ order }: { order: Order }) {
             {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${cfg.bg} ${cfg.text}`}>
-          <Icon className="h-3 w-3" />
-          {cfg.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {canCancel && (
+            <button
+              onClick={() => setShowCancelConfirm(true)}
+              className="text-xs text-destructive/70 hover:text-destructive underline underline-offset-2 transition-colors"
+            >
+              Cancel order
+            </button>
+          )}
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${cfg.bg} ${cfg.text}`}>
+            <Icon className="h-3 w-3" />
+            {cfg.label}
+          </span>
+        </div>
       </div>
+
+      {/* Cancel confirmation */}
+      {showCancelConfirm && (
+        <div className="px-5 py-3 bg-destructive/5 border-b border-destructive/20 flex items-center justify-between gap-4">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive font-medium">Cancel this order? This cannot be undone.</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>
+              Keep it
+            </Button>
+            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={handleCancel} disabled={cancelling}>
+              {cancelling ? "Cancelling…" : "Yes, cancel"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Status timeline (not shown for cancelled) */}
+      {order.status !== "cancelled" && (
+        <div className="px-5 py-3 border-b border-border/40">
+          <div className="flex items-center gap-0">
+            {TIMELINE_STEPS.map((step, i) => {
+              const done = currentStep >= STATUS_ORDER[step.status];
+              const active = currentStep === STATUS_ORDER[step.status];
+              return (
+                <div key={step.status} className="flex items-center flex-1 last:flex-none">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      done ? "bg-primary border-primary" : "bg-background border-border"
+                    }`}>
+                      {done && <CheckCircle2 className="h-3.5 w-3.5 text-primary-foreground" />}
+                    </div>
+                    <span className={`text-[10px] font-medium whitespace-nowrap ${active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < TIMELINE_STEPS.length - 1 && (
+                    <div className={`flex-1 h-0.5 mb-4 mx-1 ${currentStep > STATUS_ORDER[step.status] ? "bg-primary" : "bg-border"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tracking number */}
+      {order.trackingNumber && order.status === "shipped" && (
+        <div className="px-5 py-2.5 bg-purple-50/60 border-b border-purple-100 flex items-center gap-2">
+          <Truck className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+          <p className="text-xs text-purple-800">
+            Tracking: <span className="font-mono font-semibold">{order.trackingNumber}</span>
+          </p>
+          <Link
+            href={`/track-order?id=${order.orderId}`}
+            className="ml-auto text-[10px] text-purple-600 hover:underline flex items-center gap-0.5"
+          >
+            Track <ExternalLink className="h-2.5 w-2.5" />
+          </Link>
+        </div>
+      )}
+
+      {/* Cancellation reason */}
+      {order.status === "cancelled" && order.cancelReason && (
+        <div className="px-5 py-2.5 bg-red-50/60 border-b border-red-100">
+          <p className="text-xs text-red-700">Reason: {order.cancelReason}</p>
+        </div>
+      )}
 
       {/* Items */}
       <div className="divide-y divide-border/40">
@@ -89,9 +205,14 @@ function OrderCard({ order }: { order: Order }) {
             {order.address.city}, {order.address.state} — {order.address.fullName}
           </span>
         </div>
-        <div className="flex items-baseline gap-1 shrink-0 ml-4">
-          <span className="text-xs text-muted-foreground">Total</span>
-          <span className="text-base font-extrabold text-foreground">₹{order.total}</span>
+        <div className="flex items-center gap-3 shrink-0 ml-4">
+          <Link href={`/track-order?id=${order.orderId}`} className="text-xs text-primary hover:underline flex items-center gap-0.5">
+            Track order <ExternalLink className="h-2.5 w-2.5" />
+          </Link>
+          <div className="flex items-baseline gap-1">
+            <span className="text-xs text-muted-foreground">Total</span>
+            <span className="text-base font-extrabold text-foreground">₹{order.total}</span>
+          </div>
         </div>
       </div>
     </Card>
@@ -344,7 +465,17 @@ export default function ProfilePage() {
                 </Button>
               </Card>
             ) : (
-              orders.map((order) => <OrderCard key={order.id} order={order} />)
+              orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onCancelled={(id) =>
+                    setOrders((prev) =>
+                      prev.map((o) => o.id === id ? { ...o, status: "cancelled" as const } : o)
+                    )
+                  }
+                />
+              ))
             )}
           </TabsContent>
 

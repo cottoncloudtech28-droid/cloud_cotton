@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const User = require("../models/User");
-const { verifyToken } = require("../middleware/auth");
+const Order = require("../models/Order");
+const { verifyToken, requireAdmin } = require("../middleware/auth");
 
 const mapProduct = (doc) => {
   const obj = doc.toObject();
@@ -9,6 +10,72 @@ const mapProduct = (doc) => {
   delete obj.__v;
   return obj;
 };
+
+// GET /api/users/admin/all  — admin: list all customers with order stats
+router.get("/admin/all", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { q, page = "1", limit = "20" } = req.query;
+    const pageNum  = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip     = (pageNum - 1) * limitNum;
+
+    const filter = q
+      ? { $or: [
+          { email: { $regex: q, $options: "i" } },
+          { name:  { $regex: q, $options: "i" } },
+        ] }
+      : {};
+
+    const [users, total] = await Promise.all([
+      User.find(filter).select("-password_hash -wishlist -addresses").sort({ createdAt: -1 }).skip(skip).limit(limitNum),
+      User.countDocuments(filter),
+    ]);
+
+    const userIds = users.map((u) => u._id);
+    const orderStats = await Order.aggregate([
+      { $match: { user: { $in: userIds }, status: { $ne: "cancelled" } } },
+      { $group: {
+          _id: "$user",
+          orderCount: { $sum: 1 },
+          totalSpent: { $sum: "$total" },
+          lastOrderAt: { $max: "$createdAt" },
+      }},
+    ]);
+    const statsMap = Object.fromEntries(orderStats.map((s) => [s._id.toString(), s]));
+
+    const result = users.map((u) => {
+      const stats = statsMap[u._id.toString()] || { orderCount: 0, totalSpent: 0, lastOrderAt: null };
+      return {
+        id: u._id.toString(),
+        email: u.email,
+        name: u.name || "",
+        role: u.role,
+        createdAt: u.createdAt,
+        orderCount: stats.orderCount,
+        totalSpent: Math.round(stats.totalSpent),
+        lastOrderAt: stats.lastOrderAt,
+      };
+    });
+
+    res.json({ customers: result, total, page: pageNum, limit: limitNum });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// PATCH /api/users/admin/:id/role  — admin: change user role
+router.patch("/admin/:id/role", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!["customer", "admin"].includes(role))
+      return res.status(400).json({ message: "Invalid role" });
+    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select("-password_hash");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ id: user._id.toString(), email: user.email, name: user.name, role: user.role });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
 // GET /api/users/wishlist  — get current user's wishlist
 router.get("/wishlist", verifyToken, async (req, res) => {

@@ -1,6 +1,6 @@
 import type {
   Product, Order, OrderItem, Address, SavedAddress, Category, StockLog,
-  Supplier, PurchaseOrder, RestockRecommendation,
+  Supplier, PurchaseOrder, RestockRecommendation, PublicOrderTrack,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -49,11 +49,21 @@ export async function getProduct(id: string): Promise<Product> {
   return apiFetch(`/api/products/${id}`);
 }
 
-export async function getProducts(params?: { cat?: string; q?: string; tag?: string }): Promise<Product[]> {
+export async function getProducts(params?: {
+  cat?: string;
+  q?: string;
+  tag?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ products: Product[]; total: number; page: number; limit: number }> {
   const qs = new URLSearchParams();
   if (params?.cat && params.cat !== "all") qs.set("cat", params.cat);
   if (params?.q) qs.set("q", params.q);
   if (params?.tag) qs.set("tag", params.tag);
+  if (params?.sort) qs.set("sort", params.sort);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
   const query = qs.toString();
   return apiFetch(`/api/products${query ? `?${query}` : ""}`);
 }
@@ -82,6 +92,52 @@ export async function placeOrder(payload: {
   total: number;
 }): Promise<Order> {
   return apiFetch("/api/orders", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function cancelOrder(id: string, reason?: string): Promise<Order> {
+  return apiFetch(`/api/orders/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function setOrderTracking(id: string, trackingNumber: string): Promise<Order> {
+  return apiFetch(`/api/orders/${id}/tracking`, {
+    method: "PATCH",
+    body: JSON.stringify({ trackingNumber }),
+  });
+}
+
+export async function updateOrderStatus(id: string, status: string): Promise<Order> {
+  return apiFetch(`/api/orders/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function getAllOrders(): Promise<Order[]> {
+  return apiFetch("/api/orders/all");
+}
+
+export async function getOrderAnalytics(days = 30): Promise<{
+  summary: {
+    totalOrders: number;
+    totalRevenue: number;
+    recentRevenue: number;
+    avgOrderValue: number;
+    recentOrderCount: number;
+    daysNum: number;
+  };
+  dailyRevenue: { date: string; revenue: number }[];
+  byCategory: { name: string; value: number }[];
+  topProducts: { name: string; revenue: number; qty: number }[];
+  statusCounts: Record<string, number>;
+}> {
+  return apiFetch(`/api/orders/analytics?days=${days}`);
+}
+
+export async function trackOrder(orderId: string): Promise<PublicOrderTrack> {
+  return apiFetch(`/api/orders/track/${orderId}`);
 }
 
 // ── Payments (Razorpay) ───────────────────────────────────────────────────────
@@ -249,6 +305,40 @@ export async function updatePOStatus(id: string, status: string): Promise<Purcha
 
 export async function deletePurchaseOrder(id: string): Promise<{ ok: boolean }> {
   return apiFetch(`/api/purchase-orders/${id}`, { method: "DELETE" });
+}
+
+// ── Admin: Customers ──────────────────────────────────────────────────────────
+export async function getAdminCustomers(params?: {
+  q?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  customers: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    createdAt: string;
+    orderCount: number;
+    totalSpent: number;
+    lastOrderAt: string | null;
+  }[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  const q = qs.toString();
+  return apiFetch(`/api/users/admin/all${q ? `?${q}` : ""}`);
+}
+
+export async function updateCustomerRole(id: string, role: "customer" | "admin"): Promise<{
+  id: string; email: string; name: string; role: string;
+}> {
+  return apiFetch(`/api/users/admin/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) });
 }
 
 // ── Profile ──────────────────────────────────────────────────────────────────
