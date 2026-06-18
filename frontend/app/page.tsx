@@ -33,8 +33,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch("/api/products")
-      .then((data) => setProducts((data || []).slice(0, 8)))
+    apiFetch("/api/products?limit=8&sort=newest")
+      .then((data) => setProducts((data?.products || data || []).slice(0, 8)))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -57,13 +57,16 @@ export default function Home() {
             <img
               src="/hero.jpg"
               alt="Kawaii stationery flat lay"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover object-center"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/70 to-transparent" />
+            {/* On mobile: full cover so image never shows behind buttons */}
+            <div className="absolute inset-0 bg-background/85 md:bg-transparent" />
+            {/* On md+: directional gradient that fades right */}
+            <div className="hidden md:block absolute inset-0 bg-gradient-to-r from-background/95 via-background/75 to-background/10" />
           </div>
           <div className="relative container py-16">
             <div className="max-w-lg space-y-5 animate-in fade-in slide-in-from-left-4 duration-700">
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/15 backdrop-blur border border-primary/30 px-4 py-1.5 text-sm font-semibold text-primary">
+              <span className="inline-flex items-center gap-2 rounded-full bg-primary/15 border border-primary/30 px-4 py-1.5 text-sm font-semibold text-primary">
                 <Sparkles className="h-3.5 w-3.5 fill-primary/40" /> New collection just dropped
               </span>
               <h1 className="text-5xl md:text-6xl font-extrabold leading-[1.05] tracking-tight uppercase bg-gradient-primary bg-clip-text text-transparent">
@@ -72,14 +75,14 @@ export default function Home() {
               <p className="text-lg text-foreground/80 max-w-sm font-[Fredoka]">
                 Your happy place for all things cute &amp; quirky 🌸
               </p>
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 flex-wrap">
                 <Link href="/shop">
                   <button className="px-7 py-3 rounded-full bg-gradient-primary text-primary-foreground font-bold text-sm shadow-cute hover:opacity-90 transition-opacity">
                     Shop Now
                   </button>
                 </Link>
                 <Link href="#new-arrivals">
-                  <button className="px-7 py-3 rounded-full border-2 border-primary/30 bg-background/70 backdrop-blur text-foreground font-bold text-sm hover:bg-muted transition-colors">
+                  <button className="px-7 py-3 rounded-full border-2 border-primary/40 bg-background text-foreground font-bold text-sm hover:bg-primary/10 transition-colors">
                     New Arrivals
                   </button>
                 </Link>
