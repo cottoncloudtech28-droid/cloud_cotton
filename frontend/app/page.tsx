@@ -228,24 +228,63 @@ export default function Home() {
           )}
         </section>
 
-        {/* ── WIDE DEAL BANNER ── */}
-        <section className="container pb-8 md:pb-10">
-          <Link
-            href="/shop"
-            className="group relative overflow-hidden rounded-2xl md:rounded-3xl flex items-center min-h-[110px] md:min-h-[180px] border border-border/60 transition-bounce"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-100 via-pink-50 to-amber-50" />
-            <div className="absolute right-4 md:right-16 top-0 bottom-0 flex items-center text-4xl md:text-7xl opacity-20 group-hover:opacity-35 group-hover:scale-110 transition-bounce select-none gap-1 md:gap-2">
-              🎀🎁🌈
-            </div>
-            <div className="relative z-10 px-5 md:px-12">
-              <p className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-0.5 md:mb-1">Thoughtful picks</p>
-              <h3 className="text-lg md:text-3xl font-extrabold text-foreground mb-2 md:mb-3">Gifts under ₹499 🎁</h3>
-              <span className="inline-flex items-center gap-1 text-xs md:text-sm font-bold text-primary bg-primary/10 px-4 md:px-5 py-1.5 md:py-2 rounded-full">
-                Shop gifts →
-              </span>
-            </div>
-          </Link>
+
+        {/* ── TESTIMONIALS ── */}
+        <section className="container pb-10 md:pb-14">
+          <div className="text-center mb-6 md:mb-8">
+            <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Happy customers</p>
+            <h2 className="text-2xl md:text-3xl font-bold">What people are saying 💬</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+            {[
+              {
+                name: "Aanya S.",
+                location: "Mumbai",
+                avatar: "🌸",
+                rating: 5,
+                text: "The stationery set I ordered was absolutely adorable! Great packaging and super fast delivery. Will definitely be ordering again!",
+              },
+              {
+                name: "Rhea M.",
+                location: "Bangalore",
+                avatar: "🎀",
+                rating: 5,
+                text: "Bought return gifts for my daughter's birthday party — every single kid was obsessed. The quality exceeded my expectations!",
+              },
+              {
+                name: "Priya K.",
+                location: "Delhi",
+                avatar: "🌈",
+                rating: 5,
+                text: "Cotton Cloud has the cutest things ever! The kawaii lamp is now my desk's star. Highly recommend to anyone who loves cute decor.",
+              },
+            ].map((t) => (
+              <div
+                key={t.name}
+                className="relative rounded-2xl md:rounded-3xl bg-card border border-border/60 p-5 md:p-6 flex flex-col gap-3"
+              >
+                {/* Stars */}
+                <div className="flex gap-0.5 text-amber-400 text-sm">
+                  {"★".repeat(t.rating)}
+                </div>
+
+                {/* Quote */}
+                <p className="text-sm text-foreground/80 leading-relaxed flex-1">"{t.text}"</p>
+
+                {/* Author */}
+                <div className="flex items-center gap-3 pt-1 border-t border-border/40">
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 border border-border/40 grid place-items-center text-lg flex-shrink-0">
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground leading-none">{t.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.location}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
       </main>

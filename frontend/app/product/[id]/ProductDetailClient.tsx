@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/shop/Navbar";
@@ -77,6 +77,8 @@ export default function ProductDetailClient() {
   const [selectedSize, setSelectedSize] = useState("");
   const [inWishlist, setInWishlist] = useState(false);
   const [wishlistBusy, setWishlistBusy] = useState(false);
+  const [stickyVisible, setStickyVisible] = useState(false);
+  const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -116,6 +118,17 @@ export default function ProductDetailClient() {
       .catch(() => router.push("/shop"))
       .finally(() => setLoading(false));
   }, [id, user]);
+
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [product]);
 
   if (loading) return <div className="min-h-screen"><Navbar /><main><DetailSkeleton /></main></div>;
   if (!product) return null;
@@ -198,6 +211,41 @@ export default function ProductDetailClient() {
   return (
     <div className="min-h-screen">
       <Navbar />
+
+      {/* ── STICKY MINI PRODUCT BAR ── */}
+      <div
+        className={`fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-b border-border shadow-sm transition-transform duration-300 ${
+          stickyVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
+        <div className="container flex items-center gap-3 py-2.5">
+          {/* Thumbnail */}
+          <div className="h-11 w-11 rounded-lg overflow-hidden bg-muted border border-border flex-shrink-0">
+            {allImages[0] ? (
+              <img src={allImages[0]} alt={product.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full grid place-items-center text-xl">🌸</div>
+            )}
+          </div>
+
+          {/* Name + price */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold truncate leading-tight">{product.name}</p>
+            <p className="text-sm text-primary font-extrabold">₹{finalPrice}</p>
+          </div>
+
+          {/* Add to cart */}
+          <Button
+            size="sm"
+            onClick={handleAddToCart}
+            disabled={!canAdd}
+            className="flex-shrink-0 bg-primary text-primary-foreground h-9 px-4 text-xs font-bold"
+          >
+            <ShoppingBag className="h-3.5 w-3.5 mr-1.5" /> Add to cart
+          </Button>
+        </div>
+      </div>
+
       <main className="container py-8 space-y-16">
 
         {/* Breadcrumb */}
@@ -355,7 +403,7 @@ export default function ProductDetailClient() {
             )}
 
             {/* CTA */}
-            <div className="flex gap-3">
+            <div ref={ctaRef} className="flex gap-3">
               <Button size="lg" onClick={handleAddToCart} disabled={!canAdd}
                 className="flex-1 bg-primary text-primary-foreground h-12 text-base">
                 <ShoppingBag className="mr-2 h-5 w-5" /> Add to cart
