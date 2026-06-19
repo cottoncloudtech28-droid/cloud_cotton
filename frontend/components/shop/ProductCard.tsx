@@ -66,7 +66,7 @@ export default function ProductCard({ p }: { p: Product }) {
   };
 
   return (
-    <Link href={`/product/${p.id}`} className="block group">
+    <Link href={`/product/${p.slug ?? p.id}`} className="block group">
       <Card className="overflow-hidden border border-border/60 bg-card rounded-3xl h-full flex flex-col">
         <div className="aspect-square bg-gradient-hero relative overflow-hidden">
           {p.image_url ? (

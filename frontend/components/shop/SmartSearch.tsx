@@ -7,6 +7,7 @@ import { searchSuggestions } from "@/lib/api";
 
 type Suggestion = {
   id: string;
+  slug: string | null;
   name: string;
   price: number;
   discount_percent: number;
@@ -87,11 +88,11 @@ export default function SmartSearch({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const goToProduct = (id: string) => {
+  const goToProduct = (slugOrId: string) => {
     setOpen(false);
     setQuery("");
     onClose?.();
-    router.push(`/product/${id}`);
+    router.push(`/product/${slugOrId}`);
   };
 
   const goToSearch = (q: string) => {
@@ -115,7 +116,7 @@ export default function SmartSearch({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (cursor >= 0 && cursor < suggestions.length) {
-        goToProduct(suggestions[cursor].id);
+        goToProduct(suggestions[cursor].slug ?? suggestions[cursor].id);
       } else {
         goToSearch(query);
       }
@@ -176,7 +177,7 @@ export default function SmartSearch({
           {suggestions.map((s, i) => (
             <button
               key={s.id}
-              onClick={() => goToProduct(s.id)}
+              onClick={() => goToProduct(s.slug ?? s.id)}
               onMouseEnter={() => setCursor(i)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-b border-border/40 last:border-0 ${
                 cursor === i ? "bg-accent" : "hover:bg-accent/50"

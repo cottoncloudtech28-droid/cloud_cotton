@@ -51,6 +51,7 @@ export async function getProduct(id: string): Promise<Product> {
 
 export async function searchSuggestions(q: string, limit = 6): Promise<{
   id: string;
+  slug: string | null;
   name: string;
   price: number;
   discount_percent: number;

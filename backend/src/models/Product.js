@@ -22,11 +22,28 @@ const productSchema = new mongoose.Schema(
     sizes:             { type: [sizeSchema], default: [] },
     sku:               { type: String, unique: true, sparse: true },
     reorder_point:     { type: Number, default: 5, min: 0 },
+    slug:              { type: String, unique: true, sparse: true },
   },
   { timestamps: true }
 );
 
+function toSlug(name) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100);
+}
+
 productSchema.pre("save", function (next) {
+  // Auto-generate slug from name
+  if (!this.slug && this.name) {
+    const base = toSlug(this.name);
+    this.slug = `${base}-${this._id.toHexString().slice(-6)}`;
+  }
   // Auto-generate SKU
   if (!this.sku) {
     const prefix = (this.category || "GEN").replace(/-/g, "").slice(0, 4).toUpperCase();

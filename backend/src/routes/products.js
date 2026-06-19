@@ -73,7 +73,7 @@ router.get("/suggest", async (req, res) => {
         { description: regex },
       ],
     })
-      .select("name price discount_percent image_url images category tags stock")
+      .select("name price discount_percent image_url images category tags stock slug")
       .limit(limitNum * 4)
       .lean();
 
@@ -98,6 +98,7 @@ router.get("/suggest", async (req, res) => {
     const results = scored.slice(0, limitNum).map((p) => ({
       id: p._id.toString(),
       name: p.name,
+      slug: p.slug ?? null,
       price: p.price,
       discount_percent: p.discount_percent ?? 0,
       image_url: p.images?.[0] ?? p.image_url ?? null,
@@ -374,10 +375,14 @@ router.get("/restock-recommendations", verifyToken, requireAdmin, async (req, re
   }
 });
 
-// GET /api/products/:id  — public, single product
+// GET /api/products/:id  — public, single product (accepts MongoDB id OR slug)
 router.get("/:id", async (req, res) => {
   try {
-    const p = await Product.findById(req.params.id);
+    const param = req.params.id;
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(param);
+    const p = isObjectId
+      ? await Product.findById(param)
+      : await Product.findOne({ slug: param });
     if (!p || !p.is_active) return res.status(404).json({ message: "Product not found" });
     res.json(mapDoc(p));
   } catch (e) {

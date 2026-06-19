@@ -5,6 +5,7 @@ export interface ProductSize {
 
 export interface Product {
   id: string;
+  slug?: string | null;
   name: string;
   short_description: string | null;
   description: string | null;
