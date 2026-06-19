@@ -55,7 +55,7 @@ export default function ContactPage() {
 
         <div className="mt-8 grid md:grid-cols-2 gap-8">
           {sent ? (
-            <div className="p-8 rounded-3xl bg-card shadow-soft flex flex-col items-center text-center gap-4">
+            <div className="p-8 rounded-3xl bg-card flex flex-col items-center text-center gap-4">
               <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
@@ -72,7 +72,7 @@ export default function ContactPage() {
               </Button>
             </div>
           ) : (
-            <form onSubmit={onSubmit} className="space-y-4 p-6 rounded-3xl bg-card shadow-soft">
+            <form onSubmit={onSubmit} className="space-y-4 p-6 rounded-3xl bg-card">
               <div>
                 <Label htmlFor="name">Name</Label>
                 <Input id="name" name="name" required maxLength={100} className="mt-1.5" />
@@ -113,7 +113,7 @@ export default function ContactPage() {
                 content: <p className="text-sm text-muted-foreground">India · Ships worldwide</p>,
               },
             ].map(({ Icon, title, content }) => (
-              <div key={title} className="p-5 rounded-3xl bg-card shadow-soft flex items-start gap-3">
+              <div key={title} className="p-5 rounded-3xl bg-card flex items-start gap-3">
                 <Icon className="h-5 w-5 text-primary mt-1" />
                 <div><p className="font-semibold">{title}</p>{content}</div>
               </div>

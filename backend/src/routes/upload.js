@@ -24,10 +24,18 @@ const upload = multer({
   },
 });
 
-router.post("/", verifyToken, requireAdmin, upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-  const url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-  res.json({ url });
+router.post("/", verifyToken, requireAdmin, (req, res) => {
+  upload.single("file")(req, res, (err) => {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ message: "File too large. Maximum size is 20MB." });
+      }
+      return res.status(400).json({ message: err.message || "Upload failed" });
+    }
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    const url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    res.json({ url });
+  });
 });
 
 module.exports = router;

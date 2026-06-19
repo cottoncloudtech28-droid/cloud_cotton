@@ -31,7 +31,7 @@ export default function AboutPage() {
             { I: Sparkles, t: "Quirky & cute" },
             { I: Cloud, t: "Cozy packaging" },
           ].map(({ I, t }) => (
-            <div key={t} className="p-5 rounded-3xl bg-card shadow-soft text-center">
+            <div key={t} className="p-5 rounded-3xl bg-card text-center">
               <I className="mx-auto h-6 w-6 text-primary" />
               <p className="mt-2 font-semibold">{t}</p>
             </div>

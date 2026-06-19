@@ -47,7 +47,7 @@ function TrackResult({ data }: { data: PublicOrderTrack }) {
   return (
     <div className="space-y-6 mt-8">
       {/* Order header */}
-      <Card className="p-5 rounded-3xl shadow-soft space-y-4">
+      <Card className="p-5 rounded-3xl space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium mb-1">Order ID</p>
@@ -88,7 +88,7 @@ function TrackResult({ data }: { data: PublicOrderTrack }) {
 
       {/* Timeline */}
       {!isCancelled && (
-        <Card className="p-6 rounded-3xl shadow-soft">
+        <Card className="p-6 rounded-3xl">
           <h2 className="font-bold text-lg mb-6">Shipment timeline</h2>
           <div className="space-y-0">
             {TIMELINE_STEPS.map((step, i) => {
@@ -134,17 +134,18 @@ function TrackResult({ data }: { data: PublicOrderTrack }) {
       )}
 
       {isCancelled && (
-        <Card className="p-6 rounded-3xl shadow-soft text-center space-y-2">
+        <Card className="p-6 rounded-3xl text-center space-y-2">
           <XCircle className="h-10 w-10 text-red-400 mx-auto" />
           <p className="font-semibold">This order was cancelled</p>
           <p className="text-sm text-muted-foreground">
-            If you paid online, the refund will be processed within 5–7 business days.
+            If you have questions about this cancellation, please contact us at{" "}
+            <a href="mailto:hello@cottoncloud.co" className="text-primary underline underline-offset-2">hello@cottoncloud.co</a>.
           </p>
         </Card>
       )}
 
       {/* Items */}
-      <Card className="rounded-3xl shadow-soft overflow-hidden">
+      <Card className="rounded-3xl overflow-hidden">
         <div className="px-5 py-4 border-b border-border/50 bg-muted/30">
           <h2 className="font-bold">Items in this order</h2>
         </div>

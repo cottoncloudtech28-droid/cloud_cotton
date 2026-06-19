@@ -16,12 +16,13 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { apiFetch, uploadFile } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 type Row = {
   id: string; file: File; originalDataUrl: string; currentDataUrl: string;
   editing: boolean; describing: boolean; name: string; description: string;
   price: string; category: string; stock: string; colorsText: string;
-  bgPrompt: string; anglePrompt: string;
+  bgPrompt: string; anglePrompt: string; provider: "openai" | "gemini";
 };
 
 const PRESET_BACKGROUNDS = [
@@ -73,7 +74,7 @@ export default function BulkUploadPage() {
       if (!f.type.startsWith("image/")) continue;
       const dataUrl = await fileToDataUrl(f);
       const baseName = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, name: baseName, description: "", price: "", category: "stationery", stock: "10", colorsText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "" });
+      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, name: baseName, description: "", price: "", category: "stationery", stock: "10", colorsText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
     }
     setRows((r) => [...r, ...next]);
   };
@@ -89,7 +90,7 @@ export default function BulkUploadPage() {
     try {
       const data = await apiFetch("/api/ai/image-edit", {
         method: "POST",
-        body: JSON.stringify({ image_base64: row.currentDataUrl, prompt }),
+        body: JSON.stringify({ image_base64: row.currentDataUrl, prompt, provider: row.provider }),
       });
       if (!data?.image_base64) throw new Error("No image returned");
       update(row.id, { currentDataUrl: data.image_base64, editing: false });
@@ -150,7 +151,7 @@ export default function BulkUploadPage() {
     return (
       <div className="min-h-screen"><Navbar />
         <main className="container py-12">
-          <Card className="p-8 rounded-3xl text-center shadow-cute max-w-lg mx-auto">
+          <Card className="p-8 rounded-3xl text-center max-w-lg mx-auto">
             <h1 className="text-2xl font-bold mb-2">Admin access required 🔐</h1>
             <p className="text-muted-foreground">You need admin role to bulk upload.</p>
           </Card>
@@ -183,7 +184,7 @@ export default function BulkUploadPage() {
               </div>
             </div>
 
-            <Card className="p-6 rounded-3xl shadow-soft">
+            <Card className="p-6 rounded-3xl">
               <label className="cursor-pointer block">
                 <div className="border-2 border-dashed border-border rounded-2xl p-10 text-center hover:bg-muted transition-bounce">
                   <Upload className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
@@ -197,7 +198,7 @@ export default function BulkUploadPage() {
 
             <div className="space-y-4">
               {rows.map((r) => (
-                <Card key={r.id} className="p-5 rounded-3xl shadow-soft">
+                <Card key={r.id} className="p-5 rounded-3xl">
                   <div className="grid md:grid-cols-[220px,1fr] gap-5">
                     <div className="space-y-2">
                       <div className="aspect-square rounded-2xl overflow-hidden bg-gradient-hero relative">
@@ -242,7 +243,23 @@ export default function BulkUploadPage() {
                         </div>
                       </div>
                       <div className="rounded-2xl bg-muted/40 p-3 space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-medium"><Wand2 className="h-4 w-4" /> AI image editing</div>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 text-sm font-medium"><Wand2 className="h-4 w-4" /> AI image editing</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">Engine</span>
+                            <div className="flex gap-0.5 p-0.5 bg-muted rounded-lg">
+                              {(["openai", "gemini"] as const).map((pv) => (
+                                <button key={pv} type="button" onClick={() => update(r.id, { provider: pv })}
+                                  className={cn(
+                                    "px-2.5 py-1 text-xs rounded-md font-medium transition-colors",
+                                    r.provider === pv ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                                  )}>
+                                  {pv === "openai" ? "OpenAI" : "Gemini"}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                         <div>
                           <Label className="text-xs">Background</Label>
                           <div className="flex flex-wrap gap-1 mb-2">

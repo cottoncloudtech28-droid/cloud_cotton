@@ -6,14 +6,14 @@ import Link from "next/link";
 import Navbar from "@/components/shop/Navbar";
 import Footer from "@/components/shop/Footer";
 import ProductCard from "@/components/shop/ProductCard";
-import { Input } from "@/components/ui/input";
+import SmartSearch from "@/components/shop/SmartSearch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getProducts, getCategories } from "@/lib/api";
 import type { Product, Category } from "@/lib/types";
 
@@ -98,19 +98,10 @@ function ShopContent() {
         </div>
 
         {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            defaultValue={q}
-            key={q}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") pushParam("q", (e.target as HTMLInputElement).value.trim() || null);
-            }}
-            onChange={(e) => { if (!e.target.value) pushParam("q", null); }}
-            placeholder="Search cuties, tags, keywords… (Enter to search)"
-            className="pl-9 rounded-full"
-          />
-        </div>
+        <SmartSearch
+          className="max-w-md"
+          placeholder="Search cuties, tags, keywords…"
+        />
 
         {/* Category links */}
         <div className="space-y-2">

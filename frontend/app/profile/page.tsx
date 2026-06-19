@@ -73,7 +73,7 @@ function OrderCard({
   };
 
   return (
-    <Card className="overflow-hidden border border-border/60 shadow-soft rounded-3xl">
+    <Card className="overflow-hidden border border-border/60 rounded-3xl">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 bg-muted/30 border-b border-border/50">
         <div>
@@ -357,7 +357,7 @@ export default function ProfilePage() {
       <main className="flex-1 container py-8 space-y-5">
 
         {/* ── Profile header ── */}
-        <Card className="p-5 rounded-3xl shadow-soft">
+        <Card className="p-5 rounded-3xl">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16 border-2 border-primary/30 flex-shrink-0">
               <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold text-xl">
@@ -385,9 +385,9 @@ export default function ProfilePage() {
 
         {/* ── Admin panel shortcut (admins only) ── */}
         {isAdmin && (
-          <Card className="p-5 rounded-3xl border-2 border-primary/25 bg-primary/5 shadow-soft">
+          <Card className="p-5 rounded-3xl border-2 border-primary/25 bg-primary/5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-xl bg-gradient-primary grid place-items-center shadow-cute">
+              <div className="h-9 w-9 rounded-xl bg-gradient-primary grid place-items-center">
                 <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
               </div>
               <div>
@@ -422,7 +422,7 @@ export default function ProfilePage() {
             { icon: ShoppingBag, label: "Delivered",    value: deliveredCount,  bg: "bg-green-50",   iconColor: "text-green-500" },
             { icon: MapPin,      label: "Addresses",    value: addresses.length,bg: "bg-amber-50",   iconColor: "text-amber-500" },
           ].map(({ icon: I, label, value, bg, iconColor }) => (
-            <Card key={label} className="p-4 text-center rounded-3xl shadow-soft border-border/50">
+            <Card key={label} className="p-4 text-center rounded-3xl border-border/50">
               <div className={`h-10 w-10 rounded-2xl ${bg} grid place-items-center mx-auto mb-2`}>
                 <I className={`h-5 w-5 ${iconColor}`} />
               </div>
@@ -526,7 +526,7 @@ export default function ProfilePage() {
             {/* Address cards */}
             <div className="space-y-3">
               {addresses.map((a) => (
-                <Card key={a.id} className={`p-4 border-2 transition-colors rounded-3xl shadow-soft ${a.isDefault ? "border-primary/50 bg-primary/5" : "border-border"}`}>
+                <Card key={a.id} className={`p-4 border-2 transition-colors rounded-3xl ${a.isDefault ? "border-primary/50 bg-primary/5" : "border-border"}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5">
@@ -562,7 +562,7 @@ export default function ProfilePage() {
               ))}
 
               {addresses.length === 0 && (
-                <Card className="p-14 text-center rounded-3xl shadow-soft">
+                <Card className="p-14 text-center rounded-3xl">
                   <MapPin className="h-14 w-14 text-muted-foreground/40 mx-auto mb-4" />
                   <p className="font-semibold text-lg">No saved addresses</p>
                   <p className="text-sm text-muted-foreground mt-1">Save an address to speed up checkout.</p>

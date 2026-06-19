@@ -49,6 +49,19 @@ export async function getProduct(id: string): Promise<Product> {
   return apiFetch(`/api/products/${id}`);
 }
 
+export async function searchSuggestions(q: string, limit = 6): Promise<{
+  id: string;
+  name: string;
+  price: number;
+  discount_percent: number;
+  image_url: string | null;
+  category: string;
+  stock: number;
+}[]> {
+  if (!q.trim()) return [];
+  return apiFetch(`/api/products/suggest?q=${encodeURIComponent(q.trim())}&limit=${limit}`);
+}
+
 export async function getProducts(params?: {
   cat?: string;
   q?: string;

@@ -53,6 +53,64 @@ const parseBody = (body) => ({
                       : [],
 });
 
+// GET /api/products/suggest  — public: instant autocomplete suggestions
+router.get("/suggest", async (req, res) => {
+  const raw = (req.query.q || "").trim();
+  if (raw.length < 1) return res.json([]);
+  try {
+    const limitNum = Math.min(8, parseInt(req.query.limit) || 6);
+    // Escape regex special chars
+    const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "i");
+
+    const products = await Product.find({
+      is_active: true,
+      $or: [
+        { name: regex },
+        { tags: { $in: [regex] } },
+        { category: regex },
+        { short_description: regex },
+        { description: regex },
+      ],
+    })
+      .select("name price discount_percent image_url images category tags stock")
+      .limit(limitNum * 4)
+      .lean();
+
+    // Relevance scoring
+    const q = raw.toLowerCase();
+    const scored = products.map((p) => {
+      const name = p.name.toLowerCase();
+      let score = 0;
+      if (name === q)                        score = 100;
+      else if (name.startsWith(q))           score = 85;
+      else if (name.includes(q))             score = 70;
+      else if ((p.tags || []).some((t) => t.toLowerCase() === q))        score = 65;
+      else if ((p.tags || []).some((t) => t.toLowerCase().startsWith(q))) score = 55;
+      else if ((p.tags || []).some((t) => t.toLowerCase().includes(q)))   score = 45;
+      else if ((p.category || "").toLowerCase().includes(q)) score = 35;
+      else score = 20;
+      return { ...p, _score: score };
+    });
+
+    scored.sort((a, b) => b._score - a._score);
+
+    const results = scored.slice(0, limitNum).map((p) => ({
+      id: p._id.toString(),
+      name: p.name,
+      price: p.price,
+      discount_percent: p.discount_percent ?? 0,
+      image_url: p.images?.[0] ?? p.image_url ?? null,
+      category: p.category,
+      stock: p.stock,
+    }));
+
+    res.json(results);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // GET /api/products  — public, with sorting + pagination
 router.get("/", async (req, res) => {
   try {
@@ -61,10 +119,13 @@ router.get("/", async (req, res) => {
     if (cat && cat !== "all") filter.category = cat;
     if (tag) filter.tags = { $in: [tag] };
     if (q) {
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       filter.$or = [
-        { name: { $regex: q, $options: "i" } },
-        { description: { $regex: q, $options: "i" } },
-        { tags: { $in: [new RegExp(q, "i")] } },
+        { name:              { $regex: escaped, $options: "i" } },
+        { short_description: { $regex: escaped, $options: "i" } },
+        { description:       { $regex: escaped, $options: "i" } },
+        { category:          { $regex: escaped, $options: "i" } },
+        { tags:              { $in: [new RegExp(escaped, "i")] } },
       ];
     }
 

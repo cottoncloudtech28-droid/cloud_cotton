@@ -24,7 +24,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  ShoppingBag, Heart, Minus, Plus, Truck, RotateCcw, Shield, ChevronRight, Share2,
+  ShoppingBag, Heart, Minus, Plus, Truck, Shield, ChevronRight, Share2,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -427,10 +427,9 @@ export default function ProductDetailClient() {
             </div>
 
             {/* Trust badges */}
-            <div className="grid grid-cols-3 gap-3 pt-1">
+            <div className="grid grid-cols-2 gap-3 pt-1">
               {[
-                { icon: Truck, label: "Free shipping", sub: "orders over ₹500" },
-                { icon: RotateCcw, label: "7-day returns", sub: "unused condition" },
+                { icon: Truck, label: "Free shipping", sub: "orders over ₹1,499" },
                 { icon: Shield, label: "Secure checkout", sub: "100% safe" },
               ].map(({ icon: I, label, sub }) => (
                 <div key={label} className="flex flex-col items-center text-center p-3 rounded-lg bg-muted gap-1.5 border border-border">
@@ -475,13 +474,12 @@ export default function ProductDetailClient() {
               </AccordionItem>
               <AccordionItem value="shipping">
                 <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                  Shipping & returns
+                  Shipping information
                 </AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>📦 Orders dispatched within 1–2 business days.</p>
+                  <p>📦 Orders dispatched within 1–3 business days.</p>
                   <p>🚚 Standard delivery: 3–7 business days across India.</p>
-                  <p>↩️ Returns accepted within 7 days in original, unused packaging.</p>
-                  <p>💳 Refunds processed within 5–7 business days after inspection.</p>
+                  <p>🎉 Free shipping on orders above ₹1,499.</p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

@@ -45,12 +45,12 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-xl font-bold mb-2">5. Shipping &amp; delivery</h2>
-            <p>Please refer to our <a href="/shipping" className="text-primary underline underline-offset-2">Shipping Policy</a> for timelines, carriers, and charges. Delivery timelines are estimates and not guaranteed. We are not liable for delays caused by the courier partner or factors beyond our control (weather, holidays, etc.).</p>
+            <p>Please refer to our <a href="/shipping" className="text-primary underline underline-offset-2">Shipping Policy</a> for timelines, carriers, and charges. Free delivery on orders above ₹1,499. Delivery timelines are estimates and not guaranteed. We are not liable for delays caused by the courier partner or factors beyond our control (weather, holidays, etc.).</p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold mb-2">6. Returns &amp; exchanges</h2>
-            <p>Please refer to our <a href="/returns" className="text-primary underline underline-offset-2">Exchange Policy</a>. We offer exchanges within 3 days of delivery for unused items. We do not offer cash refunds except in cases where we are unable to fulfil your order.</p>
+            <h2 className="text-xl font-bold mb-2">6. Returns &amp; refunds</h2>
+            <p>Returns and refunds are currently not available. If you received a damaged or incorrect item, please contact us at <a href="mailto:hello@cottoncloud.co" className="text-primary underline underline-offset-2">hello@cottoncloud.co</a> and we will assist you on a case-by-case basis.</p>
           </section>
 
           <section>

@@ -98,7 +98,7 @@ export default function CategoryPage() {
               className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white text-center px-4">
               <span className="text-5xl mb-2">{category.emoji}</span>
-              <h1 className="text-4xl md:text-5xl font-extrabold drop-shadow-sm">{category.name}</h1>
+              <h1 className="text-4xl md:text-5xl font-extrabold">{category.name}</h1>
               {category.description && (
                 <p className="mt-2 text-base text-white/90 max-w-lg">{category.description}</p>
               )}

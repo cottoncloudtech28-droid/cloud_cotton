@@ -12,8 +12,14 @@ export default function Footer() {
           </div>
           <p className="font-semibold mb-3 pt-2">Get in touch</p>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-center gap-2"><Mail className="h-4 w-4" /> hello.cottoncloudco</li>
-            <li className="flex items-center gap-2"><Instagram className="h-4 w-4" /> cottoncloudcompany</li>
+            <li className="flex items-center gap-2">
+              <Mail className="h-4 w-4 shrink-0" />
+              <a href="mailto:hello@cottoncloud.co" className="hover:text-primary transition-colors">hello@cottoncloud.co</a>
+            </li>
+            <li className="flex items-center gap-2">
+              <Instagram className="h-4 w-4 shrink-0" />
+              <span>@cottoncloudcompany</span>
+            </li>
           </ul>
         </div>
         <div>
@@ -23,7 +29,7 @@ export default function Footer() {
             <li><Link href="/contact" className="hover:text-primary">Contact us</Link></li>
             <li><Link href="/shipping" className="hover:text-primary">Delivery &amp; Shipping</Link></li>
             <li><Link href="/track-order" className="hover:text-primary">Track your order</Link></li>
-            <li><Link href="/returns" className="hover:text-primary">Returns &amp; Exchanges</Link></li>
+            <li><Link href="/returns" className="hover:text-primary">Returns &amp; Refunds</Link></li>
             <li><Link href="/terms" className="hover:text-primary">Terms &amp; Conditions</Link></li>
             <li><Link href="/privacy" className="hover:text-primary">Privacy Policy</Link></li>
           </ul>

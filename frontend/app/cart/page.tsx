@@ -125,7 +125,7 @@ export default function CartPage() {
           key: rzpOrderData.key_id,
           amount: rzpOrderData.amount,
           currency: rzpOrderData.currency,
-          name: "Kawaii Corner Shop",
+          name: "Cotton Cloud Company",
           description: `${items.length} item${items.length !== 1 ? "s" : ""}`,
           image: "/favicon.ico",
           order_id: rzpOrderData.razorpay_order_id,
@@ -246,7 +246,7 @@ export default function CartPage() {
         <div className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
 
           {/* ── Left: cart items ── */}
-          <div className="rounded-3xl bg-card shadow-soft p-5 space-y-3">
+          <div className="rounded-3xl bg-card p-5 space-y-3">
             <h2 className="font-bold text-lg flex items-center gap-2">
               <Package className="h-4 w-4 text-primary" />
               {items.length} item{items.length !== 1 ? "s" : ""}
@@ -299,7 +299,7 @@ export default function CartPage() {
           <div className="space-y-5 lg:sticky lg:top-8">
 
             {/* Order summary */}
-            <div className="rounded-3xl bg-card shadow-soft p-5 space-y-3">
+            <div className="rounded-3xl bg-card p-5 space-y-3">
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4 text-primary" /> Order summary
               </h2>
@@ -321,7 +321,7 @@ export default function CartPage() {
             </div>
 
             {/* Shipping address */}
-            <div className="rounded-3xl bg-card shadow-soft p-5 space-y-4">
+            <div className="rounded-3xl bg-card p-5 space-y-4">
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" /> Shipping address
               </h2>
@@ -453,7 +453,7 @@ export default function CartPage() {
             </div>
 
             {/* Payment method */}
-            <div className="rounded-3xl bg-card shadow-soft p-5 space-y-4">
+            <div className="rounded-3xl bg-card p-5 space-y-4">
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-primary" /> Payment method
               </h2>
