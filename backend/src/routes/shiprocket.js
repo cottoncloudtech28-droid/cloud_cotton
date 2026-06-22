@@ -24,28 +24,45 @@ router.get("/shipping-rate", async (req, res) => {
   if (!pincode || !/^\d{6}$/.test(String(pincode)))
     return res.status(400).json({ message: "Valid 6-digit pincode required" });
 
-  const freeThreshold = +(process.env.FREE_SHIPPING_THRESHOLD || "999");
+  const freeThreshold = +(process.env.FREE_SHIPPING_THRESHOLD || "1499");
+  const isCod         = String(cod) === "1";
 
-  // If Shiprocket credentials are not configured, return free or flat shipping
+  // If Shiprocket not fully configured, return free shipping as fallback
   if (!process.env.SHIPROCKET_EMAIL || !process.env.SHIPROCKET_PICKUP_PINCODE) {
-    return res.json({ shipping_charge: 0, free_shipping: true, serviceable: true, courier_name: null });
+    return res.json({
+      serviceable: true,
+      free_shipping: true,
+      pickup_pincode: process.env.SHIPROCKET_PICKUP_PINCODE || null,
+      recommended: { courier_name: null, freight_charge: 0, cod_charge: 0, total_charge: 0, estimated_days: null, etd: null },
+      options: [],
+    });
   }
 
   try {
     const result = await sr.getShippingRates(
       String(pincode),
       parseFloat(String(weight)) || 0.5,
-      String(cod) === "1"
+      isCod
     );
 
     if (!result) {
-      return res.json({ shipping_charge: 99, serviceable: false, courier_name: null });
+      return res.json({ serviceable: false, free_shipping: false, recommended: null, options: [] });
     }
 
-    res.json({ ...result, free_shipping: false });
+    res.json(result);
   } catch (e) {
-    // Fallback: flat ₹60 if Shiprocket call fails (e.g. auth error during dev)
-    res.json({ shipping_charge: 60, serviceable: true, courier_name: null, fallback: true, error: e.message });
+    // Fallback flat rate on auth / network error — don't block checkout
+    const fallback = {
+      courier_id: null, courier_name: null,
+      freight_charge: 60, cod_charge: isCod ? 30 : 0,
+      total_charge: isCod ? 90 : 60,
+      estimated_days: 5, etd: null, is_recommended: true, rating: null,
+    };
+    res.json({
+      serviceable: true, free_shipping: false, fallback: true, error: e.message,
+      pickup_pincode: process.env.SHIPROCKET_PICKUP_PINCODE,
+      recommended: fallback, cheapest: fallback, fastest: fallback, options: [fallback],
+    });
   }
 });
 

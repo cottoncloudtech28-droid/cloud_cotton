@@ -132,17 +132,43 @@ async function getShippingRates(deliveryPincode, weightKg, isCod) {
   const couriers = data?.data?.available_courier_companies ?? [];
   if (!couriers.length) return null;
 
-  // Sort by total rate (freight + COD charges)
-  couriers.sort((a, b) => (a.rate ?? a.freight_charge ?? 999) - (b.rate ?? b.freight_charge ?? 999));
-  const best = couriers[0];
+  const recommendedId =
+    data?.data?.shiprocket_recommended_courier_id ??
+    data?.data?.recommended_courier_company_id ??
+    null;
+
+  const format = (c) => {
+    const freight   = Math.round(c.rate ?? c.freight_charge ?? 0);
+    const codCharge = isCod ? Math.round(c.cod_charges ?? 0) : 0;
+    return {
+      courier_id:      c.courier_company_id ?? null,
+      courier_name:    c.courier_name ?? "Unknown",
+      freight_charge:  freight,
+      cod_charge:      codCharge,
+      total_charge:    freight + codCharge,
+      estimated_days:  c.estimated_delivery_days ?? null,
+      etd:             c.etd ?? null,           // "YYYY-MM-DD" expected delivery date
+      is_recommended:  !!(c.courier_company_id === recommendedId || c.is_recommended === 1),
+      rating:          c.rating ?? null,
+    };
+  };
+
+  // Sort by total charge ascending
+  const sorted = couriers
+    .map(format)
+    .sort((a, b) => a.total_charge - b.total_charge);
+
+  const recommended = sorted.find((c) => c.is_recommended) ?? sorted[0];
+  const cheapest    = sorted[0];
+  const fastest     = [...sorted].sort((a, b) => (a.estimated_days ?? 99) - (b.estimated_days ?? 99))[0];
 
   return {
-    shipping_charge:    Math.round(best.rate ?? best.freight_charge ?? 0),
-    cod_charge:         Math.round(best.cod_charges ?? 0),
-    courier_name:       best.courier_name ?? null,
-    courier_id:         best.courier_company_id ?? null,
-    estimated_days:     best.estimated_delivery_days ?? null,
-    serviceable:        true,
+    serviceable:     true,
+    pickup_pincode:  pickupPincode,
+    recommended,
+    cheapest,
+    fastest,
+    options:         sorted.slice(0, 5),   // top 5 for UI picker
   };
 }
 

@@ -358,14 +358,31 @@ export async function updateCustomerRole(id: string, role: "customer" | "admin")
 }
 
 // ── Shiprocket ────────────────────────────────────────────────────────────────
-export async function getShippingRate(pincode: string, weightKg = 0.5, isCod = false): Promise<{
-  shipping_charge: number;
-  serviceable: boolean;
+export type CourierOption = {
+  courier_id: number | null;
   courier_name: string | null;
-  estimated_days?: number | null;
+  freight_charge: number;
+  cod_charge: number;
+  total_charge: number;
+  estimated_days: number | null;
+  etd: string | null;          // "YYYY-MM-DD"
+  is_recommended: boolean;
+  rating: number | null;
+};
+
+export type ShippingRateResult = {
+  serviceable: boolean;
   free_shipping?: boolean;
+  pickup_pincode?: string;
+  recommended: CourierOption | null;
+  cheapest?: CourierOption | null;
+  fastest?: CourierOption | null;
+  options: CourierOption[];
   fallback?: boolean;
-}> {
+  error?: string;
+};
+
+export async function getShippingRate(pincode: string, weightKg = 0.5, isCod = false): Promise<ShippingRateResult> {
   const params = new URLSearchParams({ pincode, weight: String(weightKg), cod: isCod ? "1" : "0" });
   return apiFetch(`/api/shiprocket/shipping-rate?${params}`);
 }

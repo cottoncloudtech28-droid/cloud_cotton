@@ -12,10 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { placeOrder, getSavedAddresses, addSavedAddress, createRazorpayOrder, verifyRazorpayPayment, getShippingRate } from "@/lib/api";
+import type { CourierOption, ShippingRateResult } from "@/lib/api";
 import type { Address, SavedAddress } from "@/lib/types";
 import ProductCard from "@/components/shop/ProductCard";
 import { getProducts } from "@/lib/api";
-import { Trash2, ShoppingBag, CheckCircle2, MapPin, Package, Plus, Star, CreditCard, Truck } from "lucide-react";
+import { Trash2, ShoppingBag, CheckCircle2, MapPin, Package, Plus, Star, CreditCard, Truck, ChevronDown, ChevronUp } from "lucide-react";
 
 declare global {
   interface Window {
@@ -53,9 +54,10 @@ export default function CartPage() {
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [featured, setFeatured] = useState<import("@/lib/types").Product[]>([]);
 
-  const [shippingCharge, setShippingCharge] = useState<number | null>(null);
-  const [shippingInfo, setShippingInfo] = useState<{ courier: string | null; days: number | null; free: boolean } | null>(null);
+  const [shippingResult, setShippingResult] = useState<ShippingRateResult | null>(null);
+  const [selectedCourier, setSelectedCourier] = useState<CourierOption | null>(null);
   const [shippingLoading, setShippingLoading] = useState(false);
+  const [showCourierPicker, setShowCourierPicker] = useState(false);
 
   const FREE_THRESHOLD = 1499;
 
