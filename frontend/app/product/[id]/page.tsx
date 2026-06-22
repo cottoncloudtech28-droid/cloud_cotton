@@ -4,10 +4,11 @@ import ProductDetailClient from "./ProductDetailClient";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export async function generateMetadata(
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<Metadata> {
   try {
-    const res = await fetch(`${API_URL}/api/products/${params.id}`, { next: { revalidate: 3600 } });
+    const { id } = await params;
+    const res = await fetch(`${API_URL}/api/products/${id}`, { next: { revalidate: 3600 } });
     if (!res.ok) return {};
     const p = await res.json();
     const title = p.name;
