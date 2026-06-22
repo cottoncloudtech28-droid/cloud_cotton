@@ -43,9 +43,13 @@ const orderSchema = new mongoose.Schema(
     payment_status: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
     razorpay_order_id: { type: String, default: null },
     razorpay_payment_id: { type: String, default: null },
-    trackingNumber: { type: String, default: null },
-    cancelledBy:   { type: String, enum: ["customer", "admin"], default: null },
-    cancelReason:  { type: String, default: null },
+    trackingNumber:        { type: String, default: null },
+    shiprocket_order_id:   { type: String, default: null },
+    shiprocket_shipment_id:{ type: String, default: null },
+    awb_code:              { type: String, default: null },
+    courier_name:          { type: String, default: null },
+    cancelledBy:  { type: String, enum: ["customer", "admin"], default: null },
+    cancelReason: { type: String, default: null },
   },
   { timestamps: true }
 );

@@ -44,6 +44,7 @@ app.use("/api/ai", require("./routes/ai"));
 app.use("/api/stocklogs", require("./routes/stocklogs"));
 app.use("/api/suppliers", require("./routes/suppliers"));
 app.use("/api/purchase-orders", require("./routes/purchaseorders"));
+app.use("/api/shiprocket", require("./routes/shiprocket"));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

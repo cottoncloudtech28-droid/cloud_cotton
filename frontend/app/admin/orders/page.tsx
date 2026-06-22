@@ -17,7 +17,7 @@ import {
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { getAllOrders, updateOrderStatus, setOrderTracking } from "@/lib/api";
+import { getAllOrders, updateOrderStatus, setOrderTracking, pushToShiprocket } from "@/lib/api";
 import type { Order, OrderStatus } from "@/lib/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -42,6 +42,7 @@ function OrderRow({ order, onUpdated }: {
   const [statusLoading, setStatusLoading] = useState(false);
   const [trackingInput, setTrackingInput] = useState(order.trackingNumber ?? "");
   const [trackingLoading, setTrackingLoading] = useState(false);
+  const [srLoading, setSrLoading] = useState(false);
 
   const cfg = STATUS_CONFIG[order.status];
   const customer = typeof order.user === "object" ? order.user : null;
@@ -70,6 +71,19 @@ function OrderRow({ order, onUpdated }: {
       toast.error(e.message);
     } finally {
       setTrackingLoading(false);
+    }
+  };
+
+  const handlePushShiprocket = async () => {
+    setSrLoading(true);
+    try {
+      const updated = await pushToShiprocket(order.id);
+      onUpdated(updated);
+      toast.success(updated.awb_code ? `Pushed! AWB: ${updated.awb_code}` : "Pushed to Shiprocket");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSrLoading(false);
     }
   };
 
@@ -170,6 +184,62 @@ function OrderRow({ order, onUpdated }: {
                 Visible to customer on their order tracking page once order is marked "Shipped".
               </p>
             </div>
+          </div>
+
+          {/* ── Shiprocket ── */}
+          <div className="rounded-lg border border-border/60 bg-card p-3 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <Package className="h-3 w-3" /> Shiprocket
+            </p>
+
+            {order.shiprocket_order_id ? (
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground">SR Order ID</span>
+                  <p className="font-mono font-semibold">{order.shiprocket_order_id}</p>
+                </div>
+                {order.shiprocket_shipment_id && (
+                  <div>
+                    <span className="text-muted-foreground">Shipment ID</span>
+                    <p className="font-mono font-semibold">{order.shiprocket_shipment_id}</p>
+                  </div>
+                )}
+                {order.awb_code && (
+                  <div>
+                    <span className="text-muted-foreground">AWB Code</span>
+                    <p className="font-mono font-semibold text-purple-700">{order.awb_code}</p>
+                  </div>
+                )}
+                {order.courier_name && (
+                  <div>
+                    <span className="text-muted-foreground">Courier</span>
+                    <p className="font-semibold">{order.courier_name}</p>
+                  </div>
+                )}
+                {!order.awb_code && (
+                  <div className="col-span-2">
+                    <p className="text-amber-600 text-[10px] mb-1.5">AWB not assigned yet — click Re-push to retry.</p>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={srLoading} onClick={handlePushShiprocket}>
+                      {srLoading ? "Pushing…" : "Re-push to Shiprocket"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-muted-foreground flex-1">
+                  {order.status === "cancelled"
+                    ? "Cannot push cancelled orders."
+                    : "This order has not been pushed to Shiprocket yet."}
+                </p>
+                {order.status !== "cancelled" && (
+                  <Button size="sm" className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white border-0 shrink-0"
+                    disabled={srLoading} onClick={handlePushShiprocket}>
+                    {srLoading ? "Pushing…" : "Push to Shiprocket"}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Items */}

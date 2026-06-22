@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { trackOrder } from "@/lib/api";
-import type { PublicOrderTrack, OrderStatus } from "@/lib/types";
+import { trackOrder, getShiprocketTrackingPublic } from "@/lib/api";
+import type { PublicOrderTrack, OrderStatus, ShiprocketTracking } from "@/lib/types";
 import {
   Search, Package, CheckCircle2, Truck, Clock, XCircle, MapPin,
 } from "lucide-react";
@@ -37,6 +37,48 @@ const STATUS_ORDER: Record<OrderStatus, number> = {
 };
 
 // ── Result display ─────────────────────────────────────────────────────────────
+
+function ShiprocketEvents({ orderId }: { orderId: string }) {
+  const [srData, setSrData] = useState<ShiprocketTracking | null>(null);
+  const [srLoading, setSrLoading] = useState(true);
+
+  useEffect(() => {
+    getShiprocketTrackingPublic(orderId)
+      .then((res) => setSrData(res.tracking_data ?? null))
+      .catch(() => {})
+      .finally(() => setSrLoading(false));
+  }, [orderId]);
+
+  if (srLoading) return <div className="h-16 animate-pulse bg-muted rounded-2xl" />;
+  if (!srData?.shipment_track_activities?.length) return null;
+
+  return (
+    <div className="rounded-3xl border border-border/60 bg-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-border/50 bg-muted/30 flex items-center justify-between">
+        <h2 className="font-bold">Live tracking updates</h2>
+        {srData.courier_name && (
+          <span className="text-xs text-muted-foreground bg-purple-50 text-purple-700 px-2 py-1 rounded-full font-medium">
+            {srData.courier_name}
+          </span>
+        )}
+      </div>
+      <div className="divide-y divide-border/40 max-h-72 overflow-y-auto">
+        {srData.shipment_track_activities.map((act, i) => (
+          <div key={i} className="flex gap-3 px-5 py-3">
+            <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${i === 0 ? "bg-primary" : "bg-muted-foreground/30"}`} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">{act.activity || act.status}</p>
+              {act.location && <p className="text-xs text-muted-foreground">{act.location}</p>}
+            </div>
+            <p className="text-[10px] text-muted-foreground shrink-0 text-right">
+              {act.date ? new Date(act.date).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function TrackResult({ data }: { data: PublicOrderTrack }) {
   const cfg = STATUS_CONFIG[data.status];
@@ -142,6 +184,11 @@ function TrackResult({ data }: { data: PublicOrderTrack }) {
             <a href="mailto:hello@cottoncloud.co" className="text-primary underline underline-offset-2">hello@cottoncloud.co</a>.
           </p>
         </Card>
+      )}
+
+      {/* Shiprocket live tracking events */}
+      {!isCancelled && data.trackingNumber && (
+        <ShiprocketEvents orderId={data.orderId} />
       )}
 
       {/* Items */}

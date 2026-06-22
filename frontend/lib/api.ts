@@ -1,6 +1,6 @@
 import type {
   Product, Order, OrderItem, Address, SavedAddress, Category, StockLog,
-  Supplier, PurchaseOrder, RestockRecommendation, PublicOrderTrack,
+  Supplier, PurchaseOrder, RestockRecommendation, PublicOrderTrack, ShiprocketTracking,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -353,6 +353,19 @@ export async function updateCustomerRole(id: string, role: "customer" | "admin")
   id: string; email: string; name: string; role: string;
 }> {
   return apiFetch(`/api/users/admin/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) });
+}
+
+// ── Shiprocket ────────────────────────────────────────────────────────────────
+export async function pushToShiprocket(orderId: string): Promise<Order> {
+  return apiFetch(`/api/shiprocket/push/${orderId}`, { method: "POST" });
+}
+
+export async function getShiprocketTracking(awb: string): Promise<{ tracking_data: ShiprocketTracking }> {
+  return apiFetch(`/api/shiprocket/track/${awb}`);
+}
+
+export async function getShiprocketTrackingPublic(orderId: string): Promise<{ tracking_data: ShiprocketTracking }> {
+  return apiFetch(`/api/shiprocket/track-public/${orderId}`);
 }
 
 // ── Profile ──────────────────────────────────────────────────────────────────

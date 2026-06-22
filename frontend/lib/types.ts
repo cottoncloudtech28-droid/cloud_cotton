@@ -148,11 +148,29 @@ export interface Order {
   razorpay_order_id?: string | null;
   razorpay_payment_id?: string | null;
   trackingNumber?: string | null;
+  shiprocket_order_id?: string | null;
+  shiprocket_shipment_id?: string | null;
+  awb_code?: string | null;
+  courier_name?: string | null;
   cancelledBy?: "customer" | "admin" | null;
   cancelReason?: string | null;
   user?: { id: string; email: string; name: string } | string;
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface ShiprocketTrackActivity {
+  date: string;
+  status: string;
+  activity: string;
+  location: string;
+}
+
+export interface ShiprocketTracking {
+  awb_code?: string;
+  courier_name?: string;
+  current_status?: string;
+  shipment_track_activities?: ShiprocketTrackActivity[];
 }
 
 export interface PublicOrderTrack {

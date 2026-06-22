@@ -4,8 +4,10 @@ const mongoose = require("mongoose");
 const Razorpay = require("razorpay");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const User = require("../models/User");
 const StockLog = require("../models/StockLog");
 const { verifyToken, requireAdmin } = require("../middleware/auth");
+const sr = require("../services/shiprocket");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -24,6 +26,22 @@ const mapOrder = (doc) => {
   }
   return obj;
 };
+
+// Non-blocking Shiprocket auto-push; called after order creation
+async function tryAutoPushShiprocket(order, userId) {
+  if (!process.env.SHIPROCKET_EMAIL) return;
+  try {
+    const user = await User.findById(userId).select("email").lean();
+    const result = await sr.pushOrder(order, user?.email);
+    await Order.findByIdAndUpdate(order._id, {
+      shiprocket_order_id:    result.shiprocket_order_id,
+      shiprocket_shipment_id: result.shiprocket_shipment_id,
+      awb_code:               result.awb_code,
+      courier_name:           result.courier_name,
+      ...(result.awb_code ? { trackingNumber: result.awb_code } : {}),
+    });
+  } catch (_) { /* fail silently — admin can manually push */ }
+}
 
 // Parse composite cart ID: "realMongoId::size::color" → { productId, size, color }
 function parseCartId(raw) {
@@ -148,6 +166,7 @@ router.post("/", verifyToken, async (req, res) => {
   }
 
   await decrementStock(resolved, order, req.user.userId);
+  tryAutoPushShiprocket(order, req.user.userId); // fire-and-forget
   res.status(201).json(mapOrder(order));
 });
 
@@ -221,6 +240,7 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
   }
 
   await decrementStock(resolved, order, req.user.userId);
+  tryAutoPushShiprocket(order, req.user.userId); // fire-and-forget
   res.status(201).json(mapOrder(order));
 });
 
