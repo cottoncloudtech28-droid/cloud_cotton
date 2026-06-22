@@ -14,7 +14,10 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getAdminCustomers, updateCustomerRole } from "@/lib/api";
-import { Search, Users, ChevronLeft, ChevronRight, Shield, ShoppingBag } from "lucide-react";
+import { Search, Users, ChevronLeft, ChevronRight, Shield, ShoppingBag, AlertTriangle } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 
 type Customer = {
   id: string;
@@ -40,6 +43,8 @@ export default function CustomersPage() {
   const [draftQ, setDraftQ] = useState("");
   const [page, setPage] = useState(1);
   const [roleLoading, setRoleLoading] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<Customer | null>(null);
+  const [confirmInput, setConfirmInput] = useState("");
 
   useEffect(() => {
     if (loading) return;
@@ -68,14 +73,28 @@ export default function CustomersPage() {
     setQ(draftQ.trim());
   };
 
-  const handleRoleToggle = async (c: Customer) => {
-    const newRole = c.role === "admin" ? "customer" : "admin";
-    if (!confirm(`Change ${c.email}'s role to ${newRole}?`)) return;
-    setRoleLoading(c.id);
+  const handleRoleToggle = (c: Customer) => {
+    if (c.role === "admin") {
+      // Remove admin — still a confirmation but no type-to-confirm
+      setConfirmTarget(c);
+      setConfirmInput("");
+    } else {
+      // Grant admin — requires typing email
+      setConfirmTarget(c);
+      setConfirmInput("");
+    }
+  };
+
+  const executeRoleChange = async () => {
+    if (!confirmTarget) return;
+    const newRole = confirmTarget.role === "admin" ? "customer" : "admin";
+    setRoleLoading(confirmTarget.id);
+    setConfirmTarget(null);
+    setConfirmInput("");
     try {
-      await updateCustomerRole(c.id, newRole as "customer" | "admin");
-      setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, role: newRole } : x));
-      toast.success(`${c.email} is now ${newRole}`);
+      await updateCustomerRole(confirmTarget.id, newRole as "customer" | "admin");
+      setCustomers((prev) => prev.map((x) => x.id === confirmTarget.id ? { ...x, role: newRole } : x));
+      toast.success(`${confirmTarget.email} is now ${newRole}`);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -197,9 +216,9 @@ export default function CustomersPage() {
                         {/* Actions */}
                         <div className="md:col-span-2 flex gap-2 justify-end">
                           <Button
-                            variant="ghost"
+                            variant={c.role === "admin" ? "ghost" : "outline"}
                             size="sm"
-                            className="text-xs h-7"
+                            className={`text-xs h-7 ${c.role !== "admin" ? "border-amber-400 text-amber-700 hover:bg-amber-50 hover:text-amber-800" : ""}`}
                             disabled={roleLoading === c.id}
                             onClick={() => handleRoleToggle(c)}
                           >
@@ -233,6 +252,63 @@ export default function CustomersPage() {
           </main>
         </div>
       </div>
+      {/* Role change confirmation dialog */}
+      <Dialog open={!!confirmTarget} onOpenChange={(open) => { if (!open) { setConfirmTarget(null); setConfirmInput(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className={`h-5 w-5 ${confirmTarget?.role !== "admin" ? "text-amber-500" : "text-destructive"}`} />
+              {confirmTarget?.role !== "admin" ? "Grant admin access?" : "Remove admin access?"}
+            </DialogTitle>
+            <DialogDescription className="pt-1">
+              {confirmTarget?.role !== "admin" ? (
+                <>
+                  This will give <span className="font-semibold text-foreground">{confirmTarget?.email}</span> full admin
+                  access to all products, orders, and customer data.
+                  <br /><br />
+                  To confirm, type their email address below:
+                </>
+              ) : (
+                <>
+                  This will revoke admin access for <span className="font-semibold text-foreground">{confirmTarget?.email}</span>.
+                  They will no longer be able to access the admin panel.
+                  <br /><br />
+                  Type their email to confirm:
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            <input
+              type="text"
+              value={confirmInput}
+              onChange={(e) => setConfirmInput(e.target.value)}
+              placeholder={confirmTarget?.email}
+              className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
+              onPaste={(e) => e.preventDefault()}
+              autoComplete="off"
+            />
+            {confirmInput && confirmInput !== confirmTarget?.email && (
+              <p className="text-xs text-destructive mt-1">Email doesn&apos;t match</p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => { setConfirmTarget(null); setConfirmInput(""); }}>
+              Cancel
+            </Button>
+            <Button
+              variant={confirmTarget?.role !== "admin" ? "default" : "destructive"}
+              disabled={confirmInput !== confirmTarget?.email}
+              onClick={executeRoleChange}
+              className={confirmTarget?.role !== "admin" ? "bg-amber-500 hover:bg-amber-600 text-white border-0" : ""}
+            >
+              {confirmTarget?.role !== "admin" ? "Yes, grant admin" : "Yes, remove admin"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }
