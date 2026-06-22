@@ -34,6 +34,7 @@ const orderSchema = new mongoose.Schema(
     items: [orderItemSchema],
     address: { type: addressSchema, required: true },
     total: { type: Number, required: true },
+    shipping_charge: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],

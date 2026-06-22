@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
-import { placeOrder, getSavedAddresses, addSavedAddress, createRazorpayOrder, verifyRazorpayPayment } from "@/lib/api";
+import { placeOrder, getSavedAddresses, addSavedAddress, createRazorpayOrder, verifyRazorpayPayment, getShippingRate } from "@/lib/api";
 import type { Address, SavedAddress } from "@/lib/types";
 import ProductCard from "@/components/shop/ProductCard";
 import { getProducts } from "@/lib/api";
@@ -37,7 +37,7 @@ const EMPTY_ADDR: Address & { label: string } = {
 };
 
 export default function CartPage() {
-  const { items, setQty, remove, total, clear } = useCart();
+  const { items, setQty, remove, total, clear, hydrated } = useCart();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -52,6 +52,12 @@ export default function CartPage() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [featured, setFeatured] = useState<import("@/lib/types").Product[]>([]);
+
+  const [shippingCharge, setShippingCharge] = useState<number | null>(null);
+  const [shippingInfo, setShippingInfo] = useState<{ courier: string | null; days: number | null; free: boolean } | null>(null);
+  const [shippingLoading, setShippingLoading] = useState(false);
+
+  const FREE_THRESHOLD = 1499;
 
   // Load featured products for empty cart upsell
   useEffect(() => {
@@ -83,9 +89,6 @@ export default function CartPage() {
       .finally(() => setAddressesLoading(false));
   }, [user]);
 
-  const setNew = (k: keyof typeof newAddr, v: string) =>
-    setNewAddr((a) => ({ ...a, [k]: v }));
-
   const activeAddr: Address | null =
     selectedAddrId === "new"
       ? newAddr
@@ -94,6 +97,40 @@ export default function CartPage() {
   const addrValid = activeAddr &&
     activeAddr.fullName.trim() && activeAddr.phone.trim() && activeAddr.line1.trim() &&
     activeAddr.city.trim() && activeAddr.state && activeAddr.pincode.trim();
+
+  // Fetch shipping rate whenever pincode or payment method changes
+  useEffect(() => {
+    const pincode = activeAddr?.pincode ?? "";
+    if (!/^\d{6}$/.test(pincode)) {
+      setShippingCharge(null);
+      setShippingInfo(null);
+      return;
+    }
+    if (total >= FREE_THRESHOLD) {
+      setShippingCharge(0);
+      setShippingInfo({ courier: null, days: null, free: true });
+      return;
+    }
+    const isCod = paymentMethod === "cod";
+    setShippingLoading(true);
+    const t = setTimeout(() => {
+      getShippingRate(pincode, 0.5, isCod)
+        .then((r) => {
+          setShippingCharge(r.shipping_charge);
+          setShippingInfo({ courier: r.courier_name, days: r.estimated_days ?? null, free: !!r.free_shipping });
+        })
+        .catch(() => { setShippingCharge(60); setShippingInfo({ courier: null, days: null, free: false }); })
+        .finally(() => setShippingLoading(false));
+    }, 400);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAddr?.pincode, paymentMethod, total]);
+
+  const setNew = (k: keyof typeof newAddr, v: string) =>
+    setNewAddr((a) => ({ ...a, [k]: v }));
+
+  const resolvedShipping = shippingCharge ?? 0;
+  const grandTotal = total + resolvedShipping;
 
   const handlePlace = async () => {
     if (!user) { router.push("/auth"); return; }
@@ -113,13 +150,13 @@ export default function CartPage() {
       }));
 
       if (paymentMethod === "cod") {
-        const order = await placeOrder({ items: orderItems, address: activeAddr, total });
+        const order = await placeOrder({ items: orderItems, address: activeAddr, total: grandTotal, shipping_charge: resolvedShipping });
         setOrderId(order.orderId);
         clear();
         setPlacing(false);
       } else {
         // Razorpay flow: create order → open checkout → verify on success
-        const rzpOrderData = await createRazorpayOrder(total);
+        const rzpOrderData = await createRazorpayOrder(grandTotal);
 
         const options = {
           key: rzpOrderData.key_id,
@@ -147,7 +184,8 @@ export default function CartPage() {
                 razorpay_signature: response.razorpay_signature,
                 items: orderItems,
                 address: activeAddr,
-                total,
+                total: grandTotal,
+                shipping_charge: resolvedShipping,
               });
               setOrderId(order.orderId);
               clear();
@@ -200,6 +238,26 @@ export default function CartPage() {
             <div className="flex justify-center gap-3 pt-2">
               <Link href="/shop"><Button className="rounded-full bg-gradient-primary text-primary-foreground border-0">Keep shopping</Button></Link>
               <Link href="/profile"><Button variant="outline" className="rounded-full">View orders</Button></Link>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  /* ── Loading (waiting for localStorage hydration) ── */
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 container py-8 space-y-6">
+          <Skeleton className="h-10 w-48 rounded" />
+          <div className="grid lg:grid-cols-[1fr_400px] gap-8">
+            <Skeleton className="h-64 rounded-3xl" />
+            <div className="space-y-4">
+              <Skeleton className="h-48 rounded-3xl" />
+              <Skeleton className="h-40 rounded-3xl" />
             </div>
           </div>
         </main>
@@ -314,9 +372,44 @@ export default function CartPage() {
                   );
                 })}
               </div>
+
+              {/* Subtotal */}
+              <div className="flex justify-between text-sm pt-2">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>₹{total}</span>
+              </div>
+
+              {/* Shipping */}
+              <div className="flex justify-between text-sm items-center">
+                <span className="text-muted-foreground">Shipping</span>
+                <span className="text-right">
+                  {shippingLoading ? (
+                    <span className="text-xs text-muted-foreground animate-pulse">Calculating…</span>
+                  ) : shippingCharge === null ? (
+                    <span className="text-xs text-muted-foreground">Enter pincode</span>
+                  ) : shippingInfo?.free ? (
+                    <span className="text-green-600 font-medium text-xs">FREE</span>
+                  ) : (
+                    <span className="font-medium">₹{resolvedShipping}</span>
+                  )}
+                </span>
+              </div>
+
+              {/* Courier info */}
+              {shippingInfo?.courier && !shippingInfo.free && (
+                <p className="text-xs text-muted-foreground -mt-1">
+                  via {shippingInfo.courier}{shippingInfo.days ? ` · ${shippingInfo.days} day${shippingInfo.days !== 1 ? "s" : ""}` : ""}
+                </p>
+              )}
+              {total < FREE_THRESHOLD && shippingCharge !== null && resolvedShipping > 0 && (
+                <p className="text-xs text-primary">
+                  Add ₹{FREE_THRESHOLD - total} more for free shipping
+                </p>
+              )}
+
               <div className="border-t border-border pt-3 flex justify-between font-bold text-base">
                 <span>Total</span>
-                <span>₹{total}</span>
+                <span>₹{grandTotal}</span>
               </div>
             </div>
 
@@ -501,7 +594,7 @@ export default function CartPage() {
               >
                 {placing
                   ? (paymentMethod === "razorpay" ? "Opening payment…" : "Placing order…")
-                  : (paymentMethod === "razorpay" ? `Pay ₹${total}` : `Place order · ₹${total} (COD)`)}
+                  : (paymentMethod === "razorpay" ? `Pay ₹${grandTotal}` : `Place order · ₹${grandTotal} (COD)`)}
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">

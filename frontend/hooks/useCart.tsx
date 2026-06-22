@@ -13,16 +13,28 @@ interface CartCtx {
   clear: () => void;
   count: number;
   total: number;
+  hydrated: boolean;
 }
 
 const Ctx = createContext<CartCtx | null>(null);
 const KEY = "ccc_cart_v1";
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
-  });
-  useEffect(() => { localStorage.setItem(KEY, JSON.stringify(items)); }, [items]);
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Load from localStorage only on the client — avoids SSR/client hydration mismatch
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(KEY) || "[]");
+      if (stored.length > 0) setItems(stored);
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(KEY, JSON.stringify(items));
+  }, [items, hydrated]);
 
   const add = (p: Product, qty = 1) => setItems((cur) => {
     const i = cur.findIndex((x) => x.product.id === p.id);
@@ -38,7 +50,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const count = items.reduce((s, x) => s + x.qty, 0);
   const total = +items.reduce((s, x) => s + x.qty * x.product.price * (1 - x.product.discount_percent / 100), 0).toFixed(2);
 
-  return <Ctx.Provider value={{ items, add, remove, setQty, clear, count, total }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ items, add, remove, setQty, clear, count, total, hydrated }}>{children}</Ctx.Provider>;
 }
 
 export function useCart() {

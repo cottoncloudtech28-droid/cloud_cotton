@@ -114,6 +114,38 @@ async function trackByAWB(awb) {
   return srFetch(`/courier/track/awb/${awb}`, { headers: await authHeaders() });
 }
 
+async function getShippingRates(deliveryPincode, weightKg, isCod) {
+  const pickupPincode = process.env.SHIPROCKET_PICKUP_PINCODE;
+  if (!pickupPincode) throw new Error("SHIPROCKET_PICKUP_PINCODE not set");
+
+  const params = new URLSearchParams({
+    pickup_postcode:   String(pickupPincode),
+    delivery_postcode: String(deliveryPincode),
+    weight:            String(weightKg),
+    cod:               isCod ? "1" : "0",
+  });
+
+  const data = await srFetch(`/courier/serviceability/?${params}`, {
+    headers: await authHeaders(),
+  });
+
+  const couriers = data?.data?.available_courier_companies ?? [];
+  if (!couriers.length) return null;
+
+  // Sort by total rate (freight + COD charges)
+  couriers.sort((a, b) => (a.rate ?? a.freight_charge ?? 999) - (b.rate ?? b.freight_charge ?? 999));
+  const best = couriers[0];
+
+  return {
+    shipping_charge:    Math.round(best.rate ?? best.freight_charge ?? 0),
+    cod_charge:         Math.round(best.cod_charges ?? 0),
+    courier_name:       best.courier_name ?? null,
+    courier_id:         best.courier_company_id ?? null,
+    estimated_days:     best.estimated_delivery_days ?? null,
+    serviceable:        true,
+  };
+}
+
 // Full push: create → assign AWB → request pickup
 async function pushOrder(order, userEmail) {
   const created = await createOrder(order, userEmail);
@@ -149,4 +181,4 @@ function mapStatus(statusId) {
   return null;
 }
 
-module.exports = { createOrder, assignCourier, requestPickup, trackByAWB, pushOrder, mapStatus };
+module.exports = { createOrder, assignCourier, requestPickup, trackByAWB, pushOrder, mapStatus, getShippingRates };

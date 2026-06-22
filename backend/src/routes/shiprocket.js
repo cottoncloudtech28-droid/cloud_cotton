@@ -16,6 +16,39 @@ function mapOrder(doc) {
   return obj;
 }
 
+// GET /api/shiprocket/shipping-rate?pincode=&weight=&cod=
+// Public — called from cart to show estimated shipping charge before checkout
+router.get("/shipping-rate", async (req, res) => {
+  const { pincode, weight = "0.5", cod = "0" } = req.query;
+
+  if (!pincode || !/^\d{6}$/.test(String(pincode)))
+    return res.status(400).json({ message: "Valid 6-digit pincode required" });
+
+  const freeThreshold = +(process.env.FREE_SHIPPING_THRESHOLD || "999");
+
+  // If Shiprocket credentials are not configured, return free or flat shipping
+  if (!process.env.SHIPROCKET_EMAIL || !process.env.SHIPROCKET_PICKUP_PINCODE) {
+    return res.json({ shipping_charge: 0, free_shipping: true, serviceable: true, courier_name: null });
+  }
+
+  try {
+    const result = await sr.getShippingRates(
+      String(pincode),
+      parseFloat(String(weight)) || 0.5,
+      String(cod) === "1"
+    );
+
+    if (!result) {
+      return res.json({ shipping_charge: 99, serviceable: false, courier_name: null });
+    }
+
+    res.json({ ...result, free_shipping: false });
+  } catch (e) {
+    // Fallback: flat ₹60 if Shiprocket call fails (e.g. auth error during dev)
+    res.json({ shipping_charge: 60, serviceable: true, courier_name: null, fallback: true, error: e.message });
+  }
+});
+
 // POST /api/shiprocket/push/:id  — admin: push/re-push an order to Shiprocket
 router.post("/push/:id", verifyToken, requireAdmin, async (req, res) => {
   try {

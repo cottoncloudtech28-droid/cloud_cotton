@@ -104,6 +104,7 @@ export async function placeOrder(payload: {
   items: OrderItem[];
   address: Address;
   total: number;
+  shipping_charge?: number;
 }): Promise<Order> {
   return apiFetch("/api/orders", { method: "POST", body: JSON.stringify(payload) });
 }
@@ -174,6 +175,7 @@ export async function verifyRazorpayPayment(payload: {
   items: OrderItem[];
   address: Address;
   total: number;
+  shipping_charge?: number;
 }): Promise<Order> {
   return apiFetch("/api/orders/razorpay/verify", {
     method: "POST",
@@ -356,6 +358,18 @@ export async function updateCustomerRole(id: string, role: "customer" | "admin")
 }
 
 // ── Shiprocket ────────────────────────────────────────────────────────────────
+export async function getShippingRate(pincode: string, weightKg = 0.5, isCod = false): Promise<{
+  shipping_charge: number;
+  serviceable: boolean;
+  courier_name: string | null;
+  estimated_days?: number | null;
+  free_shipping?: boolean;
+  fallback?: boolean;
+}> {
+  const params = new URLSearchParams({ pincode, weight: String(weightKg), cod: isCod ? "1" : "0" });
+  return apiFetch(`/api/shiprocket/shipping-rate?${params}`);
+}
+
 export async function pushToShiprocket(orderId: string): Promise<Order> {
   return apiFetch(`/api/shiprocket/push/${orderId}`, { method: "POST" });
 }

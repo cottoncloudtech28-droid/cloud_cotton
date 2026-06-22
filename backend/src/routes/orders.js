@@ -136,7 +136,7 @@ async function decrementStock(resolved, order, userId) {
 
 // POST /api/orders  — place COD order (authenticated)
 router.post("/", verifyToken, async (req, res) => {
-  const { items, address, total } = req.body;
+  const { items, address, total, shipping_charge = 0 } = req.body;
   if (!Array.isArray(items) || items.length === 0)
     return res.status(400).json({ message: "Order must have at least one item" });
   if (!address?.fullName || !address?.phone || !address?.line1 || !address?.city || !address?.state || !address?.pincode)
@@ -158,6 +158,7 @@ router.post("/", verifyToken, async (req, res) => {
       items: normalizedItems,
       address,
       total,
+      shipping_charge: Math.round(Number(shipping_charge) || 0),
       payment_method: "cod",
       payment_status: "pending",
     });
@@ -195,7 +196,7 @@ router.post("/razorpay/create-order", verifyToken, async (req, res) => {
 
 // POST /api/orders/razorpay/verify  — verify Razorpay payment + create DB order
 router.post("/razorpay/verify", verifyToken, async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, items, address, total } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, items, address, total, shipping_charge = 0 } = req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
     return res.status(400).json({ message: "Missing payment verification fields" });
@@ -229,6 +230,7 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
       items: normalizedItems,
       address,
       total,
+      shipping_charge: Math.round(Number(shipping_charge) || 0),
       payment_method: "razorpay",
       payment_status: "paid",
       razorpay_order_id,
