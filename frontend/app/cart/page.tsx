@@ -165,6 +165,21 @@ export default function CartPage() {
   const resolvedShipping = isFreeShipping ? 0 : (selectedCourier?.total_charge ?? 0);
   const grandTotal = total + resolvedShipping;
 
+  // GST estimate (prices are inclusive; back-calculate taxable value)
+  const gstEstimate = (() => {
+    let taxable = 0;
+    let totalTax = 0;
+    for (const { product: p, qty } of items) {
+      const rate = p.gst_rate ?? 12;
+      const finalPrice = +(p.price * (1 - p.discount_percent / 100)).toFixed(2);
+      const lineTotal = +(finalPrice * qty).toFixed(2);
+      const txbl = +(lineTotal / (1 + rate / 100)).toFixed(2);
+      taxable += txbl;
+      totalTax += +(lineTotal - txbl).toFixed(2);
+    }
+    return { taxable: +taxable.toFixed(2), tax: +totalTax.toFixed(2) };
+  })();
+
   const handlePlace = async () => {
     if (!user) { router.push("/auth"); return; }
     if (!activeAddr || !addrValid) return;
@@ -332,7 +347,32 @@ export default function CartPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 container py-8">
-        <h1 className="text-4xl font-bold mb-8">Your cart</h1>
+        {/* ── Top quick-pay bar ── */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-4xl font-bold">Your cart</h1>
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-xs text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""} · ₹{grandTotal}</p>
+              {isFreeShipping
+                ? <p className="text-xs text-green-600 font-medium">Free shipping</p>
+                : resolvedShipping > 0
+                  ? <p className="text-xs text-muted-foreground">+₹{resolvedShipping} shipping</p>
+                  : <p className="text-xs text-muted-foreground">Add address for shipping</p>
+              }
+            </div>
+            <Button
+              className="rounded-full bg-gradient-primary text-primary-foreground border-0 h-10 px-6 font-semibold text-sm shadow-sm"
+              disabled={!addrValid || !user || placing}
+              onClick={handlePlace}
+            >
+              {placing
+                ? (paymentMethod === "razorpay" ? "Opening…" : "Placing…")
+                : paymentMethod === "razorpay"
+                  ? `Pay ₹${grandTotal}`
+                  : `Place order · ₹${grandTotal}`}
+            </Button>
+          </div>
+        </div>
 
         <div className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
 
@@ -538,6 +578,19 @@ export default function CartPage() {
                     Add ₹{(FREE_THRESHOLD - total).toFixed(0)} more for FREE shipping
                   </p>
                 )}
+              </div>
+
+              {/* GST breakdown (informational; prices are inclusive) */}
+              <div className="bg-muted/40 rounded-xl px-3 py-2.5 space-y-1 text-xs text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Taxable value</span>
+                  <span>₹{gstEstimate.taxable.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST (incl. in price)</span>
+                  <span>₹{gstEstimate.tax.toFixed(2)}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground/70 pt-0.5">All prices are GST-inclusive. Tax invoice will be issued after order.</p>
               </div>
 
               <div className="border-t border-border pt-3 flex justify-between font-bold text-base">

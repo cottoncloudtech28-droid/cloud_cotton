@@ -22,7 +22,7 @@ import {
   Package, Heart, Settings, LogOut, ShoppingBag, Clock,
   CheckCircle2, Truck, XCircle, LayoutDashboard, BarChart2,
   LayoutGrid, Upload, ArrowRight, MapPin, Star, Plus, Pencil, Trash2,
-  ExternalLink, AlertTriangle, ImageOff,
+  ExternalLink, AlertTriangle, ImageOff, FileText,
 } from "lucide-react";
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; bg: string; text: string; icon: React.ElementType }> = {
@@ -197,18 +197,25 @@ function OrderCard({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-5 py-3.5 bg-muted/20 border-t border-border/50">
+      <div className="flex items-center justify-between px-5 py-3 bg-muted/20 border-t border-border/50 gap-3">
         <div className="flex items-center gap-1.5 min-w-0">
           <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary/70" />
           <span className="text-xs text-muted-foreground truncate">
             {order.address.city}, {order.address.state} — {order.address.fullName}
           </span>
         </div>
-        <div className="flex items-center gap-3 shrink-0 ml-4">
-          <Link href={`/track-order?id=${order.orderId}`} className="text-xs text-primary hover:underline flex items-center gap-0.5">
-            Track order <ExternalLink className="h-2.5 w-2.5" />
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href={`/track-order?id=${order.orderId}`}>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-background hover:border-primary/50 hover:text-primary transition-all">
+              <Truck className="h-3 w-3" /> Track
+            </span>
           </Link>
-          <div className="flex items-baseline gap-1">
+          <Link href={`/invoice/${order.id}`} target="_blank">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-background hover:border-primary/50 hover:text-primary transition-all">
+              <FileText className="h-3 w-3" /> Invoice
+            </span>
+          </Link>
+          <div className="flex items-baseline gap-1 pl-1 border-l border-border ml-1">
             <span className="text-xs text-muted-foreground">Total</span>
             <span className="text-base font-extrabold text-foreground">₹{order.total}</span>
           </div>

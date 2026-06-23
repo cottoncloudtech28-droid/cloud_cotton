@@ -13,11 +13,13 @@ import { toast } from "sonner";
 import {
   RefreshCw, ChevronDown, ChevronUp, Truck, MapPin,
   Clock, CheckCircle2, XCircle, Search, Package, ImageOff,
+  FileText, Download, Receipt,
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { getAllOrders, updateOrderStatus, setOrderTracking, pushToShiprocket } from "@/lib/api";
+import { getAllOrders, updateOrderStatus, setOrderTracking, pushToShiprocket, downloadGstr1Csv } from "@/lib/api";
+import Link from "next/link";
 import type { Order, OrderStatus } from "@/lib/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -242,6 +244,28 @@ function OrderRow({ order, onUpdated }: {
             )}
           </div>
 
+          {/* Invoice + GST info */}
+          <div className="flex items-center justify-between flex-wrap gap-3 py-2 border-t border-border/50">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {order.invoice_number && (
+                <span className="font-mono bg-muted px-2 py-1 rounded">
+                  INV: {order.invoice_number}
+                </span>
+              )}
+              {order.gst_breakdown && (
+                <span>
+                  Tax: ₹{order.gst_breakdown.total_tax?.toFixed(2)}
+                  {" "}({order.gst_breakdown.is_interstate ? "IGST" : "CGST+SGST"})
+                </span>
+              )}
+            </div>
+            <Link href={`/invoice/${order.id}`} target="_blank">
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 rounded-full">
+                <FileText className="h-3 w-3" /> View Invoice
+              </Button>
+            </Link>
+          </div>
+
           {/* Items */}
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Order items</p>
@@ -365,9 +389,24 @@ export default function AdminOrdersPage() {
                 <h1 className="text-4xl font-bold">Orders</h1>
                 <p className="text-muted-foreground mt-1">Manage, fulfil, and track all customer orders</p>
               </div>
-              <Button variant="outline" onClick={loadOrders} disabled={fetching}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? "animate-spin" : ""}`} /> Refresh
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 rounded-full"
+                  onClick={() => { downloadGstr1Csv(); toast.success("Downloading GSTR-1 CSV…"); }}
+                >
+                  <Download className="h-4 w-4" /> GSTR-1 Export
+                </Button>
+                <Link href="/admin/gst">
+                  <Button variant="outline" size="sm" className="gap-1.5 rounded-full">
+                    <Receipt className="h-4 w-4" /> GST Settings
+                  </Button>
+                </Link>
+                <Button variant="outline" size="sm" onClick={loadOrders} disabled={fetching} className="rounded-full">
+                  <RefreshCw className={`h-4 w-4 ${fetching ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
             </div>
 
             {/* Stats bar */}

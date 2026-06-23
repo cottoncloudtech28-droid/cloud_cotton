@@ -79,6 +79,8 @@ const emptyForm = {
   images: [] as string[],
   sizes: [] as ProductSize[],
   sku: "",
+  hsn_code: "",
+  gst_rate: 12,
 };
 
 type FormState = typeof emptyForm;
@@ -403,6 +405,31 @@ function ProductForm({ form, setField, onSubmit, editingId, sku, onCancel }: {
       </div>
       <SizeRows sizes={form.sizes} onChange={(v) => setField("sizes", v)} />
       <Separator />
+      {/* GST / Tax fields */}
+      <div>
+        <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">GST &amp; Tax</Label>
+        <div className="grid grid-cols-2 gap-4 mt-3">
+          <div>
+            <Label>HSN Code</Label>
+            <Input value={(form as any).hsn_code || ""} onChange={(e) => setField("hsn_code", e.target.value)}
+              placeholder="e.g. 4820, 9503" className="mt-1.5 font-mono" maxLength={8} />
+            <p className="text-xs text-muted-foreground mt-1">Harmonised System Nomenclature code (legally required on invoice)</p>
+          </div>
+          <div>
+            <Label>GST Rate (%)</Label>
+            <select
+              value={(form as any).gst_rate ?? 12}
+              onChange={(e) => setField("gst_rate", Number(e.target.value))}
+              className="w-full h-10 mt-1.5 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {[0, 5, 12, 18, 28].map((r) => (
+                <option key={r} value={r}>{r}% {r === 12 ? "(Stationery/Toys/default)" : r === 18 ? "(Electronics/Lamps)" : r === 5 ? "(Basic items)" : r === 0 ? "(Exempt)" : "(Luxury)"}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+      <Separator />
       <div className="flex gap-3 flex-wrap pt-2">
         <Button type="submit" size="lg" className="flex-1">{editingId ? "Save changes" : "Add product"}</Button>
         {editingId && <Button type="button" variant="outline" size="lg" onClick={onCancel}>Cancel</Button>}
@@ -643,7 +670,13 @@ export default function AdminPage() {
         : Number(form.stock),
     });
     if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
-    const payload = { ...parsed.data, images: form.images, image_url: form.images[0] ?? null };
+    const payload = {
+      ...parsed.data,
+      images: form.images,
+      image_url: form.images[0] ?? null,
+      hsn_code: (form as any).hsn_code || null,
+      gst_rate: Number((form as any).gst_rate) || 12,
+    };
     try {
       await (editingId
         ? apiFetch(`/api/products/${editingId}`, { method: "PUT", body: JSON.stringify(payload) })
@@ -668,6 +701,8 @@ export default function AdminPage() {
       images: p.images?.length ? p.images : (p.image_url ? [p.image_url] : []),
       sizes: p.sizes ?? [],
       sku: p.sku ?? "",
+      hsn_code: p.hsn_code ?? "",
+      gst_rate: p.gst_rate ?? 12,
     });
     setDrawerOpen(true);
   };

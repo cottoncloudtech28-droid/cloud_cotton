@@ -23,6 +23,8 @@ const productSchema = new mongoose.Schema(
     sku:               { type: String, unique: true, sparse: true },
     reorder_point:     { type: Number, default: 5, min: 0 },
     slug:              { type: String, unique: true, sparse: true },
+    hsn_code:          { type: String, default: null, trim: true },
+    gst_rate:          { type: Number, default: 12, enum: [0, 5, 12, 18, 28] },
   },
   { timestamps: true }
 );

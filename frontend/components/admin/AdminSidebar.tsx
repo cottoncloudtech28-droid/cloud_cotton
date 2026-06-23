@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, Upload, LayoutGrid, BarChart2, Truck, ShoppingCart, ClipboardList, TrendingUp, Users } from "lucide-react";
+import { Package, Upload, LayoutGrid, BarChart2, Truck, ShoppingCart, ClipboardList, TrendingUp, Users, Receipt } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +24,7 @@ const items = [
   { title: "Categories", url: "/admin/categories", icon: LayoutGrid },
   { title: "Suppliers", url: "/admin/suppliers", icon: Truck },
   { title: "Purchase Orders", url: "/admin/purchase-orders", icon: ShoppingCart },
+  { title: "GST & Compliance", url: "/admin/gst", icon: Receipt },
 ];
 
 export function AdminSidebar() {

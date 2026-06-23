@@ -21,6 +21,8 @@ export interface Product {
   sizes?: ProductSize[];
   sku?: string;
   reorder_point?: number;
+  hsn_code?: string | null;
+  gst_rate?: number;
   createdAt?: string;
 }
 
@@ -43,6 +45,32 @@ export interface OrderItem {
   qty: number;
   color: string | null;
   size: string | null;
+  hsn_code?: string | null;
+  gst_rate?: number;
+}
+
+export interface GstBreakdown {
+  taxable_value: number;
+  cgst_rate: number;
+  sgst_rate: number;
+  igst_rate: number;
+  cgst_amount: number;
+  sgst_amount: number;
+  igst_amount: number;
+  total_tax: number;
+  is_interstate: boolean;
+}
+
+export interface GstSettings {
+  gstin?: string;
+  business_name?: string;
+  address?: string;
+  state?: string;
+  state_code?: string;
+  email?: string;
+  phone?: string;
+  pan?: string;
+  signature_url?: string;
 }
 
 export type StockLogReason = "order" | "manual_adjust" | "bulk_update" | "restock" | "correction" | "cancellation" | "return";
@@ -154,6 +182,10 @@ export interface Order {
   courier_name?: string | null;
   cancelledBy?: "customer" | "admin" | null;
   cancelReason?: string | null;
+  invoice_number?: string | null;
+  buyer_gstin?: string | null;
+  gst_breakdown?: GstBreakdown | null;
+  shipping_charge?: number;
   user?: { id: string; email: string; name: string } | string;
   createdAt: string;
   updatedAt?: string;

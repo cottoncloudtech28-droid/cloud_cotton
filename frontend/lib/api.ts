@@ -1,6 +1,7 @@
 import type {
   Product, Order, OrderItem, Address, SavedAddress, Category, StockLog,
   Supplier, PurchaseOrder, RestockRecommendation, PublicOrderTrack, ShiprocketTracking,
+  GstSettings,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -407,3 +408,39 @@ export async function updateProfile(data: {
 }): Promise<{ id: string; email: string; name: string; role: string }> {
   return apiFetch("/api/auth/me", { method: "PATCH", body: JSON.stringify(data) });
 }
+
+// ── GST / Settings ────────────────────────────────────────────────────────────
+export async function getGstSettings(): Promise<GstSettings> {
+  return apiFetch("/api/settings/gst");
+}
+
+export async function updateGstSettings(data: GstSettings): Promise<GstSettings> {
+  return apiFetch("/api/settings/gst", { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function getOrderInvoice(orderId: string): Promise<{ order: Order; gstSettings: GstSettings }> {
+  return apiFetch(`/api/orders/${orderId}/invoice`);
+}
+
+export function downloadGstr1Csv(from?: string, to?: string): void {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to)   params.set("to", to);
+  const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/orders/admin/gstr1-export?${params}`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `GSTR1_${Date.now()}.csv`;
+  // attach token via fetch+blob since we need auth header
+  fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    .then((r) => r.blob())
+    .then((blob) => {
+      const blobUrl = URL.createObjectURL(blob);
+      a.href = blobUrl;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    });
+}
+

@@ -54,6 +54,46 @@ function parseCartId(raw) {
   return { productId: parts[0], size: parts[1] ?? null, color: parts[2] ?? null };
 }
 
+// Compute GST breakdown from normalized items + buyer/seller state
+// Prices are GST-inclusive; we back-calculate taxable value
+function computeGstBreakdown(normalizedItems, sellerState, buyerState) {
+  const isInterstate = sellerState && buyerState && sellerState.toLowerCase() !== buyerState.toLowerCase();
+  let totalTaxable = 0;
+  let totalTax = 0;
+
+  for (const item of normalizedItems) {
+    const rate = item.gst_rate || 12;
+    const finalPrice = +(item.price * (1 - item.discount_percent / 100)).toFixed(2);
+    const lineTotal = +(finalPrice * item.qty).toFixed(2);
+    const taxable = +(lineTotal / (1 + rate / 100)).toFixed(2);
+    totalTaxable += taxable;
+    totalTax += +(lineTotal - taxable).toFixed(2);
+  }
+
+  totalTaxable = +totalTaxable.toFixed(2);
+  totalTax = +totalTax.toFixed(2);
+
+  if (isInterstate) {
+    return {
+      taxable_value: totalTaxable,
+      cgst_rate: 0, sgst_rate: 0, igst_rate: 18,
+      cgst_amount: 0, sgst_amount: 0,
+      igst_amount: totalTax,
+      total_tax: totalTax,
+      is_interstate: true,
+    };
+  }
+  const half = +(totalTax / 2).toFixed(2);
+  return {
+    taxable_value: totalTaxable,
+    cgst_rate: 9, sgst_rate: 9, igst_rate: 0,
+    cgst_amount: half, sgst_amount: +(totalTax - half).toFixed(2),
+    igst_amount: 0,
+    total_tax: totalTax,
+    is_interstate: false,
+  };
+}
+
 // Resolve items → check stock → return resolved array (throws on failure)
 async function resolveItems(items) {
   const resolved = [];
@@ -99,6 +139,8 @@ function normalizeItems(resolved) {
     qty: item.qty,
     color: color ?? item.color ?? null,
     size: size ?? item.size ?? null,
+    hsn_code: product.hsn_code ?? null,
+    gst_rate: product.gst_rate ?? 12,
   }));
 }
 
@@ -155,6 +197,10 @@ router.post("/", verifyToken, async (req, res) => {
   }
 
   const normalizedItems = normalizeItems(resolved);
+  const Settings = require("../models/Settings");
+  const gstCfg = await Settings.findOne({ key: "gst" }).lean();
+  const sellerState = gstCfg?.value?.state || "";
+  const gst_breakdown = computeGstBreakdown(normalizedItems, sellerState, address.state);
 
   let order;
   try {
@@ -166,6 +212,7 @@ router.post("/", verifyToken, async (req, res) => {
       shipping_charge: Math.round(Number(shipping_charge) || 0),
       payment_method: "cod",
       payment_status: "pending",
+      gst_breakdown,
     });
   } catch (e) {
     return res.status(500).json({ message: e.message });
@@ -227,6 +274,10 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
   }
 
   const normalizedItems = normalizeItems(resolved);
+  const SettingsRzp = require("../models/Settings");
+  const gstCfgRzp = await SettingsRzp.findOne({ key: "gst" }).lean();
+  const sellerStateRzp = gstCfgRzp?.value?.state || "";
+  const gst_breakdown_rzp = computeGstBreakdown(normalizedItems, sellerStateRzp, address.state);
 
   let order;
   try {
@@ -241,6 +292,7 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       status: "confirmed",
+      gst_breakdown: gst_breakdown_rzp,
     });
   } catch (e) {
     return res.status(500).json({ message: e.message });
@@ -517,6 +569,76 @@ router.patch("/:id/status", verifyToken, requireAdmin, async (req, res) => {
     }
 
     res.json(mapOrder(order));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// GET /api/orders/:id/invoice  — owner or admin: full invoice data
+router.get("/:id/invoice", verifyToken, async (req, res) => {
+  try {
+    const Settings = require("../models/Settings");
+    const order = await Order.findById(req.params.id)
+      .populate("user", "email name")
+      .lean();
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const isOwner = order.user && order.user._id && order.user._id.toString() === req.user.userId;
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+    const gstSettings = await Settings.findOne({ key: "gst" }).lean();
+    res.json({ order: mapOrder({ toObject: () => order, ...order }), gstSettings: gstSettings?.value ?? {} });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// GET /api/orders/admin/gstr1-export?from=YYYY-MM-DD&to=YYYY-MM-DD  — admin: CSV for GSTR-1
+router.get("/admin/gstr1-export", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const filter = { status: { $ne: "cancelled" } };
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to)   filter.createdAt.$lte = new Date(new Date(to).setHours(23, 59, 59, 999));
+    }
+
+    const orders = await Order.find(filter).populate("user", "email name").lean();
+
+    const rows = [
+      ["Invoice No", "Invoice Date", "Customer Name", "Customer GSTIN", "Place of Supply",
+       "Taxable Value", "CGST Rate", "CGST Amt", "SGST Rate", "SGST Amt",
+       "IGST Rate", "IGST Amt", "Total Tax", "Invoice Value", "Payment Mode"].join(",")
+    ];
+
+    for (const o of orders) {
+      const gst = o.gst_breakdown || {};
+      const date = new Date(o.createdAt).toLocaleDateString("en-IN");
+      const name = (o.user?.name || o.address?.fullName || "").replace(/,/g, " ");
+      rows.push([
+        o.invoice_number || o.orderId,
+        date,
+        name,
+        o.buyer_gstin || "",
+        o.address?.state || "",
+        (gst.taxable_value || 0).toFixed(2),
+        (gst.cgst_rate || 0),
+        (gst.cgst_amount || 0).toFixed(2),
+        (gst.sgst_rate || 0),
+        (gst.sgst_amount || 0).toFixed(2),
+        (gst.igst_rate || 0),
+        (gst.igst_amount || 0).toFixed(2),
+        (gst.total_tax || 0).toFixed(2),
+        (o.total || 0).toFixed(2),
+        o.payment_method || "cod",
+      ].join(","));
+    }
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="GSTR1_export_${Date.now()}.csv"`);
+    res.send(rows.join("\n"));
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
