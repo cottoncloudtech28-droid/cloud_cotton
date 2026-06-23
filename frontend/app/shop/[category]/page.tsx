@@ -9,7 +9,7 @@ import ProductCard from "@/components/shop/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Search, PackageOpen } from "lucide-react";
 import { getCategory, getProducts } from "@/lib/api";
 import type { Category, Product } from "@/lib/types";
 
@@ -167,7 +167,7 @@ export default function CategoryPage() {
           {/* Grid */}
           {filtered.length === 0 ? (
             <div className="text-center py-20 rounded-2xl bg-muted border border-border">
-              <div className="text-5xl mb-3">🌷</div>
+              <PackageOpen className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
               <p className="font-medium">No products found</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {q || activeTag ? "Try clearing your filters" : "Nothing here yet — check back soon!"}

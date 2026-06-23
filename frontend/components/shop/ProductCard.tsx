@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, ShoppingBag } from "lucide-react";
+import { Heart, ShoppingBag, ImageOff } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { addToWishlist, removeFromWishlist, getWishlistIds } from "@/lib/api";
@@ -77,7 +77,7 @@ export default function ProductCard({ p }: { p: Product }) {
               className="w-full h-full object-cover group-hover:scale-105 transition-bounce"
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-6xl">🌸</div>
+            <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-10 w-10 text-muted-foreground/25" /></div>
           )}
           {p.discount_percent > 0 && (
             <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground border-0">

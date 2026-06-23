@@ -7,19 +7,19 @@ import ProductCard from "@/components/shop/ProductCard";
 import type { Product } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Pencil, UtensilsCrossed, Droplets, Lightbulb, Gift, Volume2, Gamepad2, Wand2, ShoppingBag } from "lucide-react";
 import Footer from "@/components/shop/Footer";
 
 const CATEGORIES = [
-  { slug: "stationery",    name: "Stationery",    emoji: "🌸", bg: "#fff0f5" },
-  { slug: "lunch-boxes",   name: "Lunch Boxes",   emoji: "🍡", bg: "#fff8e1" },
-  { slug: "bottles",       name: "Bottles",       emoji: "🫧", bg: "#e3f2fd" },
-  { slug: "lamps",         name: "Lamps",         emoji: "🌙", bg: "#fffde7" },
-  { slug: "return-gifts",  name: "Return Gifts",  emoji: "🎀", bg: "#fce4ec" },
-  { slug: "speakers",      name: "Speakers",      emoji: "🎧", bg: "#f3e5f5" },
-  { slug: "toys",          name: "Toys",          emoji: "🐻", bg: "#e8f5e9" },
-  { slug: "quirky",        name: "Quirky Items",  emoji: "🦄", bg: "#e0f7fa" },
-  { slug: "mixed",         name: "Mixed Items",   emoji: "🍭", bg: "#fbe9e7" },
+  { slug: "stationery",   name: "Stationery",   icon: Pencil,          bg: "#fff0f5", color: "#d63384" },
+  { slug: "lunch-boxes",  name: "Lunch Boxes",  icon: UtensilsCrossed, bg: "#fff8e1", color: "#e67700" },
+  { slug: "bottles",      name: "Bottles",      icon: Droplets,        bg: "#e3f2fd", color: "#0077c2" },
+  { slug: "lamps",        name: "Lamps",        icon: Lightbulb,       bg: "#fffde7", color: "#b8860b" },
+  { slug: "return-gifts", name: "Return Gifts", icon: Gift,            bg: "#fce4ec", color: "#c2185b" },
+  { slug: "speakers",     name: "Speakers",     icon: Volume2,         bg: "#f3e5f5", color: "#7b1fa2" },
+  { slug: "toys",         name: "Toys",         icon: Gamepad2,        bg: "#e8f5e9", color: "#2e7d32" },
+  { slug: "quirky",       name: "Quirky Items", icon: Wand2,           bg: "#e0f7fa", color: "#00838f" },
+  { slug: "mixed",        name: "Mixed Items",  icon: ShoppingBag,     bg: "#fbe9e7", color: "#bf360c" },
 ];
 
 export default function Home() {
@@ -139,10 +139,10 @@ export default function Home() {
                   className="group flex-shrink-0 flex flex-col items-center gap-1.5 w-[64px] md:w-[88px]"
                 >
                   <div
-                    className="h-14 w-14 md:h-20 md:w-20 grid place-items-center rounded-full text-2xl md:text-3xl border border-border/60 group-hover:scale-110 group-hover:border-primary/30 transition-bounce"
+                    className="h-14 w-14 md:h-20 md:w-20 grid place-items-center rounded-full border border-border/60 group-hover:scale-110 group-hover:border-primary/30 transition-bounce"
                     style={{ backgroundColor: c.bg }}
                   >
-                    {c.emoji}
+                    <c.icon className="h-6 w-6 md:h-8 md:w-8" style={{ color: c.color }} />
                   </div>
                   <p className="text-[10px] md:text-xs font-semibold text-center leading-tight text-foreground">{c.name}</p>
                 </Link>

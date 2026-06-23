@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   RefreshCw, ChevronDown, ChevronUp, Truck, MapPin,
-  Clock, CheckCircle2, XCircle, Search, Package,
+  Clock, CheckCircle2, XCircle, Search, Package, ImageOff,
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -251,7 +251,7 @@ function OrderRow({ order, onUpdated }: {
                   <div className="h-10 w-10 rounded-md bg-muted overflow-hidden border border-border shrink-0">
                     {item.image_url
                       ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                      : <div className="flex items-center justify-center h-full text-lg">🌸</div>}
+                      : <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-4 w-4 text-muted-foreground/25" /></div>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.name}</p>

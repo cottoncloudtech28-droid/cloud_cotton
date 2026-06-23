@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { trackOrder, getShiprocketTrackingPublic } from "@/lib/api";
 import type { PublicOrderTrack, OrderStatus, ShiprocketTracking } from "@/lib/types";
 import {
-  Search, Package, CheckCircle2, Truck, Clock, XCircle, MapPin,
+  Search, Package, CheckCircle2, Truck, Clock, XCircle, MapPin, ImageOff,
 } from "lucide-react";
 
 // ── Status config ──────────────────────────────────────────────────────────────
@@ -202,7 +202,7 @@ function TrackResult({ data }: { data: PublicOrderTrack }) {
               <div className="h-14 w-14 rounded-xl bg-muted overflow-hidden border border-border/40 shrink-0">
                 {item.image_url
                   ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                  : <div className="flex items-center justify-center h-full text-2xl">🌸</div>}
+                  : <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-5 w-5 text-muted-foreground/25" /></div>}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{item.name}</p>

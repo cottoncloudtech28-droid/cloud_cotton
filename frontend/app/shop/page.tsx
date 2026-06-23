@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, PackageOpen } from "lucide-react";
 import { getProducts, getCategories } from "@/lib/api";
 import type { Product, Category } from "@/lib/types";
 
@@ -156,7 +156,7 @@ function ShopContent() {
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-20 rounded-2xl bg-muted border border-border">
-            <div className="text-6xl mb-3">🌷</div>
+            <PackageOpen className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
             <p className="font-medium">Nothing found</p>
             <p className="text-sm text-muted-foreground mt-1">
               Try different keywords or <Link href="/shop" className="text-primary hover:underline">browse all</Link>

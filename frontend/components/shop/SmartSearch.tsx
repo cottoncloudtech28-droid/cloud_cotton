@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, TrendingUp } from "lucide-react";
+import { Search, X, TrendingUp, ImageOff } from "lucide-react";
 import { searchSuggestions } from "@/lib/api";
 
 type Suggestion = {
@@ -187,7 +187,7 @@ export default function SmartSearch({
               <div className="h-10 w-10 rounded-lg bg-muted flex-shrink-0 overflow-hidden border border-border/40">
                 {s.image_url
                   ? <img src={s.image_url} alt={s.name} className="h-full w-full object-cover" />
-                  : <div className="h-full w-full flex items-center justify-center text-lg">🌸</div>}
+                  : <div className="h-full w-full flex items-center justify-center bg-muted"><ImageOff className="h-4 w-4 text-muted-foreground/25" /></div>}
               </div>
 
               {/* Info */}

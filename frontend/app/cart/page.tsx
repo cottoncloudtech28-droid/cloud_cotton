@@ -16,7 +16,8 @@ import type { CourierOption, ShippingRateResult } from "@/lib/api";
 import type { Address, SavedAddress } from "@/lib/types";
 import ProductCard from "@/components/shop/ProductCard";
 import { getProducts } from "@/lib/api";
-import { Trash2, ShoppingBag, CheckCircle2, MapPin, Package, Plus, Star, CreditCard, Truck, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, ShoppingBag, CheckCircle2, MapPin, Package, Plus, Star, CreditCard, Truck, ChevronDown, ChevronUp, ImageOff } from "lucide-react";
+import { toast } from "sonner";
 
 declare global {
   interface Window {
@@ -38,7 +39,7 @@ const EMPTY_ADDR: Address & { label: string } = {
 };
 
 export default function CartPage() {
-  const { items, setQty, remove, total, clear, hydrated } = useCart();
+  const { items, setQty, remove, add, total, clear, hydrated } = useCart();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -53,6 +54,7 @@ export default function CartPage() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [featured, setFeatured] = useState<import("@/lib/types").Product[]>([]);
+  const [recommendations, setRecommendations] = useState<import("@/lib/types").Product[]>([]);
 
   const [shippingResult, setShippingResult] = useState<ShippingRateResult | null>(null);
   const [selectedCourier, setSelectedCourier] = useState<CourierOption | null>(null);
@@ -68,6 +70,25 @@ export default function CartPage() {
       .then((data) => setFeatured(data.products ?? []))
       .catch(() => {});
   }, [items.length]);
+
+  // Load recommendations based on cart categories
+  useEffect(() => {
+    if (items.length === 0) { setRecommendations([]); return; }
+    const cartIds = new Set(items.map((i) => i.product.id.split("::")[0]));
+    // Pick the most frequent category in the cart
+    const catCounts: Record<string, number> = {};
+    for (const { product } of items) {
+      catCounts[product.category] = (catCounts[product.category] ?? 0) + 1;
+    }
+    const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0][0];
+    getProducts({ cat: topCat, sort: "popular", limit: 8 })
+      .then((data) => {
+        const filtered = (data.products ?? []).filter((p) => !cartIds.has(p.id)).slice(0, 4);
+        setRecommendations(filtered);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.map((i) => i.product.id).join(",")]);
 
   // Load Razorpay checkout script
   useEffect(() => {
@@ -104,13 +125,13 @@ export default function CartPage() {
   useEffect(() => {
     const pincode = activeAddr?.pincode ?? "";
     if (!/^\d{6}$/.test(pincode)) {
-      setShippingCharge(null);
-      setShippingInfo(null);
+      setShippingResult(null);
+      setSelectedCourier(null);
       return;
     }
     if (total >= FREE_THRESHOLD) {
-      setShippingCharge(0);
-      setShippingInfo({ courier: null, days: null, free: true });
+      setShippingResult({ serviceable: true, free_shipping: true, recommended: null, options: [] });
+      setSelectedCourier(null);
       return;
     }
     const isCod = paymentMethod === "cod";
@@ -118,10 +139,19 @@ export default function CartPage() {
     const t = setTimeout(() => {
       getShippingRate(pincode, 0.5, isCod)
         .then((r) => {
-          setShippingCharge(r.shipping_charge);
-          setShippingInfo({ courier: r.courier_name, days: r.estimated_days ?? null, free: !!r.free_shipping });
+          setShippingResult(r);
+          setSelectedCourier(r.recommended ?? r.options[0] ?? null);
         })
-        .catch(() => { setShippingCharge(60); setShippingInfo({ courier: null, days: null, free: false }); })
+        .catch(() => {
+          const fallback: CourierOption = {
+            courier_id: null, courier_name: null,
+            freight_charge: 60, cod_charge: isCod ? 30 : 0,
+            total_charge: isCod ? 90 : 60,
+            estimated_days: 5, etd: null, is_recommended: true, rating: null,
+          };
+          setShippingResult({ serviceable: true, recommended: fallback, options: [fallback] });
+          setSelectedCourier(fallback);
+        })
         .finally(() => setShippingLoading(false));
     }, 400);
     return () => clearTimeout(t);
@@ -131,7 +161,8 @@ export default function CartPage() {
   const setNew = (k: keyof typeof newAddr, v: string) =>
     setNewAddr((a) => ({ ...a, [k]: v }));
 
-  const resolvedShipping = shippingCharge ?? 0;
+  const isFreeShipping = shippingResult?.free_shipping || total >= FREE_THRESHOLD;
+  const resolvedShipping = isFreeShipping ? 0 : (selectedCourier?.total_charge ?? 0);
   const grandTotal = total + resolvedShipping;
 
   const handlePlace = async () => {
@@ -320,7 +351,7 @@ export default function CartPage() {
                     <div className="h-18 w-18 rounded-xl overflow-hidden bg-gradient-hero shrink-0" style={{ width: 72, height: 72 }}>
                       {p.image_url
                         ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
-                        : <div className="h-full w-full grid place-items-center text-3xl">🌸</div>}
+                        : <div className="h-full w-full flex items-center justify-center bg-muted"><ImageOff className="h-6 w-6 text-muted-foreground/25" /></div>}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{p.name}</p>
@@ -353,6 +384,48 @@ export default function CartPage() {
                 Clear cart
               </Button>
             </div>
+
+            {/* ── Inline recommendations ── */}
+            {recommendations.length > 0 && (
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <Star className="h-3.5 w-3.5 text-primary fill-primary" /> You might also like
+                </p>
+                <div className="flex gap-3 overflow-x-auto pb-1 snap-x scrollbar-none">
+                  {recommendations.map((p) => {
+                    const final = +(p.price * (1 - p.discount_percent / 100)).toFixed(2);
+                    return (
+                      <div key={p.id} className="shrink-0 snap-start w-36 border border-border rounded-2xl overflow-hidden bg-background hover:border-primary/40 transition-colors">
+                        <Link href={`/product/${p.slug ?? p.id}`}>
+                          <div className="aspect-square bg-gradient-hero overflow-hidden">
+                            {p.image_url
+                              ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                              : <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-5 w-5 text-muted-foreground/25" /></div>}
+                          </div>
+                        </Link>
+                        <div className="p-2.5 space-y-1.5">
+                          <p className="text-xs font-medium line-clamp-2 leading-tight">{p.name}</p>
+                          <p className="text-xs font-bold">₹{final}</p>
+                          <Button
+                            size="sm"
+                            disabled={p.stock === 0}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              add(p);
+                              toast.success(`${p.name} added to cart`);
+                            }}
+                            className="w-full h-7 text-xs rounded-full bg-gradient-primary text-primary-foreground border-0 px-2"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            {p.stock === 0 ? "Sold out" : "Add"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Right: summary + address + payment ── */}
@@ -382,32 +455,90 @@ export default function CartPage() {
               </div>
 
               {/* Shipping */}
-              <div className="flex justify-between text-sm items-center">
-                <span className="text-muted-foreground">Shipping</span>
-                <span className="text-right">
-                  {shippingLoading ? (
-                    <span className="text-xs text-muted-foreground animate-pulse">Calculating…</span>
-                  ) : shippingCharge === null ? (
-                    <span className="text-xs text-muted-foreground">Enter pincode</span>
-                  ) : shippingInfo?.free ? (
-                    <span className="text-green-600 font-medium text-xs">FREE</span>
-                  ) : (
-                    <span className="font-medium">₹{resolvedShipping}</span>
-                  )}
-                </span>
-              </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm items-center">
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span>
+                    {shippingLoading ? (
+                      <span className="text-xs text-muted-foreground animate-pulse">Calculating…</span>
+                    ) : shippingResult === null ? (
+                      <span className="text-xs text-muted-foreground">Enter pincode</span>
+                    ) : isFreeShipping ? (
+                      <span className="text-green-600 font-semibold text-sm">FREE</span>
+                    ) : selectedCourier ? (
+                      <span className="font-medium">₹{resolvedShipping}</span>
+                    ) : null}
+                  </span>
+                </div>
 
-              {/* Courier info */}
-              {shippingInfo?.courier && !shippingInfo.free && (
-                <p className="text-xs text-muted-foreground -mt-1">
-                  via {shippingInfo.courier}{shippingInfo.days ? ` · ${shippingInfo.days} day${shippingInfo.days !== 1 ? "s" : ""}` : ""}
-                </p>
-              )}
-              {total < FREE_THRESHOLD && shippingCharge !== null && resolvedShipping > 0 && (
-                <p className="text-xs text-primary">
-                  Add ₹{FREE_THRESHOLD - total} more for free shipping
-                </p>
-              )}
+                {/* Courier detail + picker */}
+                {!isFreeShipping && selectedCourier && !shippingLoading && (
+                  <div className="bg-muted/50 rounded-xl p-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold">
+                          {selectedCourier.courier_name ?? "Standard Delivery"}
+                          {selectedCourier.is_recommended && (
+                            <span className="ml-1.5 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">Recommended</span>
+                          )}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {selectedCourier.estimated_days
+                            ? `${selectedCourier.estimated_days} day${selectedCourier.estimated_days !== 1 ? "s" : ""} delivery`
+                            : "Delivery estimate unavailable"}
+                          {selectedCourier.etd && (
+                            <> · by {new Date(selectedCourier.etd).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</>
+                          )}
+                        </p>
+                        {selectedCourier.cod_charge > 0 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Freight ₹{selectedCourier.freight_charge} + COD ₹{selectedCourier.cod_charge}
+                          </p>
+                        )}
+                      </div>
+                      {(shippingResult?.options?.length ?? 0) > 1 && (
+                        <button
+                          onClick={() => setShowCourierPicker((v) => !v)}
+                          className="text-xs text-primary flex items-center gap-0.5 shrink-0 ml-2"
+                        >
+                          Change {showCourierPicker ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Courier options list */}
+                    {showCourierPicker && (
+                      <div className="border-t border-border pt-1.5 space-y-1">
+                        {shippingResult?.options?.map((opt, i) => (
+                          <button
+                            key={opt.courier_id ?? i}
+                            onClick={() => { setSelectedCourier(opt); setShowCourierPicker(false); }}
+                            className={`w-full flex items-center justify-between text-left px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                              selectedCourier?.courier_id === opt.courier_id
+                                ? "bg-primary/10 text-primary font-semibold"
+                                : "hover:bg-muted"
+                            }`}
+                          >
+                            <span>
+                              {opt.courier_name ?? "Standard"}
+                              {opt.is_recommended && <span className="ml-1 text-primary/70">(Recommended)</span>}
+                              {opt.estimated_days ? ` · ${opt.estimated_days}d` : ""}
+                            </span>
+                            <span className="font-semibold ml-2">₹{opt.total_charge}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Free shipping nudge */}
+                {!isFreeShipping && shippingResult && resolvedShipping > 0 && total < FREE_THRESHOLD && (
+                  <p className="text-xs text-primary font-medium">
+                    Add ₹{(FREE_THRESHOLD - total).toFixed(0)} more for FREE shipping
+                  </p>
+                )}
+              </div>
 
               <div className="border-t border-border pt-3 flex justify-between font-bold text-base">
                 <span>Total</span>
@@ -606,6 +737,8 @@ export default function CartPage() {
             </div>
           </div>
         </div>
+
+
       </main>
       <Footer />
     </div>

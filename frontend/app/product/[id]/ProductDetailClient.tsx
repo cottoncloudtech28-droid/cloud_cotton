@@ -24,7 +24,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  ShoppingBag, Heart, Minus, Plus, Truck, Shield, ChevronRight, Share2,
+  ShoppingBag, Heart, Minus, Plus, Truck, Shield, ChevronRight, Share2, ImageOff,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -224,7 +224,7 @@ export default function ProductDetailClient() {
             {allImages[0] ? (
               <img src={allImages[0]} alt={product.name} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full grid place-items-center text-xl">🌸</div>
+              <div className="w-full h-full flex items-center justify-center bg-muted"><ImageOff className="h-6 w-6 text-muted-foreground/25" /></div>
             )}
           </div>
 
@@ -273,7 +273,7 @@ export default function ProductDetailClient() {
                 <img key={activeImg} src={allImages[activeImg]} alt={product.name}
                   className="w-full h-full object-cover" />
               ) : (
-                <div className="flex items-center justify-center h-full text-8xl select-none">🌸</div>
+                <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-16 w-16 text-muted-foreground/20" /></div>
               )}
               {product.discount_percent > 0 && (
                 <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground border-0">

@@ -9,10 +9,15 @@ const StockLog = require("../models/StockLog");
 const { verifyToken, requireAdmin } = require("../middleware/auth");
 const sr = require("../services/shiprocket");
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+let _razorpay = null;
+function getRazorpay() {
+  if (!_razorpay) {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)
+      throw new Error("RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are not configured");
+    _razorpay = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET });
+  }
+  return _razorpay;
+}
 
 const mapOrder = (doc) => {
   const obj = doc.toObject();
@@ -178,7 +183,7 @@ router.post("/razorpay/create-order", verifyToken, async (req, res) => {
     return res.status(400).json({ message: "Invalid amount" });
 
   try {
-    const rzpOrder = await razorpay.orders.create({
+    const rzpOrder = await getRazorpay().orders.create({
       amount: Math.round(Number(amount) * 100), // convert to paise
       currency: "INR",
       receipt: "kcs_" + Date.now().toString(36),
