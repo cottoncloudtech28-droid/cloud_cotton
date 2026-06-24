@@ -15,11 +15,11 @@ router.post("/describe", verifyToken, requireAdmin, async (req, res) => {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "user",
-            content: `Write a cute 1-2 sentence product description for a kawaii shop item. Product: "${name}", category: "${category}", colors: ${JSON.stringify(colors || [])}. Keep it playful and under 100 words.`,
+            content: `Write a cute 1-2 sentence product description for a Cotton Cloud Company kawaii shop item. Product: "${name}", category: "${category}", colors: ${JSON.stringify(colors || [])}. Make it playful, aesthetic, and appealing to young women. Under 100 words.`,
           },
         ],
       }),

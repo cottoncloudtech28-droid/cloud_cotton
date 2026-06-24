@@ -35,21 +35,51 @@ import type { Product, ProductSize } from "@/lib/types";
 
 // ── AI image-editing presets ──────────────────────────────────────────────────
 const AI_BACKGROUNDS = [
-  { label: "Pink aesthetic", value: "Replace background with a soft dreamy pastel pink aesthetic backdrop with subtle bokeh, keep the product centered and lighting natural" },
-  { label: "Marble counter", value: "Place the product on a clean white marble counter with soft daylight from a window, minimal lifestyle scene" },
-  { label: "Studio white", value: "Replace background with a clean seamless studio white background, soft even lighting, e-commerce style" },
-  { label: "Pastel gradient", value: "Replace background with a smooth pastel lilac-to-peach gradient, soft shadow under product" },
+  {
+    label: "Fairy lights room",
+    value: "Replace the background with a cozy aesthetic room scene — soft blurred fairy lights strung across a pastel-toned wall, warm golden bokeh glow, the product stays centered and well-lit, dreamy lifestyle feel matching a kawaii e-commerce shop",
+  },
+  {
+    label: "Marble counter",
+    value: "Place the product on a pristine white marble countertop, soft natural daylight streaming from a side window, minimal lifestyle scene, clean shadows, aesthetic and premium feel",
+  },
+  {
+    label: "Pastel room shelf",
+    value: "Place the product on a light wooden shelf in a soft pastel-painted room, subtle décor elements (small plants, fairy lights) blurred in background, warm ambient lighting, cottagecore aesthetic",
+  },
+  {
+    label: "Studio white",
+    value: "Replace background with a pure seamless studio white backdrop, soft even lighting from both sides, clean drop shadow beneath product, professional e-commerce style",
+  },
+  {
+    label: "Cozy café",
+    value: "Place the product on a wooden café table, warm indoor ambient lighting, blurred greenery and pendant lights in the background, lifestyle editorial feel",
+  },
+  {
+    label: "Pastel gradient",
+    value: "Replace background with a smooth pastel lilac-to-peach gradient, soft natural shadow directly beneath the product, clean minimal look",
+  },
 ];
 const AI_ANGLES = [
-  { label: "Front", value: "Show the product from a clean straight-on front angle, centered, e-commerce style" },
-  { label: "3/4 view", value: "Show the product from a flattering 3/4 angle, slightly elevated, soft shadow" },
-  { label: "Top-down", value: "Show the product from a top-down flat lay angle, perfectly centered" },
+  { label: "Front", value: "Show the product from a clean straight-on front angle, perfectly centered, e-commerce style, soft even lighting" },
+  { label: "3/4 view", value: "Show the product from a flattering 3/4 angle, slightly elevated perspective, soft drop shadow, lifestyle feel" },
+  { label: "Top-down", value: "Flat lay top-down view of the product, perfectly centered on a pastel or marble surface, editorial style" },
 ];
 const AI_STYLES = [
   {
+    label: "Cotton Cloud style",
+    value: (name: string) =>
+      `Aesthetic lifestyle product photo of ${name}. Soft pastel room background with warm fairy lights bokeh. Product placed on a white marble surface, centered and well-lit with natural diffused light. Dreamy, kawaii e-commerce aesthetic. Vibrant product colors preserved. No text, no watermark. 1:1 square crop, high resolution.`,
+  },
+  {
     label: "Kawaii studio",
     value: (name: string) =>
-      `Studio product photo of ${name}, centered 3/4 angle, soft diffused lighting, seamless pastel-pink background (#FDE7F1), subtle drop shadow, kawaii aesthetic with small sparkle accents, true-to-life colors, 1:1 square, no text, no watermark — matching the style of the reference image.`,
+      `Studio product photo of ${name}, centered 3/4 angle, soft diffused lighting, seamless pastel-pink background (#FDE7F1), subtle drop shadow, kawaii aesthetic, true-to-life colors, 1:1 square, no text, no watermark.`,
+  },
+  {
+    label: "Lifestyle flat lay",
+    value: (name: string) =>
+      `Flat lay lifestyle photo of ${name} from directly above. Arranged on a light pastel background with minimal props — dried flowers, washi tape, or small stationery items around it. Soft natural window light, editorial aesthetic. No text, no watermark.`,
   },
 ];
 
