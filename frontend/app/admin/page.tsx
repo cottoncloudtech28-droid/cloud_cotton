@@ -45,6 +45,13 @@ const AI_ANGLES = [
   { label: "3/4 view", value: "Show the product from a flattering 3/4 angle, slightly elevated, soft shadow" },
   { label: "Top-down", value: "Show the product from a top-down flat lay angle, perfectly centered" },
 ];
+const AI_STYLES = [
+  {
+    label: "Kawaii studio",
+    value: (name: string) =>
+      `Studio product photo of ${name}, centered 3/4 angle, soft diffused lighting, seamless pastel-pink background (#FDE7F1), subtle drop shadow, kawaii aesthetic with small sparkle accents, true-to-life colors, 1:1 square, no text, no watermark — matching the style of the reference image.`,
+  },
+];
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const [meta, b64] = dataUrl.split(",");
@@ -157,7 +164,7 @@ function SizeRows({ sizes, onChange }: { sizes: ProductSize[]; onChange: (s: Pro
 }
 
 // ── Multi-image uploader (with AI editing) ────────────────────────────────────
-function MultiImageUploader({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
+function MultiImageUploader({ images, onChange, productName = "" }: { images: string[]; onChange: (imgs: string[]) => void; productName?: string }) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -166,6 +173,7 @@ function MultiImageUploader({ images, onChange }: { images: string[]; onChange: 
   const [provider, setProvider] = useState<"openai" | "gemini">("openai");
   const [prompt, setPrompt] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const upload = async (files: FileList) => {
     setUploading(true);
@@ -278,8 +286,12 @@ function MultiImageUploader({ images, onChange }: { images: string[]; onChange: 
             </div>
           </div>
 
-          {/* Preview with processing overlay */}
-          <div className="relative h-28 w-28 rounded-lg overflow-hidden border border-border bg-muted">
+          {/* Preview with processing overlay — click to fullscreen */}
+          <div
+            className="relative h-28 w-28 rounded-lg overflow-hidden border border-border bg-muted cursor-zoom-in"
+            onClick={() => !processing && setLightboxSrc(images[aiIndex])}
+            title="Click to view full size"
+          >
             <img src={images[aiIndex]} alt="" className="h-full w-full object-cover" />
             {processing && (
               <div className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-sm">
@@ -316,6 +328,20 @@ function MultiImageUploader({ images, onChange }: { images: string[]; onChange: 
             </div>
           </div>
 
+          {/* Full style presets */}
+          <div className="space-y-1">
+            <Label className="text-xs">Full style</Label>
+            <div className="flex flex-wrap gap-1">
+              {AI_STYLES.map((p) => (
+                <Badge key={p.label} variant="outline"
+                  className="cursor-pointer hover:bg-primary/10 border-primary/40 text-primary"
+                  onClick={() => setPrompt(p.value(productName || "this product"))}>
+                  ✨ {p.label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
           {/* Custom prompt + apply */}
           <div className="flex gap-2">
             <Input value={prompt} onChange={(e) => setPrompt(e.target.value)}
@@ -327,6 +353,28 @@ function MultiImageUploader({ images, onChange }: { images: string[]; onChange: 
           <p className="text-[11px] text-muted-foreground">
             The edited result replaces this image. The original stays until you apply.
           </p>
+        </div>
+      )}
+
+      {/* Fullscreen lightbox */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-sm"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxSrc(null)}
+            className="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={lightboxSrc}
+            alt="Full size preview"
+            className="max-h-[90vh] max-w-[90vw] rounded-xl shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
@@ -395,7 +443,7 @@ function ProductForm({ form, setField, onSubmit, editingId, sku, onCancel }: {
         </div>
       </div>
       <Separator />
-      <MultiImageUploader images={form.images} onChange={(imgs) => setField("images", imgs)} />
+      <MultiImageUploader images={form.images} onChange={(imgs) => setField("images", imgs)} productName={form.name} />
       <Separator />
       <div className="space-y-4">
         <ChipInput label="Colors" icon={<span className="text-sm">🎨</span>}

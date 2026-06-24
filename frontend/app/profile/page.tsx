@@ -379,38 +379,6 @@ export default function ProfilePage() {
     <div className="min-h-screen flex flex-col bg-muted/30">
       <Navbar />
       <main className="flex-1 container py-6 space-y-4">
-
-        {/* ── Admin panel (full width, compact) ── */}
-        {isAdmin && (
-          <Card className="p-4 rounded-3xl border-2 border-primary/25 bg-primary/5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-8 w-8 rounded-xl bg-gradient-primary grid place-items-center shrink-0">
-                <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <div>
-                <p className="font-bold text-sm">Admin Dashboard</p>
-                <p className="text-xs text-muted-foreground">You have admin access to manage the store</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { label: "Products",    href: "/admin",            icon: Package },
-                { label: "Inventory",   href: "/admin/inventory",  icon: BarChart2 },
-                { label: "Categories",  href: "/admin/categories", icon: LayoutGrid },
-                { label: "Bulk Upload", href: "/admin/bulk",       icon: Upload },
-              ].map(({ label, href, icon: Icon }) => (
-                <Link key={href} href={href}>
-                  <div className="flex items-center gap-2 p-2.5 rounded-2xl border border-border bg-background hover:border-primary/50 hover:bg-primary/5 transition-all group">
-                    <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                    <span className="text-xs font-semibold">{label}</span>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </Card>
-        )}
-
         {/* ── Two-column layout ── */}
         <div className="grid lg:grid-cols-[300px_1fr] gap-5 items-start">
 
