@@ -77,7 +77,7 @@ function buildPayload(order, userEmail) {
     length: +(process.env.SHIPROCKET_DEFAULT_LENGTH || "10"),
     breadth: +(process.env.SHIPROCKET_DEFAULT_BREADTH || "10"),
     height: +(process.env.SHIPROCKET_DEFAULT_HEIGHT || "10"),
-    weight: +(process.env.SHIPROCKET_DEFAULT_WEIGHT || "0.5"),
+    weight: +(+(process.env.SHIPROCKET_DEFAULT_WEIGHT || "0.5") * order.items.reduce((s, i) => s + i.qty, 0)).toFixed(2),
   };
 
   if (process.env.SHIPROCKET_CHANNEL_ID)

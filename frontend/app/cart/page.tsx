@@ -47,6 +47,7 @@ export default function CartPage() {
   const [selectedAddrId, setSelectedAddrId] = useState<string | "new">("new");
   const [newAddr, setNewAddr] = useState(EMPTY_ADDR);
   const [saveNew, setSaveNew] = useState(false);
+  const [savingAddr, setSavingAddr] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
   const [placing, setPlacing] = useState(false);
@@ -135,9 +136,11 @@ export default function CartPage() {
       return;
     }
     const isCod = paymentMethod === "cod";
+    const totalQty = items.reduce((s, { qty }) => s + qty, 0);
+    const estimatedWeight = +(0.5 * totalQty).toFixed(2);
     setShippingLoading(true);
     const t = setTimeout(() => {
-      getShippingRate(pincode, 0.5, isCod)
+      getShippingRate(pincode, estimatedWeight, isCod)
         .then((r) => {
           setShippingResult(r);
           setSelectedCourier(r.recommended ?? r.options[0] ?? null);
@@ -160,6 +163,27 @@ export default function CartPage() {
 
   const setNew = (k: keyof typeof newAddr, v: string) =>
     setNewAddr((a) => ({ ...a, [k]: v }));
+
+  const handleSaveAddressNow = async () => {
+    const { fullName, phone, line1, city, state, pincode } = newAddr;
+    if (!fullName || !phone || !line1 || !city || !state || !pincode) {
+      toast.error("Please fill all required address fields before saving");
+      return;
+    }
+    setSavingAddr(true);
+    try {
+      const updated = await addSavedAddress({ ...newAddr });
+      setSavedAddresses(updated);
+      const saved = updated[updated.length - 1];
+      if (saved) setSelectedAddrId(saved.id);
+      setSaveNew(false);
+      toast.success("Address saved!");
+    } catch (e: any) {
+      toast.error(e.message || "Could not save address");
+    } finally {
+      setSavingAddr(false);
+    }
+  };
 
   const isFreeShipping = shippingResult?.free_shipping || total >= FREE_THRESHOLD;
   const resolvedShipping = isFreeShipping ? 0 : (selectedCourier?.total_charge ?? 0);
@@ -187,11 +211,6 @@ export default function CartPage() {
     setPlacing(true);
 
     try {
-      if (selectedAddrId === "new" && saveNew) {
-        const updated = await addSavedAddress({ ...newAddr });
-        setSavedAddresses(updated);
-      }
-
       const orderItems = items.map(({ product: p, qty }) => ({
         productId: p.id, name: p.name, image_url: p.image_url ?? null,
         price: p.price, discount_percent: p.discount_percent, qty, color: null, size: null,
@@ -516,25 +535,20 @@ export default function CartPage() {
                   <div className="bg-muted/50 rounded-xl p-2.5 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-semibold">
-                          {selectedCourier.courier_name ?? "Standard Delivery"}
+                        <p className="text-xs font-semibold flex items-center gap-1.5">
+                          {selectedCourier.estimated_days
+                            ? `Delivery in ${selectedCourier.estimated_days} day${selectedCourier.estimated_days !== 1 ? "s" : ""}`
+                            : "Standard Delivery"}
                           {selectedCourier.is_recommended && (
-                            <span className="ml-1.5 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">Recommended</span>
+                            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">Recommended</span>
                           )}
                         </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {selectedCourier.estimated_days
-                            ? `${selectedCourier.estimated_days} day${selectedCourier.estimated_days !== 1 ? "s" : ""} delivery`
-                            : "Delivery estimate unavailable"}
-                          {selectedCourier.etd && (
-                            <> · by {new Date(selectedCourier.etd).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</>
-                          )}
+                          {selectedCourier.etd
+                            ? `Expected by ${new Date(selectedCourier.etd).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+                            : "Estimated delivery time"}
+                          {selectedCourier.cod_charge > 0 && ` · COD charge ₹${selectedCourier.cod_charge}`}
                         </p>
-                        {selectedCourier.cod_charge > 0 && (
-                          <p className="text-[11px] text-muted-foreground">
-                            Freight ₹{selectedCourier.freight_charge} + COD ₹{selectedCourier.cod_charge}
-                          </p>
-                        )}
                       </div>
                       {(shippingResult?.options?.length ?? 0) > 1 && (
                         <button
@@ -546,29 +560,38 @@ export default function CartPage() {
                       )}
                     </div>
 
-                    {/* Courier options list */}
-                    {showCourierPicker && (
-                      <div className="border-t border-border pt-1.5 space-y-1">
-                        {shippingResult?.options?.map((opt, i) => (
-                          <button
-                            key={opt.courier_id ?? i}
-                            onClick={() => { setSelectedCourier(opt); setShowCourierPicker(false); }}
-                            className={`w-full flex items-center justify-between text-left px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                              selectedCourier?.courier_id === opt.courier_id
-                                ? "bg-primary/10 text-primary font-semibold"
-                                : "hover:bg-muted"
-                            }`}
-                          >
-                            <span>
-                              {opt.courier_name ?? "Standard"}
-                              {opt.is_recommended && <span className="ml-1 text-primary/70">(Recommended)</span>}
-                              {opt.estimated_days ? ` · ${opt.estimated_days}d` : ""}
-                            </span>
-                            <span className="font-semibold ml-2">₹{opt.total_charge}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {/* Delivery options — deduplicated by day, cheapest per group */}
+                    {showCourierPicker && (() => {
+                      const seen = new Map<number | null, CourierOption>();
+                      for (const opt of shippingResult?.options ?? []) {
+                        const key = opt.estimated_days ?? null;
+                        const existing = seen.get(key);
+                        if (!existing || opt.total_charge < existing.total_charge || opt.is_recommended)
+                          seen.set(key, opt);
+                      }
+                      const deduped = Array.from(seen.values()).sort((a, b) => (a.total_charge) - (b.total_charge));
+                      return (
+                        <div className="border-t border-border pt-1.5 space-y-1">
+                          {deduped.map((opt, i) => (
+                            <button
+                              key={opt.courier_id ?? i}
+                              onClick={() => { setSelectedCourier(opt); setShowCourierPicker(false); }}
+                              className={`w-full flex items-center justify-between text-left px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                                selectedCourier?.courier_id === opt.courier_id
+                                  ? "bg-primary/10 text-primary font-semibold"
+                                  : "hover:bg-muted"
+                              }`}
+                            >
+                              <span>
+                                {opt.estimated_days ? `${opt.estimated_days} day${opt.estimated_days !== 1 ? "s" : ""} delivery` : "Standard delivery"}
+                                {opt.is_recommended && <span className="ml-1 text-primary/70"> (Recommended)</span>}
+                              </span>
+                              <span className="font-semibold ml-2">₹{opt.total_charge}</span>
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -717,15 +740,17 @@ export default function CartPage() {
                   </div>
 
                   {user && (
-                    <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={saveNew}
-                        onChange={(e) => setSaveNew(e.target.checked)}
-                        className="rounded accent-primary"
-                      />
-                      Save this address to my account
-                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full rounded-xl h-9 text-sm gap-1.5"
+                      disabled={savingAddr}
+                      onClick={handleSaveAddressNow}
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                      {savingAddr ? "Saving…" : "Save this address to my account"}
+                    </Button>
                   )}
                 </div>
               )}
