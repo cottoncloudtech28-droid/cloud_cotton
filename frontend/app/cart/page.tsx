@@ -38,6 +38,17 @@ const EMPTY_ADDR: Address & { label: string } = {
   label: "Home", fullName: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "",
 };
 
+function RazorpayLogo({ height = 22, white = false }: { height?: number; white?: boolean }) {
+  return (
+    <img
+      src="/razorpay.png"
+      alt="Razorpay"
+      height={height}
+      style={{ height, width: "auto", objectFit: "contain", filter: white ? "brightness(0) invert(1)" : undefined }}
+    />
+  );
+}
+
 export default function CartPage() {
   const { items, setQty, remove, add, total, clear, hydrated } = useCart();
   const { user } = useAuth();
@@ -379,17 +390,30 @@ export default function CartPage() {
                   : <p className="text-xs text-muted-foreground">Add address for shipping</p>
               }
             </div>
-            <Button
-              className="rounded-full bg-gradient-primary text-primary-foreground border-0 h-10 px-6 font-semibold text-sm shadow-sm"
-              disabled={!addrValid || !user || placing}
-              onClick={handlePlace}
-            >
-              {placing
-                ? (paymentMethod === "razorpay" ? "Opening…" : "Placing…")
-                : paymentMethod === "razorpay"
-                  ? `Pay ₹${grandTotal}`
-                  : `Place order · ₹${grandTotal}`}
-            </Button>
+            {paymentMethod === "razorpay" ? (
+              <button
+                disabled={!addrValid || !user || placing}
+                onClick={handlePlace}
+                className="rounded-full h-10 px-5 font-semibold text-sm shadow-sm flex items-center gap-2 transition-opacity disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg, #3395FF 0%, #1a6fd4 100%)", color: "white", border: "none" }}
+              >
+                {placing ? "Opening…" : (
+                  <>
+                    Pay ₹{grandTotal}
+                    <span className="h-4 w-px bg-white/30 mx-0.5" />
+                    <RazorpayLogo height={15} white />
+                  </>
+                )}
+              </button>
+            ) : (
+              <Button
+                className="rounded-full bg-gradient-primary text-primary-foreground border-0 h-10 px-6 font-semibold text-sm shadow-sm"
+                disabled={!addrValid || !user || placing}
+                onClick={handlePlace}
+              >
+                {placing ? "Placing…" : `Place order · ₹${grandTotal}`}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -767,14 +791,16 @@ export default function CartPage() {
                   onClick={() => setPaymentMethod("razorpay")}
                   className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
                     paymentMethod === "razorpay"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/40"
+                      ? "border-[#3395FF] bg-[#3395FF]/8"
+                      : "border-border hover:border-[#3395FF]/40"
                   }`}
                 >
-                  <CreditCard className={`h-5 w-5 ${paymentMethod === "razorpay" ? "text-primary" : "text-muted-foreground"}`} />
+                  <div className={`rounded-xl px-3 py-1.5 ${paymentMethod === "razorpay" ? "bg-[#3395FF]/10" : "bg-muted"}`}>
+                    <RazorpayLogo height={20} />
+                  </div>
                   <div>
-                    <p className="text-sm font-semibold">Pay Online</p>
-                    <p className="text-[11px] text-muted-foreground">UPI · Cards · Netbanking</p>
+                    <p className="text-xs font-semibold">Razorpay</p>
+                    <p className="text-[10px] text-muted-foreground">UPI · Cards · Netbanking</p>
                   </div>
                 </button>
                 <button
@@ -798,15 +824,37 @@ export default function CartPage() {
                 <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-2">{error}</p>
               )}
 
-              <Button
-                className="w-full rounded-full bg-gradient-primary text-primary-foreground border-0 h-12 text-base font-semibold"
-                disabled={!addrValid || !user || placing}
-                onClick={handlePlace}
-              >
-                {placing
-                  ? (paymentMethod === "razorpay" ? "Opening payment…" : "Placing order…")
-                  : (paymentMethod === "razorpay" ? `Pay ₹${grandTotal}` : `Place order · ₹${grandTotal} (COD)`)}
-              </Button>
+              {paymentMethod === "razorpay" ? (
+                <button
+                  disabled={!addrValid || !user || placing}
+                  onClick={handlePlace}
+                  className="w-full rounded-2xl overflow-hidden transition-opacity disabled:opacity-50 shadow-md"
+                  style={{ background: "linear-gradient(135deg, #3395FF 0%, #1a6fd4 100%)", color: "white", border: "none" }}
+                >
+                  {placing ? (
+                    <div className="h-14 flex items-center justify-center gap-2 text-sm font-semibold">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Opening payment…
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center py-3 gap-1">
+                      <span className="text-base font-bold tracking-tight">Pay ₹{grandTotal}</span>
+                      <div className="flex items-center gap-1.5 opacity-80">
+                        <span className="text-[11px]">Powered by</span>
+                        <RazorpayLogo height={15} white />
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ) : (
+                <Button
+                  className="w-full rounded-full bg-gradient-primary text-primary-foreground border-0 h-12 text-base font-semibold"
+                  disabled={!addrValid || !user || placing}
+                  onClick={handlePlace}
+                >
+                  {placing ? "Placing order…" : `Place order · ₹${grandTotal} (COD)`}
+                </Button>
+              )}
 
               <p className="text-xs text-center text-muted-foreground">
                 By placing your order you agree to our{" "}
