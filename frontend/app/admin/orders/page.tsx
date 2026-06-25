@@ -136,8 +136,31 @@ function OrderRow({ order, onUpdated }: {
           </select>
         </div>
 
-        {/* Expand */}
-        <div className="col-span-2 flex justify-end">
+        {/* Actions */}
+        <div className="col-span-2 flex justify-end items-center gap-1.5">
+          {!order.shiprocket_order_id && order.status !== "cancelled" && (
+            <Button
+              size="sm"
+              className="h-8 px-2.5 text-xs bg-orange-500 hover:bg-orange-600 text-white border-0 gap-1"
+              disabled={srLoading}
+              onClick={handlePushShiprocket}
+            >
+              {srLoading
+                ? <RefreshCw className="h-3 w-3 animate-spin" />
+                : <Truck className="h-3 w-3" />}
+              <span className="hidden sm:inline">{srLoading ? "Pushing…" : "Push"}</span>
+            </Button>
+          )}
+          {order.awb_code && (
+            <span className="hidden sm:inline text-[10px] font-mono text-purple-700 bg-purple-50 border border-purple-100 px-2 py-1 rounded-lg truncate max-w-[90px]" title={order.awb_code}>
+              {order.awb_code}
+            </span>
+          )}
+          {order.shiprocket_order_id && !order.awb_code && (
+            <span className="hidden sm:inline text-[10px] text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg">
+              No AWB
+            </span>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setExpanded((e) => !e)} className="h-8 px-3">
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             <span className="ml-1.5 text-xs">{expanded ? "Less" : "Details"}</span>

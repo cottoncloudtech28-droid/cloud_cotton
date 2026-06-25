@@ -53,7 +53,7 @@ function OrderCard({
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
   const Icon = cfg.icon;
   const currentStep = STATUS_ORDER[order.status];
-  const canCancel = order.status === "pending" || order.status === "confirmed";
+  const canCancel = (order.status === "pending" || order.status === "confirmed") && !order.shiprocket_order_id;
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -144,8 +144,16 @@ function OrderCard({
         </div>
       )}
 
-      {/* Tracking number */}
-      {order.trackingNumber && order.status === "shipped" && (
+      {/* Shiprocket dispatched — no AWB yet */}
+      {order.shiprocket_order_id && !order.trackingNumber && order.status !== "cancelled" && (
+        <div className="px-5 py-2.5 bg-orange-50/60 border-b border-orange-100 flex items-center gap-2">
+          <Truck className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+          <p className="text-xs text-orange-800 font-medium">Order dispatched — AWB being assigned</p>
+        </div>
+      )}
+
+      {/* Tracking number (show as soon as AWB is assigned, any status) */}
+      {order.trackingNumber && order.status !== "cancelled" && (
         <div className="px-5 py-2.5 bg-purple-50/60 border-b border-purple-100 flex items-center gap-2">
           <Truck className="h-3.5 w-3.5 text-purple-600 shrink-0" />
           <p className="text-xs text-purple-800">

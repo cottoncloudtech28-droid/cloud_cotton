@@ -87,6 +87,7 @@ router.post("/push/:id", verifyToken, requireAdmin, async (req, res) => {
 
     res.json(mapOrder(order));
   } catch (e) {
+    console.error("[Shiprocket push error]", e.message);
     res.status(500).json({ message: e.message || "Shiprocket push failed" });
   }
 });

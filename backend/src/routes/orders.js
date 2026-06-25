@@ -444,6 +444,8 @@ router.post("/:id/cancel", verifyToken, async (req, res) => {
       return res.status(403).json({ message: "You can only cancel your own orders" });
     if (!["pending", "confirmed"].includes(order.status))
       return res.status(400).json({ message: `Orders with status "${order.status}" cannot be cancelled` });
+    if (order.shiprocket_order_id)
+      return res.status(400).json({ message: "This order has already been dispatched via Shiprocket and cannot be cancelled. Please contact us for help." });
 
     const { reason } = req.body;
     order.status = "cancelled";
