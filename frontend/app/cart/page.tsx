@@ -16,7 +16,7 @@ import type { CourierOption, ShippingRateResult } from "@/lib/api";
 import type { Address, SavedAddress } from "@/lib/types";
 import ProductCard from "@/components/shop/ProductCard";
 import { getProducts } from "@/lib/api";
-import { Trash2, ShoppingBag, CheckCircle2, MapPin, Package, Plus, Star, CreditCard, Truck, ChevronDown, ChevronUp, ImageOff } from "lucide-react";
+import { Trash2, ShoppingBag, MapPin, Package, Plus, Star, CreditCard, Truck, ChevronDown, ChevronUp, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 
 declare global {
@@ -63,7 +63,6 @@ export default function CartPage() {
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
-  const [orderId, setOrderId] = useState<string | null>(null);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [featured, setFeatured] = useState<import("@/lib/types").Product[]>([]);
   const [recommendations, setRecommendations] = useState<import("@/lib/types").Product[]>([]);
@@ -229,9 +228,8 @@ export default function CartPage() {
 
       if (paymentMethod === "cod") {
         const order = await placeOrder({ items: orderItems, address: activeAddr, total: grandTotal, shipping_charge: resolvedShipping });
-        setOrderId(order.orderId);
         clear();
-        setPlacing(false);
+        router.push(`/order/${order.id}`);
       } else {
         // Razorpay flow: create order → open checkout → verify on success
         const rzpOrderData = await createRazorpayOrder(grandTotal);
@@ -265,12 +263,11 @@ export default function CartPage() {
                 total: grandTotal,
                 shipping_charge: resolvedShipping,
               });
-              setOrderId(order.orderId);
               clear();
+              router.push(`/order/${order.id}`);
             } catch (e: any) {
-              setError(e.message || "Payment verification failed. Please contact support.");
-            } finally {
               setPlacing(false);
+              router.push(`/order/failed?reason=${encodeURIComponent(e.message || "Payment verification failed. Please contact support.")}`);
             }
           },
           modal: {
@@ -282,47 +279,17 @@ export default function CartPage() {
 
         const rzp = new window.Razorpay(options);
         rzp.on("payment.failed", (response: any) => {
-          setError(`Payment failed: ${response.error?.description || "Please try again."}`);
           setPlacing(false);
+          router.push(`/order/failed?reason=${encodeURIComponent(response.error?.description || "Payment could not be processed. Please try again.")}`);
         });
         rzp.open();
-        // placing(false) is handled in handler/ondismiss callbacks
+        // placing(false) is handled in handler/ondismiss/failed callbacks
       }
     } catch (e: any) {
       setError(e.message || "Something went wrong");
       setPlacing(false);
     }
   };
-
-  /* ── Success ── */
-  if (orderId) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 container py-20">
-          <div className="max-w-lg mx-auto text-center space-y-5">
-            <div className="mx-auto h-20 w-20 grid place-items-center rounded-full bg-green-100">
-              <CheckCircle2 className="h-10 w-10 text-green-500" />
-            </div>
-            <h1 className="text-3xl font-bold">
-              {paymentMethod === "razorpay" ? "Payment successful!" : "Order placed!"}
-            </h1>
-            <p className="text-muted-foreground">
-              Your order <span className="font-semibold text-foreground">#{orderId}</span> has been received.
-              {paymentMethod === "cod"
-                ? " Pay when it arrives — we'll get it packed with love!"
-                : " We'll get it packed and shipped soon!"}
-            </p>
-            <div className="flex justify-center gap-3 pt-2">
-              <Link href="/shop"><Button className="rounded-full bg-gradient-primary text-primary-foreground border-0">Keep shopping</Button></Link>
-              <Link href="/profile"><Button variant="outline" className="rounded-full">View orders</Button></Link>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
 
   /* ── Loading (waiting for localStorage hydration) ── */
   if (!hydrated) {
