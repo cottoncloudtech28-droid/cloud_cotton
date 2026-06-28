@@ -71,6 +71,7 @@ export default function CartPage() {
   const [selectedCourier, setSelectedCourier] = useState<CourierOption | null>(null);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [showCourierPicker, setShowCourierPicker] = useState(false);
+  const [quickPincode, setQuickPincode] = useState("");
 
   const FREE_THRESHOLD = 1499;
 
@@ -134,7 +135,8 @@ export default function CartPage() {
 
   // Fetch shipping rate whenever pincode or payment method changes
   useEffect(() => {
-    const pincode = activeAddr?.pincode ?? "";
+    const addrPincode = activeAddr?.pincode?.trim() ?? "";
+    const pincode = /^\d{6}$/.test(addrPincode) ? addrPincode : quickPincode;
     if (!/^\d{6}$/.test(pincode)) {
       setShippingResult(null);
       setSelectedCourier(null);
@@ -169,7 +171,7 @@ export default function CartPage() {
     }, 400);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeAddr?.pincode, paymentMethod, total]);
+  }, [activeAddr?.pincode, quickPincode, paymentMethod, total]);
 
   const setNew = (k: keyof typeof newAddr, v: string) =>
     setNewAddr((a) => ({ ...a, [k]: v }));
@@ -461,6 +463,7 @@ export default function CartPage() {
                             disabled={p.stock === 0}
                             onClick={(e) => {
                               e.preventDefault();
+                              if (!user) { toast.error("Please sign in to add items"); router.push("/auth"); return; }
                               add(p);
                               toast.success(`${p.name} added to cart`);
                             }}
@@ -512,7 +515,15 @@ export default function CartPage() {
                     {shippingLoading ? (
                       <span className="text-xs text-muted-foreground animate-pulse">Calculating…</span>
                     ) : shippingResult === null ? (
-                      <span className="text-xs text-muted-foreground">Enter pincode</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={quickPincode}
+                        onChange={(e) => setQuickPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="Enter pincode"
+                        maxLength={6}
+                        className="h-7 w-28 rounded-lg border border-input bg-background px-2 text-xs text-right focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
                     ) : isFreeShipping ? (
                       <span className="text-green-600 font-semibold text-sm">FREE</span>
                     ) : selectedCourier ? (

@@ -22,16 +22,45 @@ const CATEGORIES = [
   { slug: "mixed",        name: "Mixed Items",  icon: ShoppingBag,     bg: "#fbe9e7", color: "#bf360c" },
 ];
 
+const FALLBACK_REVIEWS = [
+  { id: "f1", name: "Aanya S.", location: "Mumbai", avatar: "🌸", rating: 5, text: "The stationery set I ordered was absolutely adorable! Great packaging and super fast delivery. Will definitely be ordering again!" },
+  { id: "f2", name: "Rhea M.",  location: "Bangalore", avatar: "🎀", rating: 5, text: "Bought return gifts for my daughter's birthday party — every single kid was obsessed. The quality exceeded my expectations!" },
+  { id: "f3", name: "Priya K.", location: "Delhi",     avatar: "🌈", rating: 5, text: "Cotton Cloud has the cutest things ever! The kawaii lamp is now my desk's star. Highly recommend to anyone who loves cute decor." },
+];
+
+const AVATARS = ["🌸", "🎀", "🌈", "🍭", "✨", "🦋", "🌷", "🎐"];
+
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [heroImgOk, setHeroImgOk] = useState(true);
+  const [reviews, setReviews] = useState<typeof FALLBACK_REVIEWS>(FALLBACK_REVIEWS);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
 
   useEffect(() => {
     apiFetch("/api/products?limit=8&sort=newest")
       .then((data) => setProducts((data?.products || data || []).slice(0, 8)))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    apiFetch("/api/reviews?limit=6")
+      .then((data) => {
+        const fetched = (data?.reviews ?? []).slice(0, 3);
+        if (fetched.length > 0) {
+          setReviews(
+            fetched.map((r: any, i: number) => ({
+              id: r.id,
+              name: r.user?.name ?? r.guest_name ?? "Happy Customer",
+              location: "",
+              avatar: AVATARS[i % AVATARS.length],
+              rating: r.rating,
+              text: r.body || r.title || "",
+            }))
+          );
+        }
+      })
+      .catch(() => {})
+      .finally(() => setReviewsLoading(false));
   }, []);
 
   return (
@@ -237,53 +266,36 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-            {[
-              {
-                name: "Aanya S.",
-                location: "Mumbai",
-                avatar: "🌸",
-                rating: 5,
-                text: "The stationery set I ordered was absolutely adorable! Great packaging and super fast delivery. Will definitely be ordering again!",
-              },
-              {
-                name: "Rhea M.",
-                location: "Bangalore",
-                avatar: "🎀",
-                rating: 5,
-                text: "Bought return gifts for my daughter's birthday party — every single kid was obsessed. The quality exceeded my expectations!",
-              },
-              {
-                name: "Priya K.",
-                location: "Delhi",
-                avatar: "🌈",
-                rating: 5,
-                text: "Cotton Cloud has the cutest things ever! The kawaii lamp is now my desk's star. Highly recommend to anyone who loves cute decor.",
-              },
-            ].map((t) => (
-              <div
-                key={t.name}
-                className="relative rounded-2xl md:rounded-3xl bg-card border border-border/60 p-5 md:p-6 flex flex-col gap-3"
-              >
-                {/* Stars */}
-                <div className="flex gap-0.5 text-amber-400 text-sm">
-                  {"★".repeat(t.rating)}
-                </div>
+            {reviewsLoading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-44 rounded-2xl md:rounded-3xl" />
+                ))
+              : reviews.map((t) => (
+                  <div
+                    key={t.id}
+                    className="relative rounded-2xl md:rounded-3xl bg-card border border-border/60 p-5 md:p-6 flex flex-col gap-3"
+                  >
+                    {/* Stars */}
+                    <div className="flex gap-0.5 text-amber-400 text-sm">
+                      {"★".repeat(t.rating)}
+                    </div>
 
-                {/* Quote */}
-                <p className="text-sm text-foreground/80 leading-relaxed flex-1">"{t.text}"</p>
+                    {/* Quote */}
+                    <p className="text-sm text-foreground/80 leading-relaxed flex-1">"{t.text}"</p>
 
-                {/* Author */}
-                <div className="flex items-center gap-3 pt-1 border-t border-border/40">
-                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 border border-border/40 grid place-items-center text-lg flex-shrink-0">
-                    {t.avatar}
+                    {/* Author */}
+                    <div className="flex items-center gap-3 pt-1 border-t border-border/40">
+                      <div className="h-9 w-9 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 border border-border/40 grid place-items-center text-lg flex-shrink-0">
+                        {t.avatar}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-foreground leading-none">{t.name}</p>
+                        {t.location && <p className="text-xs text-muted-foreground mt-0.5">{t.location}</p>}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground leading-none">{t.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t.location}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+                ))
+            }
           </div>
         </section>
 
