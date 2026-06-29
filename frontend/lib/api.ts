@@ -418,6 +418,18 @@ export async function updateGstSettings(data: GstSettings): Promise<GstSettings>
   return apiFetch("/api/settings/gst", { method: "PUT", body: JSON.stringify(data) });
 }
 
+export interface PaymentSettings {
+  cod_enabled: boolean;
+}
+
+export async function getPaymentSettings(): Promise<PaymentSettings> {
+  return apiFetch("/api/settings/payment");
+}
+
+export async function updatePaymentSettings(data: PaymentSettings): Promise<PaymentSettings> {
+  return apiFetch("/api/settings/payment", { method: "PUT", body: JSON.stringify(data) });
+}
+
 export async function getOrderInvoice(orderId: string): Promise<{ order: Order; gstSettings: GstSettings }> {
   return apiFetch(`/api/orders/${orderId}/invoice`);
 }

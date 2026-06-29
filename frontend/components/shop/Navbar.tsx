@@ -7,12 +7,22 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import SmartSearch from "@/components/shop/SmartSearch";
 import { Cloud, ShoppingBag, ShoppingCart, Sparkles, UserCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
   const { user, isAdmin } = useAuth();
   const { count } = useCart();
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
   useEffect(() => setMounted(true), []);
+
+  const handleCartClick = () => {
+    if (!user) {
+      router.push(`/auth?redirect=${encodeURIComponent("/cart")}`);
+    } else {
+      router.push("/cart");
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full bg-background border-b border-border">
@@ -33,16 +43,14 @@ export default function Navbar() {
 
         <nav className="flex items-center gap-2 shrink-0">
           <Link href="/shop"><Button variant="ghost" size="sm"><ShoppingBag className="mr-1 h-4 w-4" />Shop</Button></Link>
-          <Link href="/cart">
-            <Button variant="ghost" size="sm" className="relative">
-              <ShoppingCart className="h-4 w-4" />
-              {mounted && count > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs grid place-items-center">
-                  {count}
-                </span>
-              )}
-            </Button>
-          </Link>
+          <Button variant="ghost" size="sm" className="relative" onClick={handleCartClick}>
+            <ShoppingCart className="h-4 w-4" />
+            {mounted && count > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs grid place-items-center">
+                {count}
+              </span>
+            )}
+          </Button>
           {mounted && user ? (
             <Link href="/profile">
               <Button variant="ghost" size="sm" className="relative gap-1.5">

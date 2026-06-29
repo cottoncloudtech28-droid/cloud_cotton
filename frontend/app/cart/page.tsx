@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/shop/Navbar";
 import Footer from "@/components/shop/Footer";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
-import { placeOrder, getSavedAddresses, addSavedAddress, createRazorpayOrder, verifyRazorpayPayment, getShippingRate } from "@/lib/api";
+import { placeOrder, getSavedAddresses, addSavedAddress, createRazorpayOrder, verifyRazorpayPayment, getShippingRate, getPaymentSettings } from "@/lib/api";
 import type { CourierOption, ShippingRateResult } from "@/lib/api";
 import type { Address, SavedAddress } from "@/lib/types";
 import ProductCard from "@/components/shop/ProductCard";
@@ -61,6 +61,7 @@ export default function CartPage() {
   const [savingAddr, setSavingAddr] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
+  const [codEnabled, setCodEnabled] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
   const [addressesLoading, setAddressesLoading] = useState(false);
@@ -73,7 +74,17 @@ export default function CartPage() {
   const [showCourierPicker, setShowCourierPicker] = useState(false);
   const [quickPincode, setQuickPincode] = useState("");
 
+  const addressRef = useRef<HTMLDivElement>(null);
+  const quickPincodeRedirected = useRef(false);
+
   const FREE_THRESHOLD = 1499;
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (hydrated && !user) {
+      router.replace(`/auth?redirect=${encodeURIComponent("/cart")}`);
+    }
+  }, [hydrated, user, router]);
 
   // Load featured products for empty cart upsell
   useEffect(() => {
@@ -112,6 +123,16 @@ export default function CartPage() {
   }, []);
 
   useEffect(() => {
+    getPaymentSettings()
+      .then((s) => {
+        const enabled = s.cod_enabled ?? true;
+        setCodEnabled(enabled);
+        if (!enabled) setPaymentMethod("razorpay");
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     setAddressesLoading(true);
     getSavedAddresses()
@@ -132,6 +153,38 @@ export default function CartPage() {
   const addrValid = activeAddr &&
     activeAddr.fullName.trim() && activeAddr.phone.trim() && activeAddr.line1.trim() &&
     activeAddr.city.trim() && activeAddr.state && activeAddr.pincode.trim();
+
+  // Scroll the address card into view and focus its first empty required field,
+  // so a user who taps "Pay" without an address is shown exactly what to fill.
+  const focusAddress = (prefillPincode?: string) => {
+    // No saved address selected? open the new-address form so fields are visible.
+    if (selectedAddrId !== "new" && !savedAddresses.some((a) => a.id === selectedAddrId)) {
+      setSelectedAddrId("new");
+    }
+    if (savedAddresses.length === 0) setSelectedAddrId("new");
+    if (prefillPincode && /^\d{6}$/.test(prefillPincode)) {
+      setSelectedAddrId("new");
+      setNewAddr((a) => ({ ...a, pincode: prefillPincode }));
+    }
+    addressRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => {
+      const card = addressRef.current;
+      if (!card) return;
+      const fields = card.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select");
+      for (const f of Array.from(fields)) {
+        if (f.id === "line2" || f.id === "label") continue; // optional / pre-filled
+        if (!f.value.trim()) { f.focus(); break; }
+      }
+    }, 450);
+  };
+
+  // Single entry point for the Pay / Place-order buttons: route the user to the
+  // address form when it's incomplete instead of leaving a dead disabled button.
+  const handlePayClick = () => {
+    if (!user) { router.push(`/auth?redirect=${encodeURIComponent("/cart")}`); return; }
+    if (!addrValid) { focusAddress(); return; }
+    handlePlace();
+  };
 
   // Fetch shipping rate whenever pincode or payment method changes
   useEffect(() => {
@@ -352,17 +405,27 @@ export default function CartPage() {
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-xs text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""} · ₹{grandTotal}</p>
-              {isFreeShipping
-                ? <p className="text-xs text-green-600 font-medium">Free shipping</p>
-                : resolvedShipping > 0
-                  ? <p className="text-xs text-muted-foreground">+₹{resolvedShipping} shipping</p>
-                  : <p className="text-xs text-muted-foreground">Add address for shipping</p>
+              {!addrValid
+                ? <p className="text-xs text-amber-600 font-medium">Fill address to pay</p>
+                : isFreeShipping
+                  ? <p className="text-xs text-green-600 font-medium">Free shipping</p>
+                  : resolvedShipping > 0
+                    ? <p className="text-xs text-muted-foreground">+₹{resolvedShipping} shipping</p>
+                    : <p className="text-xs text-muted-foreground">Add address for shipping</p>
               }
             </div>
-            {paymentMethod === "razorpay" ? (
+            {!addrValid ? (
+              <Button
+                onClick={() => handlePayClick()}
+                className="rounded-full h-10 px-5 font-semibold text-sm shadow-sm gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
+              >
+                <MapPin className="h-4 w-4" />
+                Add delivery address
+              </Button>
+            ) : paymentMethod === "razorpay" ? (
               <button
-                disabled={!addrValid || !user || placing}
-                onClick={handlePlace}
+                disabled={placing}
+                onClick={() => handlePayClick()}
                 className="rounded-full h-10 px-5 font-semibold text-sm shadow-sm flex items-center gap-2 transition-opacity disabled:opacity-50"
                 style={{ background: "linear-gradient(135deg, #3395FF 0%, #1a6fd4 100%)", color: "white", border: "none" }}
               >
@@ -377,8 +440,8 @@ export default function CartPage() {
             ) : (
               <Button
                 className="rounded-full bg-gradient-primary text-primary-foreground border-0 h-10 px-6 font-semibold text-sm shadow-sm"
-                disabled={!addrValid || !user || placing}
-                onClick={handlePlace}
+                disabled={placing}
+                onClick={() => handlePayClick()}
               >
                 {placing ? "Placing…" : `Place order · ₹${grandTotal}`}
               </Button>
@@ -519,7 +582,18 @@ export default function CartPage() {
                         type="text"
                         inputMode="numeric"
                         value={quickPincode}
-                        onChange={(e) => setQuickPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          setQuickPincode(v);
+                          // Once a full pincode is entered here, guide the user into
+                          // the address form (prefilling the pincode) so they actually
+                          // complete the address rather than stopping at the estimate.
+                          if (/^\d{6}$/.test(v) && !addrValid && !quickPincodeRedirected.current) {
+                            quickPincodeRedirected.current = true;
+                            focusAddress(v);
+                          }
+                          if (v.length < 6) quickPincodeRedirected.current = false;
+                        }}
                         placeholder="Enter pincode"
                         maxLength={6}
                         className="h-7 w-28 rounded-lg border border-input bg-background px-2 text-xs text-right focus:outline-none focus:ring-1 focus:ring-ring"
@@ -625,9 +699,15 @@ export default function CartPage() {
             </div>
 
             {/* Shipping address */}
-            <div className="rounded-3xl bg-card p-5 space-y-4">
+            <div ref={addressRef} className={`rounded-3xl bg-card p-5 space-y-4 transition-all scroll-mt-24 ${!addrValid ? "ring-2 ring-amber-400/60" : ""}`}>
               <h2 className="font-bold text-lg flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-primary" /> Shipping address
+                <MapPin className={`h-4 w-4 ${!addrValid ? "text-amber-500" : "text-primary"}`} /> Shipping address
+                {!addrValid && (
+                  <span className="ml-auto text-xs font-semibold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    Required
+                  </span>
+                )}
               </h2>
 
               {!user && (
@@ -763,7 +843,7 @@ export default function CartPage() {
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-primary" /> Payment method
               </h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${codEnabled ? "grid-cols-2" : "grid-cols-1"}`}>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod("razorpay")}
@@ -781,31 +861,55 @@ export default function CartPage() {
                     <p className="text-[10px] text-muted-foreground">UPI · Cards · Netbanking</p>
                   </div>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("cod")}
-                  className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
-                    paymentMethod === "cod"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  <Truck className={`h-5 w-5 ${paymentMethod === "cod" ? "text-primary" : "text-muted-foreground"}`} />
-                  <div>
-                    <p className="text-sm font-semibold">Cash on Delivery</p>
-                    <p className="text-[11px] text-muted-foreground">Pay when it arrives</p>
-                  </div>
-                </button>
+                {codEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("cod")}
+                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
+                      paymentMethod === "cod"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <Truck className={`h-5 w-5 ${paymentMethod === "cod" ? "text-primary" : "text-muted-foreground"}`} />
+                    <div>
+                      <p className="text-sm font-semibold">Cash on Delivery</p>
+                      <p className="text-[11px] text-muted-foreground">Pay when it arrives</p>
+                    </div>
+                  </button>
+                )}
               </div>
 
               {error && (
                 <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-2">{error}</p>
               )}
 
-              {paymentMethod === "razorpay" ? (
+              {!addrValid && (
                 <button
-                  disabled={!addrValid || !user || placing}
-                  onClick={handlePlace}
+                  type="button"
+                  onClick={() => focusAddress()}
+                  className="w-full text-left rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2.5 hover:bg-amber-100 transition-colors"
+                >
+                  <MapPin className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">Shipping address required</p>
+                    <p className="text-xs text-amber-700 mt-0.5">Tap here to fill in your delivery address and continue.</p>
+                  </div>
+                </button>
+              )}
+
+              {!addrValid ? (
+                <Button
+                  onClick={() => handlePayClick()}
+                  className="w-full rounded-2xl h-14 text-base font-semibold gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0 shadow-md"
+                >
+                  <MapPin className="h-5 w-5" />
+                  Add delivery address to continue
+                </Button>
+              ) : paymentMethod === "razorpay" ? (
+                <button
+                  disabled={placing}
+                  onClick={() => handlePayClick()}
                   className="w-full rounded-2xl overflow-hidden transition-opacity disabled:opacity-50 shadow-md"
                   style={{ background: "linear-gradient(135deg, #3395FF 0%, #1a6fd4 100%)", color: "white", border: "none" }}
                 >
@@ -827,8 +931,8 @@ export default function CartPage() {
               ) : (
                 <Button
                   className="w-full rounded-full bg-gradient-primary text-primary-foreground border-0 h-12 text-base font-semibold"
-                  disabled={!addrValid || !user || placing}
-                  onClick={handlePlace}
+                  disabled={placing}
+                  onClick={() => handlePayClick()}
                 >
                   {placing ? "Placing order…" : `Place order · ₹${grandTotal} (COD)`}
                 </Button>

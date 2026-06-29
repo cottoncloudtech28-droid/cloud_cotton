@@ -29,9 +29,9 @@ import {
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { apiFetch, uploadFile } from "@/lib/api";
+import { apiFetch, uploadFile, getCategories } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Product, ProductSize } from "@/lib/types";
+import type { Product, ProductSize, Category } from "@/lib/types";
 
 // ── AI image-editing presets ──────────────────────────────────────────────────
 const AI_BACKGROUNDS = [
@@ -178,6 +178,7 @@ function SizeRows({ sizes, onChange }: { sizes: ProductSize[]; onChange: (s: Pro
           <Input value={sz.label} onChange={(e) => update(i, "label", e.target.value)}
             placeholder="e.g. 500ml / S / A4" className="flex-1" />
           <Input type="number" min="0" value={sz.stock}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => update(i, "stock", parseInt(e.target.value) || 0)}
             placeholder="Stock" className="w-24" />
           <button type="button" onClick={() => removeRow(i)}
@@ -411,14 +412,62 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
   );
 }
 
+// ── Category picker ───────────────────────────────────────────────────────────
+function CategoryPicker({ value, onChange, categories }: {
+  value: string;
+  onChange: (slug: string) => void;
+  categories: Category[];
+}) {
+  if (categories.length === 0) {
+    return (
+      <Input value={value} onChange={(e) => onChange(e.target.value)}
+        placeholder="stationery / toys / quirky" required className="mt-1.5" />
+    );
+  }
+  return (
+    <div className="mt-1.5 grid grid-cols-3 gap-2">
+      {categories.map((cat) => {
+        const selected = value === cat.slug;
+        return (
+          <button
+            key={cat.slug}
+            type="button"
+            onClick={() => onChange(cat.slug)}
+            className={cn(
+              "flex flex-col items-center gap-1 p-2 rounded-xl border text-center transition-colors hover:bg-muted/60",
+              selected
+                ? "border-primary ring-2 ring-primary/30 bg-primary/5"
+                : "border-border"
+            )}
+          >
+            {cat.banner_url ? (
+              <img
+                src={cat.banner_url}
+                alt={cat.name}
+                className="h-12 w-full rounded-lg object-cover"
+              />
+            ) : (
+              <div className="h-12 w-full rounded-lg bg-muted flex items-center justify-center text-2xl">
+                {cat.emoji}
+              </div>
+            )}
+            <span className="text-[11px] font-medium leading-tight line-clamp-1">{cat.name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Product form inside the drawer ────────────────────────────────────────────
-function ProductForm({ form, setField, onSubmit, editingId, sku, onCancel }: {
+function ProductForm({ form, setField, onSubmit, editingId, sku, onCancel, categories }: {
   form: FormState;
   setField: <K extends keyof FormState>(key: K, val: FormState[K]) => void;
   onSubmit: (e: React.FormEvent) => Promise<void>;
   editingId: string | null;
   sku: string;
   onCancel: () => void;
+  categories: Category[];
 }) {
   return (
     <form onSubmit={onSubmit} className="space-y-6 pb-8">
@@ -452,23 +501,25 @@ function ProductForm({ form, setField, onSubmit, editingId, sku, onCancel }: {
         <div>
           <Label>Price (₹) *</Label>
           <Input type="number" step="0.01" min="0" value={form.price}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setField("price", parseFloat(e.target.value) || 0)} required className="mt-1.5" />
         </div>
         <div>
           <Label>Discount %</Label>
           <Input type="number" min="0" max="100" value={form.discount_percent}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setField("discount_percent", parseInt(e.target.value) || 0)} className="mt-1.5" />
         </div>
-        <div>
+        <div className="col-span-2">
           <Label>Category *</Label>
-          <Input value={form.category} onChange={(e) => setField("category", e.target.value)}
-            placeholder="stationery / toys / quirky" required className="mt-1.5" />
+          <CategoryPicker value={form.category} onChange={(v) => setField("category", v)} categories={categories} />
         </div>
         <div>
           <Label>Stock {form.sizes.length > 0 && <span className="text-muted-foreground font-normal">(auto)</span>}</Label>
           <Input type="number" min="0"
             value={form.sizes.length > 0 ? form.sizes.reduce((s, sz) => s + sz.stock, 0) : form.stock}
             disabled={form.sizes.length > 0}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setField("stock", parseInt(e.target.value) || 0)} className="mt-1.5" />
         </div>
       </div>
@@ -711,6 +762,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -730,7 +782,11 @@ export default function AdminPage() {
     finally { setItemsLoading(false); }
   };
 
-  useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
+  useEffect(() => {
+    if (!isAdmin) return;
+    load();
+    getCategories().then(setCategories).catch(() => {});
+  }, [isAdmin]);
 
   const reset = () => { setForm(emptyForm); setEditingId(null); setDrawerOpen(false); };
 
@@ -962,6 +1018,7 @@ export default function AdminPage() {
               editingId={editingId}
               sku={form.sku}
               onCancel={reset}
+              categories={categories}
             />
           </ScrollArea>
         </SheetContent>
