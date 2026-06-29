@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { toast } from "sonner";
 import {
   Receipt, Save, Download, ArrowLeft, Building2, FileText, Info,
@@ -83,6 +84,7 @@ export default function GstSettingsPage() {
     return (
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
+          <AdminSidebar />
           <div className="flex-1 p-6 space-y-4">
             <Skeleton className="h-10 w-64 rounded-xl" />
             <Skeleton className="h-64 rounded-3xl" />
@@ -95,6 +97,7 @@ export default function GstSettingsPage() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-muted/30">
+        <AdminSidebar />
         <div className="flex-1 flex flex-col">
           <header className="flex items-center gap-3 px-6 py-4 bg-card border-b border-border">
             <SidebarTrigger />
