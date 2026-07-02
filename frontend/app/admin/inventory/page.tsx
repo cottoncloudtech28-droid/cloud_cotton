@@ -94,7 +94,7 @@ function StatCard({
 }
 
 function LogRow({ log }: { log: StockLog }) {
-  const name = typeof log.product === "object" ? log.product.name : log.productName;
+  const name = log.product && typeof log.product === "object" ? log.product.name : log.productName;
   const isDeduct = log.change < 0;
   const reasonColors: Record<string, string> = {
     order: "bg-blue-50 text-blue-700 border-blue-200",

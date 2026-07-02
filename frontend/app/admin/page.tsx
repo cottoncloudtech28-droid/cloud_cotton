@@ -224,6 +224,21 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
     else if (aiIndex !== null && i < aiIndex) setAiIndex(aiIndex - 1);
   };
 
+  // Close only the AI edit panel on Escape, instead of letting it bubble up
+  // and close the whole product drawer (which would discard the edit/generation).
+  useEffect(() => {
+    if (aiIndex === null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        e.preventDefault();
+        setAiIndex(null);
+      }
+    };
+    document.addEventListener("keydown", handler, true);
+    return () => document.removeEventListener("keydown", handler, true);
+  }, [aiIndex]);
+
   const runAiEdit = async () => {
     if (aiIndex === null) return;
     if (!prompt.trim()) { toast.error("Pick a preset or write a prompt first"); return; }
