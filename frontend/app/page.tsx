@@ -24,6 +24,7 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [reviews, setReviews] = useState<typeof FALLBACK_REVIEWS>(FALLBACK_REVIEWS);
   const [reviewsLoading, setReviewsLoading] = useState(true);
 
@@ -35,7 +36,8 @@ export default function Home() {
 
     apiFetch("/api/categories")
       .then((data) => setCategories(Array.isArray(data) ? data : []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setCategoriesLoading(false));
 
     apiFetch("/api/reviews?limit=6")
       .then((data) => {
@@ -109,6 +111,15 @@ export default function Home() {
         <section className="bg-card border-y border-border py-4 md:py-5">
           <div className="container">
             <div className="flex gap-4 md:gap-5 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
+              {categoriesLoading ? (
+                Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[64px] md:w-[88px]">
+                    <Skeleton className="h-14 w-14 md:h-20 md:w-20 rounded-full" />
+                    <Skeleton className="h-2.5 w-10 rounded" />
+                  </div>
+                ))
+              ) : (
+                <>
               {categories.map((c) => (
                 <Link
                   key={c.slug}
@@ -138,6 +149,8 @@ export default function Home() {
                 </div>
                 <p className="text-[10px] md:text-xs font-semibold text-center text-primary">View all</p>
               </Link>
+                </>
+              )}
             </div>
           </div>
         </section>

@@ -11,7 +11,7 @@ export default function Footer() {
             <span className="bg-gradient-primary bg-clip-text text-transparent">Cotton Cloud Company</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Soft, comfortable cotton essentials made for everyday wear.
+            Cute kawaii stationery, plushies, and gifts to sprinkle a little joy into your everyday.
           </p>
         </div>
         <div>
