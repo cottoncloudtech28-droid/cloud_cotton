@@ -127,8 +127,8 @@ function CategoryRow({ cat, onSaved }: { cat: Category; onSaved: (c: Category) =
       <div className="space-y-2">
         <Label className="flex items-center gap-1.5">Banner image</Label>
         {draft.banner_url && (
-          <div className="relative w-full h-28 rounded-lg overflow-hidden border border-border">
-            <img src={draft.banner_url} alt="banner" className="w-full h-full object-cover" />
+          <div className="relative w-full h-28 rounded-lg overflow-hidden border border-border bg-muted">
+            <img src={draft.banner_url} alt="banner" className="w-full h-full object-contain" />
             <button type="button" onClick={() => setDraft((d) => ({ ...d, banner_url: "" }))}
               className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center">
               <X className="h-3.5 w-3.5" />
