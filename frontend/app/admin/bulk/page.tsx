@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 type Row = {
   id: string; file: File; originalDataUrl: string; currentDataUrl: string;
-  editing: boolean; describing: boolean; name: string; description: string;
+  editing: boolean; describing: boolean; analyzing: boolean; name: string; description: string;
   price: string; category: string; stock: string; colorsText: string;
   bgPrompt: string; anglePrompt: string; provider: "openai" | "gemini";
 };
@@ -74,7 +74,7 @@ export default function BulkUploadPage() {
       if (!f.type.startsWith("image/")) continue;
       const dataUrl = await fileToDataUrl(f);
       const baseName = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, name: baseName, description: "", price: "", category: "stationery", stock: "10", colorsText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
+      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", price: "", category: "stationery", stock: "10", colorsText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
     }
     setRows((r) => [...r, ...next]);
   };
@@ -116,6 +116,41 @@ export default function BulkUploadPage() {
       update(row.id, { describing: false });
       toast.error(e.message || "Description failed");
     }
+  };
+
+  const autoFill = async (row: Row) => {
+    update(row.id, { analyzing: true });
+    try {
+      const data = await apiFetch("/api/ai/analyze", {
+        method: "POST",
+        body: JSON.stringify({
+          image_base64: row.originalDataUrl,
+          categories: CATEGORIES,
+          backgrounds: PRESET_BACKGROUNDS.map((p) => p.label),
+          angles: PRESET_ANGLES.map((p) => p.label),
+        }),
+      });
+      const bg = PRESET_BACKGROUNDS.find((p) => p.label === data.background)?.value;
+      const angle = PRESET_ANGLES.find((p) => p.label === data.angle)?.value;
+      update(row.id, {
+        name: data.name || row.name,
+        category: CATEGORIES.includes(data.category) ? data.category : row.category,
+        colorsText: Array.isArray(data.colors) ? data.colors.join(", ") : row.colorsText,
+        description: data.description || row.description,
+        price: data.price ? String(data.price) : row.price,
+        bgPrompt: bg || row.bgPrompt,
+        anglePrompt: angle || row.anglePrompt,
+        analyzing: false,
+      });
+      toast.success("Auto-filled from image ✨");
+    } catch (e: any) {
+      update(row.id, { analyzing: false });
+      toast.error(e.message || "Auto-fill failed");
+    }
+  };
+
+  const autoFillAll = async () => {
+    for (const r of rows) await autoFill(r);
   };
 
   const saveAll = async () => {
@@ -178,6 +213,15 @@ export default function BulkUploadPage() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="rounded-full" onClick={() => router.push("/admin")}>Back to Admin</Button>
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  disabled={rows.length === 0 || rows.some((r) => r.analyzing)}
+                  onClick={autoFillAll}
+                >
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  {rows.some((r) => r.analyzing) ? "Auto-filling…" : "Auto-fill All with AI"}
+                </Button>
                 <Button disabled={saving || rows.length === 0} onClick={saveAll} className="bg-gradient-primary text-primary-foreground border-0 rounded-full">
                   {saving ? "Saving…" : `Create All (${rows.length})`}
                 </Button>
@@ -203,12 +247,15 @@ export default function BulkUploadPage() {
                     <div className="space-y-2">
                       <div className="aspect-square rounded-2xl overflow-hidden bg-gradient-hero relative">
                         <img src={r.currentDataUrl} alt={r.name} className="h-full w-full object-cover" />
-                        {r.editing && (
+                        {(r.editing || r.analyzing) && (
                           <div className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-sm">
-                            <div className="text-sm font-medium flex items-center gap-2"><Sparkles className="h-4 w-4 animate-pulse" /> Editing…</div>
+                            <div className="text-sm font-medium flex items-center gap-2"><Sparkles className="h-4 w-4 animate-pulse" /> {r.analyzing ? "Analyzing…" : "Editing…"}</div>
                           </div>
                         )}
                       </div>
+                      <Button size="sm" className="rounded-full w-full bg-gradient-primary text-primary-foreground border-0" onClick={() => autoFill(r)} disabled={r.analyzing}>
+                        <Sparkles className="h-3 w-3 mr-1" />{r.analyzing ? "Auto-filling…" : "Auto-fill with AI"}
+                      </Button>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="rounded-full flex-1" onClick={() => resetImage(r)} disabled={r.editing}>
                           <RotateCcw className="h-3 w-3 mr-1" /> Reset

@@ -32,6 +32,64 @@ router.post("/describe", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/ai/analyze — vision auto-fill: look at the product photo and
+// suggest name, category, colors, description, price, background & angle preset
+router.post("/analyze", verifyToken, requireAdmin, async (req, res) => {
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(501).json({ message: "Set OPENAI_API_KEY in backend/.env to enable AI auto-fill" });
+  }
+  const { image_base64, categories = [], backgrounds = [], angles = [] } = req.body;
+  if (!image_base64) return res.status(400).json({ message: "image_base64 is required" });
+
+  const prompt = `You are cataloging a product photo for "Cotton Cloud Company", a kawaii/pastel-aesthetic online shop selling stationery, bottles, tumblers, food jars, toys and quirky accessories.
+
+Look at the product image and return a single JSON object with these exact fields:
+- "name": short catchy product title (max 8 words)
+- "category": the single best match from this exact list: ${JSON.stringify(categories)}
+- "colors": array of 2-4 lowercase color names visible in the product (e.g. "pink", "lilac", "mint")
+- "description": a cute, playful 1-2 sentence product description under 100 words, aesthetic and appealing to young women, matching the Cotton Cloud Company kawaii vibe
+- "price": an integer, a reasonable INR retail price guess for this kind of item (typically between 99 and 1499)
+- "background": the single best match from this exact list: ${JSON.stringify(backgrounds)}
+- "angle": the single best match from this exact list: ${JSON.stringify(angles)}
+
+Return ONLY the JSON object, no markdown, no extra text.`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: image_base64 } },
+            ],
+          },
+        ],
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || "OpenAI analyze failed");
+    const raw = data.choices?.[0]?.message?.content || "{}";
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error("Could not parse AI response");
+    }
+    res.json(parsed);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ── Provider implementations ──────────────────────────────────────────────────
 
 // OpenAI gpt-image-1 — instruction-based edit via the Images Edits endpoint

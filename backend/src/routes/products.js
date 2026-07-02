@@ -188,6 +188,20 @@ router.put("/:id", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// DELETE /api/products/bulk  — admin: delete multiple products at once
+// body: { ids: string[] }
+router.delete("/bulk", verifyToken, requireAdmin, async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0)
+    return res.status(400).json({ message: "ids array is required" });
+  try {
+    const result = await Product.deleteMany({ _id: { $in: ids } });
+    res.json({ deleted: result.deletedCount });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // DELETE /api/products/:id
 router.delete("/:id", verifyToken, requireAdmin, async (req, res) => {
   try {
@@ -271,6 +285,33 @@ router.patch("/bulk-stock", verifyToken, requireAdmin, async (req, res) => {
   }
 
   res.json({ updated: results.length, products: results });
+});
+
+const bulkEditSchema = z.object({
+  category:         z.string().trim().min(1).max(40).optional(),
+  is_active:        z.boolean().optional(),
+  price:            z.number().min(0).max(1000000).optional(),
+  discount_percent: z.number().int().min(0).max(100).optional(),
+  stock:            z.number().int().min(0).optional(),
+});
+
+// PATCH /api/products/bulk  — admin: apply the same field changes to multiple products at once
+// body: { ids: string[], updates: { category?, is_active?, price?, discount_percent?, stock? } }
+router.patch("/bulk", verifyToken, requireAdmin, async (req, res) => {
+  const { ids, updates } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0)
+    return res.status(400).json({ message: "ids array is required" });
+  const parsed = bulkEditSchema.safeParse(updates || {});
+  if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+  if (Object.keys(parsed.data).length === 0)
+    return res.status(400).json({ message: "No fields to update" });
+  try {
+    const result = await Product.updateMany({ _id: { $in: ids } }, { $set: parsed.data });
+    const products = await Product.find({ _id: { $in: ids } });
+    res.json({ updated: result.modifiedCount, products: products.map(mapDoc) });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // PATCH /api/products/:id/stock  — admin: adjust single product stock

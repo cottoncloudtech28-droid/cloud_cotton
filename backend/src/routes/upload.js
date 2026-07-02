@@ -1,17 +1,14 @@
 const router = require("express").Router();
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("../lib/cloudinary");
 const { verifyToken, requireAdmin } = require("../middleware/auth");
 
-const uploadDir = path.join(__dirname, "../../uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "cotton-cloud-shop",
+    allowed_formats: ["jpg", "jpeg", "png", "webp", "gif"],
   },
 });
 
@@ -33,8 +30,7 @@ router.post("/", verifyToken, requireAdmin, (req, res) => {
       return res.status(400).json({ message: err.message || "Upload failed" });
     }
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-    const url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-    res.json({ url });
+    res.json({ url: req.file.path });
   });
 });
 

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,7 +30,7 @@ import {
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { apiFetch, uploadFile, getCategories } from "@/lib/api";
+import { apiFetch, uploadFile, getCategories, bulkDeleteProducts, bulkEditProducts } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Product, ProductSize, Category } from "@/lib/types";
 
@@ -767,6 +768,9 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkEditForm, setBulkEditForm] = useState({ category: "", price: "", stock: "", discount_percent: "", visibility: "" });
 
   useEffect(() => {
     if (loading) return;
@@ -858,6 +862,47 @@ export default function AdminPage() {
     } catch (e: any) { toast.error(e.message); }
   };
 
+  const toggleSelect = (id: string) =>
+    setSelectedIds((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const allSelected = items.length > 0 && items.every((p) => selectedIds.has(p.id));
+  const toggleSelectAll = () => setSelectedIds(allSelected ? new Set() : new Set(items.map((p) => p.id)));
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} product${selectedIds.size !== 1 ? "s" : ""}? This cannot be undone.`)) return;
+    try {
+      const { deleted } = await bulkDeleteProducts(Array.from(selectedIds));
+      toast.success(`Deleted ${deleted} product${deleted !== 1 ? "s" : ""}`);
+      if (expandedId && selectedIds.has(expandedId)) setExpandedId(null);
+      clearSelection();
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const applyBulkEdit = async () => {
+    const updates: { category?: string; price?: number; stock?: number; discount_percent?: number; is_active?: boolean } = {};
+    if (bulkEditForm.category) updates.category = bulkEditForm.category;
+    if (bulkEditForm.price) updates.price = Number(bulkEditForm.price);
+    if (bulkEditForm.stock) updates.stock = Number(bulkEditForm.stock);
+    if (bulkEditForm.discount_percent) updates.discount_percent = Number(bulkEditForm.discount_percent);
+    if (bulkEditForm.visibility) updates.is_active = bulkEditForm.visibility === "show";
+    if (Object.keys(updates).length === 0) return toast.error("Set at least one field to update");
+    try {
+      const { updated } = await bulkEditProducts(Array.from(selectedIds), updates);
+      toast.success(`Updated ${updated} product${updated !== 1 ? "s" : ""}`);
+      setBulkEditOpen(false);
+      setBulkEditForm({ category: "", price: "", stock: "", discount_percent: "", visibility: "" });
+      clearSelection();
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
   if (loading) return <AdminPageSkeleton />;
 
   if (!isAdmin) {
@@ -907,9 +952,28 @@ export default function AdminPage() {
 
             {/* Product list */}
             <div className="space-y-2">
-              <h2 className="text-xl font-semibold">
-                All products ({itemsLoading ? "…" : items.length})
-              </h2>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  {items.length > 0 && (
+                    <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} aria-label="Select all products" />
+                  )}
+                  <h2 className="text-xl font-semibold">
+                    All products ({itemsLoading ? "…" : items.length})
+                  </h2>
+                </div>
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+                    <Button variant="outline" size="sm" onClick={() => setBulkEditOpen(true)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit selected
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-destructive" onClick={bulkDelete}>
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete selected
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
+                  </div>
+                )}
+              </div>
               {itemsLoading ? (
                 <div className="space-y-2">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -933,6 +997,9 @@ export default function AdminPage() {
                       className="p-4 flex items-center gap-4 cursor-pointer hover:bg-muted/40 transition-colors select-none"
                       onClick={() => setExpandedId(isExpanded ? null : p.id)}
                     >
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                        <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} aria-label={`Select ${p.name}`} />
+                      </div>
                       <div className="h-14 w-14 rounded-xl bg-muted overflow-hidden shrink-0 border border-border">
                         {imgSrc
                           ? <img src={imgSrc} alt={p.name} className="h-full w-full object-cover" />
@@ -1020,6 +1087,66 @@ export default function AdminPage() {
               onCancel={reset}
               categories={categories}
             />
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Bulk edit selected products drawer ──────────────────────── */}
+      <Sheet open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
+            <SheetTitle className="text-xl">Edit {selectedIds.size} product{selectedIds.size !== 1 ? "s" : ""}</SheetTitle>
+            <SheetDescription>Only fields you set here will be changed. Leave a field blank to keep each product's current value.</SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="flex-1 px-6 pt-6">
+            <div className="space-y-4 pb-6">
+              <div>
+                <Label>Category</Label>
+                <select
+                  value={bulkEditForm.category}
+                  onChange={(e) => setBulkEditForm((f) => ({ ...f, category: e.target.value }))}
+                  className="w-full h-10 mt-1.5 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">— No change —</option>
+                  {categories.map((cat) => (
+                    <option key={cat.slug} value={cat.slug}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Visibility</Label>
+                <select
+                  value={bulkEditForm.visibility}
+                  onChange={(e) => setBulkEditForm((f) => ({ ...f, visibility: e.target.value }))}
+                  className="w-full h-10 mt-1.5 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">— No change —</option>
+                  <option value="show">Show</option>
+                  <option value="hide">Hide</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Price (₹)</Label>
+                  <Input type="number" placeholder="No change" value={bulkEditForm.price}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, price: e.target.value }))} className="mt-1.5" />
+                </div>
+                <div>
+                  <Label>Stock</Label>
+                  <Input type="number" placeholder="No change" value={bulkEditForm.stock}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, stock: e.target.value }))} className="mt-1.5" />
+                </div>
+              </div>
+              <div>
+                <Label>Discount (%)</Label>
+                <Input type="number" placeholder="No change" value={bulkEditForm.discount_percent}
+                  onChange={(e) => setBulkEditForm((f) => ({ ...f, discount_percent: e.target.value }))} className="mt-1.5" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setBulkEditOpen(false)}>Cancel</Button>
+                <Button className="flex-1" onClick={applyBulkEdit}>Apply to {selectedIds.size}</Button>
+              </div>
+            </div>
           </ScrollArea>
         </SheetContent>
       </Sheet>

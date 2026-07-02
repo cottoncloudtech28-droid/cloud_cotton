@@ -225,6 +225,17 @@ export async function bulkUpdateStock(
   });
 }
 
+export async function bulkDeleteProducts(ids: string[]): Promise<{ deleted: number }> {
+  return apiFetch("/api/products/bulk", { method: "DELETE", body: JSON.stringify({ ids }) });
+}
+
+export async function bulkEditProducts(
+  ids: string[],
+  updates: { category?: string; is_active?: boolean; price?: number; discount_percent?: number; stock?: number }
+): Promise<{ updated: number; products: Product[] }> {
+  return apiFetch("/api/products/bulk", { method: "PATCH", body: JSON.stringify({ ids, updates }) });
+}
+
 export async function getStockLogs(params?: {
   productId?: string;
   reason?: string;
