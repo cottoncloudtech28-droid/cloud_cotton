@@ -154,12 +154,19 @@ async function editWithGemini(buffer, mime, prompt) {
 const PRESERVE_ALL_ITEMS_CLAUSE =
   "If the original photo shows more than one unit or color variant of the product (e.g. several bottles/items lined up together), keep every single one of them in the edited image, in the same arrangement — do not drop, merge, hide, or reduce the number of items. Only apply the change described below.";
 
+// Source photos are sometimes marketing banners with a headline, tagline, feature
+// callouts, logos, etc. burned into the image. None of that belongs on a clean
+// e-commerce product photo, so every edit strips it unless the instruction below
+// explicitly asks for text.
+const NO_TEXT_CLAUSE =
+  "Do not include any text, words, letters, taglines, headlines, feature callouts, logos, watermarks, or graphic overlays anywhere in the image — only the product itself and the scene. If the original photo has text or graphic overlays on it, remove them.";
+
 // POST /api/ai/image-edit  — instruction-based product photo editing
 // Accepts { image_base64 (data URL) | image_url, prompt, provider: "openai" | "gemini" }
 // Returns { image_base64 (data URL) }
 router.post("/image-edit", verifyToken, requireAdmin, async (req, res) => {
   const { image_base64, image_url, prompt: rawPrompt, provider = "openai" } = req.body;
-  const prompt = rawPrompt ? `${PRESERVE_ALL_ITEMS_CLAUSE}\n\n${rawPrompt}` : rawPrompt;
+  const prompt = rawPrompt ? `${PRESERVE_ALL_ITEMS_CLAUSE}\n${NO_TEXT_CLAUSE}\n\n${rawPrompt}` : rawPrompt;
   if (!prompt) return res.status(400).json({ message: "prompt is required" });
   if (!image_base64 && !image_url) {
     return res.status(400).json({ message: "image_base64 or image_url is required" });
