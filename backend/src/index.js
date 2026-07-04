@@ -24,7 +24,11 @@ const contactLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const defaultOrigins = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173", "https://cloud-cotton.vercel.app"];
+const defaultOrigins = [
+  "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173",
+  "https://cloud-cotton.vercel.app",
+  "https://cottoncloudcompany.com", "https://www.cottoncloudcompany.com",
+];
 const allowedOrigins = process.env.FRONTEND_URL
   ? [...defaultOrigins, ...process.env.FRONTEND_URL.split(",").map((o) => o.trim())]
   : defaultOrigins;
