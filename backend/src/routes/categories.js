@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const Category = require("../models/Category");
+const Product = require("../models/Product");
 const { verifyToken, requireAdmin } = require("../middleware/auth");
 
 const DEFAULTS = [
@@ -72,6 +73,23 @@ router.post("/", verifyToken, requireAdmin, async (req, res) => {
   try {
     const cat = await Category.create({ slug, name, description, banner_url, emoji, sort_order });
     res.status(201).json(mapCat(cat));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// DELETE /api/categories/:slug  — admin: delete a category
+router.delete("/:slug", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const productCount = await Product.countDocuments({ category: req.params.slug });
+    if (productCount > 0) {
+      return res.status(400).json({
+        message: `Cannot delete: ${productCount} product(s) still use this category. Reassign or remove them first.`,
+      });
+    }
+    const cat = await Category.findOneAndDelete({ slug: req.params.slug });
+    if (!cat) return res.status(404).json({ message: "Category not found" });
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

@@ -96,6 +96,10 @@ export async function updateCategory(slug: string, data: Partial<Omit<Category, 
   return apiFetch(`/api/categories/${slug}`, { method: "PUT", body: JSON.stringify(data) });
 }
 
+export async function deleteCategory(slug: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/categories/${slug}`, { method: "DELETE" });
+}
+
 // ── Orders ───────────────────────────────────────────────────────────────────
 export async function getOrders(): Promise<Order[]> {
   return apiFetch("/api/orders");

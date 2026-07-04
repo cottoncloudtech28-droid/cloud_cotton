@@ -11,19 +11,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Pencil, Check, X, Upload, Plus } from "lucide-react";
+import { Pencil, Check, X, Upload, Plus, Trash2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { getCategories, updateCategory, uploadFile, apiFetch } from "@/lib/api";
+import { getCategories, updateCategory, deleteCategory, uploadFile, apiFetch } from "@/lib/api";
 import type { Category } from "@/lib/types";
 
 // ── Inline edit row ───────────────────────────────────────────────────────────
-function CategoryRow({ cat, onSaved }: { cat: Category; onSaved: (c: Category) => void }) {
+function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: Category) => void; onDeleted: (slug: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [draft, setDraft] = useState({
     name: cat.name, description: cat.description,
     emoji: cat.emoji, banner_url: cat.banner_url ?? "", sort_order: cat.sort_order,
@@ -48,6 +53,19 @@ function CategoryRow({ cat, onSaved }: { cat: Category; onSaved: (c: Category) =
       toast.error(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    setDeleting(true);
+    try {
+      await deleteCategory(cat.slug);
+      onDeleted(cat.slug);
+      toast.success(`"${cat.name}" deleted`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -86,6 +104,28 @@ function CategoryRow({ cat, onSaved }: { cat: Category; onSaved: (c: Category) =
         <Button variant="ghost" size="icon" onClick={() => setEditing(true)}>
           <Pencil className="h-4 w-4" />
         </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon" disabled={deleting}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete "{cat.name}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes the category. Categories that still have products assigned to
+                them can't be deleted — reassign or remove those products first.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={remove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Card>
     );
   }
@@ -253,6 +293,9 @@ export default function AdminCategoriesPage() {
   const handleCreated = (created: Category) =>
     setCats((prev) => [...prev, created].sort((a, b) => a.sort_order - b.sort_order));
 
+  const handleDeleted = (slug: string) =>
+    setCats((prev) => prev.filter((c) => c.slug !== slug));
+
   if (loading) return <AdminPageSkeleton />;
 
   if (!isAdmin) {
@@ -293,7 +336,9 @@ export default function AdminCategoriesPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {cats.map((cat) => <CategoryRow key={cat.slug} cat={cat} onSaved={handleSaved} />)}
+                {cats.map((cat) => (
+                  <CategoryRow key={cat.slug} cat={cat} onSaved={handleSaved} onDeleted={handleDeleted} />
+                ))}
                 <NewCategoryForm onCreated={handleCreated} />
               </div>
             )}
