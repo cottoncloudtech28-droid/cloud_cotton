@@ -26,10 +26,11 @@ type Row = {
 };
 
 const PRESET_BACKGROUNDS = [
-  { label: "Pink aesthetic", value: "Replace background with a soft dreamy pastel pink aesthetic backdrop with subtle bokeh, keep the product centered and lighting natural" },
-  { label: "Marble counter", value: "Place the product on a clean white marble counter with soft daylight from a window, minimal lifestyle scene" },
-  { label: "Studio white", value: "Replace background with a clean seamless studio white background, soft even lighting, e-commerce style" },
-  { label: "Pastel gradient", value: "Replace background with a smooth pastel lilac-to-peach gradient, soft shadow under product" },
+  { label: "Cozy bookshelf nook", value: "Place the product in front of a warm wooden bookshelf filled with neatly stacked books in muted pastel spines, a small terracotta pot with a succulent and a vintage desk globe softly blurred to the sides, warm daylight falling from the left, the product sits on a light wood surface in the foreground in sharp focus and perfectly centered, cozy reading-nook lifestyle aesthetic, soft natural shadow beneath the product, background gently out of focus so the product stays the clear hero" },
+  { label: "Kids' playroom", value: "Place the product on a soft pastel-toned play table inside a cozy kids' playroom, blurred plush toys (a bunny and teddy bears) and wooden alphabet blocks softly out of focus behind it, sheer white curtains and a blush-pink armchair further back, warm natural daylight, dreamy soft-focus lifestyle scene, the product itself stays sharp, centered and clearly the focal point" },
+  { label: "Teen bedroom fairy lights", value: "Place the product on a white marble side table in a cozy bedroom scene, a wall behind draped with warm blurred fairy lights and softly out-of-focus framed photo prints, gentle golden bokeh glow, evening ambient lighting, dreamy kawaii teen-bedroom aesthetic, the product stays sharp, centered and the clear focal point against the softly blurred background" },
+  { label: "Café counter with greenery", value: "Place the product on a warm marble café counter, softly blurred hanging potted plants and a blurred café interior with warm pendant lighting and out-of-focus patrons in the background, natural daylight spilling in from a nearby window, lifestyle editorial coffee-shop aesthetic, the product stays in sharp focus and centered in the foreground" },
+  { label: "School entryway bench", value: "Place the product on a light wood entryway bench beside a sunlit window, softly blurred backpacks in muted colors lined up nearby and neatly folded clothing beside them, a leafy courtyard visible softly out of focus through the window, warm natural daylight, tidy back-to-school lifestyle aesthetic, the product stays sharp, centered and well-lit" },
 ];
 
 const PRESET_ANGLES = [

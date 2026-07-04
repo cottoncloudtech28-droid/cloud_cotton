@@ -37,28 +37,24 @@ import type { Product, ProductSize, ProductColor, Category } from "@/lib/types";
 // ── AI image-editing presets ──────────────────────────────────────────────────
 const AI_BACKGROUNDS = [
   {
-    label: "Fairy lights room",
-    value: "Replace the background with a cozy aesthetic room scene — soft blurred fairy lights strung across a pastel-toned wall, warm golden bokeh glow, the product stays centered and well-lit, dreamy lifestyle feel matching a kawaii e-commerce shop",
+    label: "Cozy bookshelf nook",
+    value: "Place the product in front of a warm wooden bookshelf filled with neatly stacked books in muted pastel spines, a small terracotta pot with a succulent and a vintage desk globe softly blurred to the sides, warm daylight falling from the left, the product sits on a light wood surface in the foreground in sharp focus and perfectly centered, cozy reading-nook lifestyle aesthetic, soft natural shadow beneath the product, background gently out of focus so the product stays the clear hero",
   },
   {
-    label: "Marble counter",
-    value: "Place the product on a pristine white marble countertop, soft natural daylight streaming from a side window, minimal lifestyle scene, clean shadows, aesthetic and premium feel",
+    label: "Kids' playroom",
+    value: "Place the product on a soft pastel-toned play table inside a cozy kids' playroom, blurred plush toys (a bunny and teddy bears) and wooden alphabet blocks softly out of focus behind it, sheer white curtains and a blush-pink armchair further back, warm natural daylight, dreamy soft-focus lifestyle scene, the product itself stays sharp, centered and clearly the focal point",
   },
   {
-    label: "Pastel room shelf",
-    value: "Place the product on a light wooden shelf in a soft pastel-painted room, subtle décor elements (small plants, fairy lights) blurred in background, warm ambient lighting, cottagecore aesthetic",
+    label: "Teen bedroom fairy lights",
+    value: "Place the product on a white marble side table in a cozy bedroom scene, a wall behind draped with warm blurred fairy lights and softly out-of-focus framed photo prints, gentle golden bokeh glow, evening ambient lighting, dreamy kawaii teen-bedroom aesthetic, the product stays sharp, centered and the clear focal point against the softly blurred background",
   },
   {
-    label: "Studio white",
-    value: "Replace background with a pure seamless studio white backdrop, soft even lighting from both sides, clean drop shadow beneath product, professional e-commerce style",
+    label: "Café counter with greenery",
+    value: "Place the product on a warm marble café counter, softly blurred hanging potted plants and a blurred café interior with warm pendant lighting and out-of-focus patrons in the background, natural daylight spilling in from a nearby window, lifestyle editorial coffee-shop aesthetic, the product stays in sharp focus and centered in the foreground",
   },
   {
-    label: "Cozy café",
-    value: "Place the product on a wooden café table, warm indoor ambient lighting, blurred greenery and pendant lights in the background, lifestyle editorial feel",
-  },
-  {
-    label: "Pastel gradient",
-    value: "Replace background with a smooth pastel lilac-to-peach gradient, soft natural shadow directly beneath the product, clean minimal look",
+    label: "School entryway bench",
+    value: "Place the product on a light wood entryway bench beside a sunlit window, softly blurred backpacks in muted colors lined up nearby and neatly folded clothing beside them, a leafy courtyard visible softly out of focus through the window, warm natural daylight, tidy back-to-school lifestyle aesthetic, the product stays sharp, centered and well-lit",
   },
 ];
 const AI_ANGLES = [
