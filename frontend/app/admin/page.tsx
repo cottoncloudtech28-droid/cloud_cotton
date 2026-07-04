@@ -106,6 +106,7 @@ const schema = z.object({
   tags: z.array(z.string()).optional(),
   images: z.array(z.string()).optional(),
   sizes: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0) })).optional(),
+  sku: z.string().trim().max(40).optional(),
 });
 
 const emptyForm = {
@@ -122,6 +123,14 @@ const emptyForm = {
 };
 
 type FormState = typeof emptyForm;
+
+// Client-side SKU suggestion — mirrors the backend's own auto-gen format (KCS-{CATEGORY}-{RANDOM})
+// so what the admin sees while adding a product matches what actually gets saved.
+function generateSku(category: string): string {
+  const prefix = (category || "GEN").replace(/[^a-zA-Z]/g, "").slice(0, 4).toUpperCase() || "GEN";
+  const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `KCS-${prefix}-${rand}`;
+}
 
 // ── Chip input helper ─────────────────────────────────────────────────────────
 function ChipInput({
@@ -507,20 +516,41 @@ function CategoryPicker({ value, onChange, categories }: {
 }
 
 // ── Product form inside the drawer ────────────────────────────────────────────
-function ProductForm({ form, setField, onSubmit, editingId, sku, onCancel, categories }: {
+function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories }: {
   form: FormState;
   setField: <K extends keyof FormState>(key: K, val: FormState[K]) => void;
   onSubmit: (e: React.FormEvent) => Promise<void>;
   editingId: string | null;
-  sku: string;
   onCancel: () => void;
   categories: Category[];
 }) {
+  // Keep the suggested SKU aligned with the chosen category while adding a new product —
+  // but only while it still looks auto-generated, so a hand-typed SKU is never clobbered.
+  useEffect(() => {
+    if (editingId) return;
+    if (!form.sku || form.sku.startsWith("KCS-")) {
+      setField("sku", generateSku(form.category));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.category, editingId]);
+
   return (
     <form onSubmit={onSubmit} className="space-y-6 pb-8">
-      {editingId && sku && (
-        <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded w-fit">SKU: {sku}</p>
-      )}
+      <div>
+        <Label>SKU / product code</Label>
+        <div className="flex gap-2 mt-1.5">
+          <Input value={form.sku} onChange={(e) => setField("sku", e.target.value)}
+            placeholder="KCS-CAT-XXXXX" className="font-mono" maxLength={40} />
+          <Button type="button" variant="outline" size="icon"
+            title="Generate a new SKU"
+            onClick={() => setField("sku", generateSku(form.category))}>
+            <Wand2 className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {editingId ? "Auto-filled — edit if you use your own SKU scheme." : "Auto-filled from the category. Edit freely or regenerate."}
+        </p>
+      </div>
       <div className="space-y-4">
         <div>
           <Label>Product name *</Label>
@@ -872,6 +902,7 @@ export default function AdminPage() {
       ...parsed.data,
       images: form.images,
       image_url: form.images[0] ?? null,
+      sku: form.sku?.trim() || undefined,
       hsn_code: (form as any).hsn_code || null,
       gst_rate: Number((form as any).gst_rate) || 12,
     };
@@ -1004,7 +1035,7 @@ export default function AdminPage() {
                 <Button variant="outline" size="lg" onClick={() => router.push("/admin/bulk")}>
                   <Upload className="h-4 w-4 mr-2" /> Bulk Upload
                 </Button>
-                <Button size="lg" onClick={() => { setForm(emptyForm); setEditingId(null); setDrawerOpen(true); }}>
+                <Button size="lg" onClick={() => { setForm({ ...emptyForm, sku: generateSku(emptyForm.category) }); setEditingId(null); setDrawerOpen(true); }}>
                   <Plus className="h-4 w-4 mr-2" /> Add product
                 </Button>
               </div>
@@ -1043,7 +1074,7 @@ export default function AdminPage() {
               ) : items.length === 0 ? (
                 <Card className="p-12 text-center">
                   <p className="text-muted-foreground mb-4">No products yet.</p>
-                  <Button onClick={() => { setForm(emptyForm); setEditingId(null); setDrawerOpen(true); }}>
+                  <Button onClick={() => { setForm({ ...emptyForm, sku: generateSku(emptyForm.category) }); setEditingId(null); setDrawerOpen(true); }}>
                     <Plus className="h-4 w-4 mr-2" /> Add your first product
                   </Button>
                 </Card>
@@ -1143,7 +1174,6 @@ export default function AdminPage() {
               setField={setField}
               onSubmit={save}
               editingId={editingId}
-              sku={form.sku}
               onCancel={reset}
               categories={categories}
             />

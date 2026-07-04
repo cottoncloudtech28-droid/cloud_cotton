@@ -28,6 +28,8 @@ const schema = z.object({
   tags:              z.array(z.string().trim().max(30)).default([]),
   sizes:             z.array(sizeZ).default([]),
   reorder_point:     z.number().int().min(0).default(5).optional(),
+  sku:               z.string().trim().max(40).optional()
+                       .transform((v) => (v ? v.toUpperCase() : undefined)),
 });
 
 const mapDoc = (doc) => {
@@ -176,10 +178,14 @@ router.get("/all", verifyToken, requireAdmin, async (req, res) => {
 router.post("/", verifyToken, requireAdmin, async (req, res) => {
   const parsed = schema.safeParse(parseBody(req.body));
   if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+  if (parsed.data.sku === undefined) delete parsed.data.sku; // let the model auto-generate one
   try {
     const p = await Product.create(parsed.data);
     res.status(201).json(mapDoc(p));
   } catch (e) {
+    if (e.code === 11000 && e.keyPattern?.sku) {
+      return res.status(400).json({ message: "That SKU is already in use — pick another." });
+    }
     res.status(500).json({ message: e.message });
   }
 });
@@ -188,11 +194,15 @@ router.post("/", verifyToken, requireAdmin, async (req, res) => {
 router.put("/:id", verifyToken, requireAdmin, async (req, res) => {
   const parsed = schema.safeParse(parseBody(req.body));
   if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+  if (parsed.data.sku === undefined) delete parsed.data.sku; // don't clobber the existing SKU when left blank
   try {
-    const p = await Product.findByIdAndUpdate(req.params.id, parsed.data, { new: true });
+    const p = await Product.findByIdAndUpdate(req.params.id, parsed.data, { new: true, runValidators: true });
     if (!p) return res.status(404).json({ message: "Product not found" });
     res.json(mapDoc(p));
   } catch (e) {
+    if (e.code === 11000 && e.keyPattern?.sku) {
+      return res.status(400).json({ message: "That SKU is already in use — pick another." });
+    }
     res.status(500).json({ message: e.message });
   }
 });
