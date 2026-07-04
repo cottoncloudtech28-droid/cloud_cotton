@@ -279,7 +279,7 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
     return () => document.removeEventListener("keydown", handler, true);
   }, [aiIndex]);
 
-  const runAiEdit = async () => {
+  const runAiEdit = async (mode: "replace" | "add") => {
     if (aiIndex === null) return;
     if (!prompt.trim()) { toast.error("Pick a preset or write a prompt first"); return; }
     setProcessing(true);
@@ -291,8 +291,13 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
       if (!data?.image_base64) throw new Error("No image returned");
       const blob = dataUrlToBlob(data.image_base64);
       const { url } = await uploadFile(blob, `ai-edit-${Date.now()}.png`);
-      onChange(images.map((u, idx) => (idx === aiIndex ? url : u)));
-      toast.success("Image updated ✨");
+      if (mode === "add") {
+        onChange([...images, url]);
+        toast.success("New image added ✨");
+      } else {
+        onChange(images.map((u, idx) => (idx === aiIndex ? url : u)));
+        toast.success("Image updated ✨");
+      }
       setPrompt("");
     } catch (e: any) {
       toast.error(e.message || "Edit failed");
@@ -305,7 +310,7 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
     <div className="space-y-2">
       <Label className="flex items-center gap-1.5"><ImagePlus className="h-4 w-4" /> Product images</Label>
       <p className="text-xs text-muted-foreground">
-        First image is the primary. Hover an image for AI editing. Drag-to-reorder not yet supported.
+        First image is the primary. Hover an image for AI editing — generate extra angles/backgrounds and add them as new gallery images. Drag-to-reorder not yet supported.
       </p>
 
       {images.length > 0 && (
@@ -430,15 +435,22 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
           </div>
 
           {/* Custom prompt + apply */}
-          <div className="flex gap-2">
+          <div className="space-y-2">
             <Input value={prompt} onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the edit, or pick a preset…" className="flex-1" />
-            <Button type="button" size="sm" onClick={runAiEdit} disabled={processing}>
-              {processing ? "Editing…" : "Apply"}
-            </Button>
+              placeholder="Describe the edit, or pick a preset…" />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" className="flex-1"
+                onClick={() => runAiEdit("add")} disabled={processing}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> {processing ? "Working…" : "Add as new image"}
+              </Button>
+              <Button type="button" size="sm" className="flex-1"
+                onClick={() => runAiEdit("replace")} disabled={processing}>
+                {processing ? "Editing…" : "Replace this image"}
+              </Button>
+            </div>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            The edited result replaces this image. The original stays until you apply.
+            "Add as new image" generates a variant (new angle, background, etc.) and appends it to the gallery — great for quickly building out 1–2 extra shots from a single upload. "Replace" overwrites this image instead.
           </p>
         </div>
       )}
