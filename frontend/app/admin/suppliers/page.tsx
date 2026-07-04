@@ -175,7 +175,7 @@ export default function SuppliersPage() {
             ) : (
               <div className="border border-border rounded-xl overflow-hidden">
                 {/* Header row */}
-                <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 bg-muted text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   <span className="col-span-3">Name</span>
                   <span className="col-span-2">Contact</span>
                   <span className="col-span-2">Email</span>
@@ -184,8 +184,8 @@ export default function SuppliersPage() {
                   <span className="col-span-1" />
                 </div>
                 {suppliers.map((s) => (
-                  <div key={s.id} className="grid grid-cols-12 gap-2 px-4 py-3.5 items-center border-t border-border hover:bg-accent/30 transition-colors">
-                    <div className="col-span-3 min-w-0">
+                  <div key={s.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 px-4 py-3.5 items-center border-t border-border hover:bg-accent/30 transition-colors">
+                    <div className="md:col-span-3 min-w-0">
                       <p className="font-medium text-sm truncate">{s.name}</p>
                       {s.address && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
@@ -193,33 +193,33 @@ export default function SuppliersPage() {
                         </p>
                       )}
                     </div>
-                    <div className="col-span-2 text-sm text-muted-foreground truncate">
+                    <div className="md:col-span-2 text-sm text-muted-foreground truncate">
                       {s.contactPerson ? (
                         <span className="flex items-center gap-1">
                           <User className="h-3.5 w-3.5 shrink-0" /> {s.contactPerson}
                         </span>
                       ) : "—"}
                     </div>
-                    <div className="col-span-2 text-sm truncate">
+                    <div className="md:col-span-2 text-sm truncate">
                       {s.email ? (
                         <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-primary hover:underline">
                           <Mail className="h-3.5 w-3.5 shrink-0" /> {s.email}
                         </a>
                       ) : "—"}
                     </div>
-                    <div className="col-span-2 text-sm text-muted-foreground truncate">
+                    <div className="md:col-span-2 text-sm text-muted-foreground truncate">
                       {s.phone ? (
                         <span className="flex items-center gap-1">
                           <Phone className="h-3.5 w-3.5 shrink-0" /> {s.phone}
                         </span>
                       ) : "—"}
                     </div>
-                    <div className="col-span-2">
+                    <div className="md:col-span-2">
                       <Badge className={s.isActive ? "bg-green-100 text-green-700 border-green-200 border" : "bg-gray-100 text-gray-600 border border-gray-200"}>
                         {s.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </div>
-                    <div className="col-span-1 flex gap-1 justify-end">
+                    <div className="md:col-span-1 flex gap-1 justify-end">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>

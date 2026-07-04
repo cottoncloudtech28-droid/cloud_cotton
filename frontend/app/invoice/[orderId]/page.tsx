@@ -117,25 +117,28 @@ export default function InvoicePage() {
   const BASE: React.CSSProperties = {
     fontFamily:"'Times New Roman',Times,serif",
     fontSize:12, color:"#000", background:"#fff",
-    maxWidth:860, margin:"0 auto", border:"1px solid #888",
+    width:860, maxWidth:860, margin:"0 auto", border:"1px solid #888",
   };
 
   return (
     <>
       {/* toolbar */}
-      <div className="print:hidden sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
+      <div className="print:hidden sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 shrink-0">
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500 font-mono">{INV}</span>
+          <span className="hidden sm:inline text-sm text-gray-500 font-mono">{INV}</span>
           <Button onClick={() => window.print()} className="rounded-full gap-2 bg-gray-900 hover:bg-gray-700 text-white text-sm px-5 h-9">
             <Printer className="h-4 w-4" /> Print / Save PDF
           </Button>
         </div>
       </div>
 
+      {/* Formal tax invoice — keeps its real tabular layout (legally required), scrolls
+          horizontally on narrow screens instead of squeezing the GST columns unreadable. */}
       <div style={{ background:"#e5e5e5", minHeight:"100vh", padding:"28px 0" }} className="print:bg-white print:p-0">
+        <div className="overflow-x-auto px-3 sm:px-4 print:overflow-visible print:px-0">
         <div id="invoice" style={BASE}>
 
           {/* ══ HEADER ══ */}
@@ -444,6 +447,7 @@ export default function InvoicePage() {
             <span>{company} {gst.gstin ? `· GSTIN: ${gst.gstin}` : ""}</span>
           </div>
 
+        </div>
         </div>
       </div>
 

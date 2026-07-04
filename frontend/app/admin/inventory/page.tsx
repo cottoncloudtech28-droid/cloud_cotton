@@ -524,52 +524,56 @@ export default function InventoryPage() {
                       <span className="text-sm font-normal text-muted-foreground ml-1">based on last 30 days of sales</span>
                     </h2>
                     <div className="border border-border rounded-xl overflow-hidden">
-                      <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        <span className="col-span-4">Product</span>
-                        <span className="col-span-1 text-center">Stock</span>
-                        <span className="col-span-2 text-center">Sold (30d)</span>
-                        <span className="col-span-2 text-center">Daily rate</span>
-                        <span className="col-span-2 text-center">Days left</span>
-                        <span className="col-span-1 text-center">Order qty</span>
-                      </div>
-                      {recommendations.map((r) => (
-                        <div key={r.id} className={`grid grid-cols-12 gap-2 px-4 py-3 items-center border-t border-border ${
-                          r.urgency === "critical" ? "bg-red-50/50" : "bg-amber-50/30"
-                        }`}>
-                          <div className="col-span-4 flex items-center gap-2 min-w-0">
-                            {r.image_url && (
-                              <img src={r.image_url} alt="" className="h-8 w-8 rounded-md object-cover shrink-0 border border-border" />
-                            )}
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{r.name}</p>
-                              <p className="text-[10px] font-mono text-muted-foreground">{r.sku ?? "—"}</p>
+                      <div className="overflow-x-auto">
+                        <div className="min-w-[640px]">
+                          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            <span className="col-span-4">Product</span>
+                            <span className="col-span-1 text-center">Stock</span>
+                            <span className="col-span-2 text-center">Sold (30d)</span>
+                            <span className="col-span-2 text-center">Daily rate</span>
+                            <span className="col-span-2 text-center">Days left</span>
+                            <span className="col-span-1 text-center">Order qty</span>
+                          </div>
+                          {recommendations.map((r) => (
+                            <div key={r.id} className={`grid grid-cols-12 gap-2 px-4 py-3 items-center border-t border-border ${
+                              r.urgency === "critical" ? "bg-red-50/50" : "bg-amber-50/30"
+                            }`}>
+                              <div className="col-span-4 flex items-center gap-2 min-w-0">
+                                {r.image_url && (
+                                  <img src={r.image_url} alt="" className="h-8 w-8 rounded-md object-cover shrink-0 border border-border" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{r.name}</p>
+                                  <p className="text-[10px] font-mono text-muted-foreground">{r.sku ?? "—"}</p>
+                                </div>
+                              </div>
+                              <div className="col-span-1 text-center">
+                                <span className={`text-sm font-bold ${r.currentStock === 0 ? "text-red-600" : "text-amber-600"}`}>
+                                  {r.currentStock}
+                                </span>
+                              </div>
+                              <div className="col-span-2 text-center text-sm text-muted-foreground">{r.sold30d}</div>
+                              <div className="col-span-2 text-center text-sm text-muted-foreground">{r.dailyRate}/day</div>
+                              <div className="col-span-2 text-center">
+                                {r.daysRemaining !== null ? (
+                                  <Badge className={`text-[10px] ${
+                                    r.urgency === "critical"
+                                      ? "bg-red-100 text-red-700 border-red-200"
+                                      : "bg-amber-100 text-amber-700 border-amber-200"
+                                  } border`}>
+                                    {r.daysRemaining}d
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </div>
+                              <div className="col-span-1 text-center">
+                                <span className="text-sm font-semibold text-primary">{r.recommendedQty}</span>
+                              </div>
                             </div>
-                          </div>
-                          <div className="col-span-1 text-center">
-                            <span className={`text-sm font-bold ${r.currentStock === 0 ? "text-red-600" : "text-amber-600"}`}>
-                              {r.currentStock}
-                            </span>
-                          </div>
-                          <div className="col-span-2 text-center text-sm text-muted-foreground">{r.sold30d}</div>
-                          <div className="col-span-2 text-center text-sm text-muted-foreground">{r.dailyRate}/day</div>
-                          <div className="col-span-2 text-center">
-                            {r.daysRemaining !== null ? (
-                              <Badge className={`text-[10px] ${
-                                r.urgency === "critical"
-                                  ? "bg-red-100 text-red-700 border-red-200"
-                                  : "bg-amber-100 text-amber-700 border-amber-200"
-                              } border`}>
-                                {r.daysRemaining}d
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </div>
-                          <div className="col-span-1 text-center">
-                            <span className="text-sm font-semibold text-primary">{r.recommendedQty}</span>
-                          </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Recommendation = max(3× reorder point, 1.5× units sold in last 30 days).
@@ -715,8 +719,8 @@ export default function InventoryPage() {
                         </div>
                       </div>
 
-                      <div className="border border-border rounded-xl overflow-hidden max-h-64 overflow-y-auto">
-                        <table className="w-full text-sm">
+                      <div className="border border-border rounded-xl overflow-hidden max-h-64 overflow-y-auto overflow-x-auto">
+                        <table className="w-full min-w-[520px] text-sm">
                           <thead className="bg-muted sticky top-0">
                             <tr>
                               <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">SKU</th>

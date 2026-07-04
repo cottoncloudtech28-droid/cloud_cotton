@@ -92,9 +92,9 @@ function OrderRow({ order, onUpdated }: {
   return (
     <div className="border border-border rounded-xl overflow-hidden">
       {/* Summary row */}
-      <div className="grid grid-cols-12 gap-3 px-4 py-3.5 items-center bg-card hover:bg-accent/20 transition-colors">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 px-4 py-3.5 items-center bg-card hover:bg-accent/20 transition-colors">
         {/* Order ID */}
-        <div className="col-span-2 min-w-0">
+        <div className="md:col-span-2 min-w-0">
           <p className="font-mono font-semibold text-sm truncate">#{order.orderId}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -102,28 +102,28 @@ function OrderRow({ order, onUpdated }: {
         </div>
 
         {/* Customer */}
-        <div className="col-span-2 min-w-0">
+        <div className="md:col-span-2 min-w-0">
           <p className="text-sm font-medium truncate">{customer?.name || "—"}</p>
           <p className="text-[10px] text-muted-foreground truncate">{customer?.email || "—"}</p>
         </div>
 
         {/* Items */}
-        <div className="col-span-2 text-sm text-muted-foreground">
+        <div className="md:col-span-2 text-sm text-muted-foreground">
           {order.items.length} item{order.items.length !== 1 ? "s" : ""}
         </div>
 
         {/* Total */}
-        <div className="col-span-1 text-sm font-bold">₹{order.total}</div>
+        <div className="md:col-span-1 text-sm font-bold">₹{order.total}</div>
 
         {/* Payment */}
-        <div className="col-span-1">
+        <div className="md:col-span-1">
           <Badge variant="outline" className="text-[10px] capitalize">
             {order.payment_method ?? "—"}
           </Badge>
         </div>
 
         {/* Status select */}
-        <div className="col-span-2">
+        <div className="md:col-span-2">
           <select
             value={order.status}
             onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}
@@ -137,7 +137,7 @@ function OrderRow({ order, onUpdated }: {
         </div>
 
         {/* Actions */}
-        <div className="col-span-2 flex justify-end items-center gap-1.5">
+        <div className="md:col-span-2 flex flex-wrap justify-end items-center gap-1.5">
           {!order.shiprocket_order_id && order.status !== "cancelled" && (
             <Button
               size="sm"
@@ -484,7 +484,7 @@ export default function AdminOrdersPage() {
 
             {/* Table header */}
             {!fetching && filtered.length > 0 && (
-              <div className="grid grid-cols-12 gap-3 px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 <span className="col-span-2">Order</span>
                 <span className="col-span-2">Customer</span>
                 <span className="col-span-2">Items</span>

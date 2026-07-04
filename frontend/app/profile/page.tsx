@@ -352,7 +352,7 @@ export default function ProfilePage() {
         <Navbar />
         <main className="flex-1 container py-12 space-y-6">
           <Skeleton className="h-32 rounded-3xl" />
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-3xl" />)}
           </div>
           <Skeleton className="h-12 rounded-full" />

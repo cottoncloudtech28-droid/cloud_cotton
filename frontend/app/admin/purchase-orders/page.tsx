@@ -288,8 +288,8 @@ export default function PurchaseOrdersPage() {
                   return (
                     <Card key={po.id} className="overflow-hidden">
                       {/* PO row */}
-                      <div className="flex items-center gap-4 p-4">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-4 p-4">
+                        <div className="flex-1 min-w-[200px]">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono font-semibold text-sm">{po.poNumber}</span>
                             <Badge variant="outline" className={`text-[10px] border ${cfg.className}`}>
@@ -304,7 +304,7 @@ export default function PurchaseOrdersPage() {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
                           {/* Next step button */}
                           {next && po.status !== "cancelled" && (
                             <Button size="sm" variant="outline"
@@ -348,29 +348,33 @@ export default function PurchaseOrdersPage() {
                           {po.notes && (
                             <p className="text-xs text-muted-foreground italic mb-2">Note: {po.notes}</p>
                           )}
-                          <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1">
-                            <span className="col-span-5">Product</span>
-                            <span className="col-span-2 text-center">Size</span>
-                            <span className="col-span-2 text-center">Qty</span>
-                            <span className="col-span-2 text-center">Unit cost</span>
-                            <span className="col-span-1 text-right">Subtotal</span>
-                          </div>
-                          {po.items.map((item, i) => (
-                            <div key={i} className="grid grid-cols-12 gap-2 text-sm items-center px-1">
-                              <div className="col-span-5 min-w-0">
-                                <p className="truncate font-medium text-sm">{item.productName}</p>
-                                {item.sku && <p className="text-[10px] font-mono text-muted-foreground">{item.sku}</p>}
+                          <div className="overflow-x-auto">
+                            <div className="min-w-[520px]">
+                              <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1">
+                                <span className="col-span-5">Product</span>
+                                <span className="col-span-2 text-center">Size</span>
+                                <span className="col-span-2 text-center">Qty</span>
+                                <span className="col-span-2 text-center">Unit cost</span>
+                                <span className="col-span-1 text-right">Subtotal</span>
                               </div>
-                              <span className="col-span-2 text-center text-muted-foreground">{item.size || "—"}</span>
-                              <span className="col-span-2 text-center font-semibold">{item.quantity}</span>
-                              <span className="col-span-2 text-center text-muted-foreground">
-                                ₹{item.unitCost.toLocaleString("en-IN")}
-                              </span>
-                              <span className="col-span-1 text-right font-medium">
-                                ₹{(item.quantity * item.unitCost).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                              </span>
+                              {po.items.map((item, i) => (
+                                <div key={i} className="grid grid-cols-12 gap-2 text-sm items-center px-1 py-1">
+                                  <div className="col-span-5 min-w-0">
+                                    <p className="truncate font-medium text-sm">{item.productName}</p>
+                                    {item.sku && <p className="text-[10px] font-mono text-muted-foreground">{item.sku}</p>}
+                                  </div>
+                                  <span className="col-span-2 text-center text-muted-foreground">{item.size || "—"}</span>
+                                  <span className="col-span-2 text-center font-semibold">{item.quantity}</span>
+                                  <span className="col-span-2 text-center text-muted-foreground">
+                                    ₹{item.unitCost.toLocaleString("en-IN")}
+                                  </span>
+                                  <span className="col-span-1 text-right font-medium">
+                                    ₹{(item.quantity * item.unitCost).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </div>
                           <div className="flex justify-end pt-2 border-t border-border/60">
                             <span className="text-sm font-bold">
                               Total: ₹{po.totalCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}

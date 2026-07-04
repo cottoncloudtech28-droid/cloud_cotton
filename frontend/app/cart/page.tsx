@@ -400,8 +400,8 @@ export default function CartPage() {
       <Navbar />
       <main className="flex-1 container py-8">
         {/* ── Top quick-pay bar ── */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-4xl font-bold">Your cart</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <h1 className="text-2xl sm:text-4xl font-bold">Your cart</h1>
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-xs text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""} · ₹{grandTotal}</p>
