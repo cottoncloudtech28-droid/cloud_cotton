@@ -146,11 +146,20 @@ async function editWithGemini(buffer, mime, prompt) {
   return `data:${inline.mimeType || inline.mime_type || "image/png"};base64,${inline.data}`;
 }
 
+// Many source photos show several units of the product at once (e.g. every color
+// variant lined up in one shot). Our scene/background prompts are written in the
+// singular ("place the product on..."), which nudges image models toward picking
+// one hero item and dropping the rest. This clause rides along with every prompt —
+// preset or freehand — so a multi-item photo doesn't silently lose items on edit.
+const PRESERVE_ALL_ITEMS_CLAUSE =
+  "If the original photo shows more than one unit or color variant of the product (e.g. several bottles/items lined up together), keep every single one of them in the edited image, in the same arrangement — do not drop, merge, hide, or reduce the number of items. Only apply the change described below.";
+
 // POST /api/ai/image-edit  — instruction-based product photo editing
 // Accepts { image_base64 (data URL) | image_url, prompt, provider: "openai" | "gemini" }
 // Returns { image_base64 (data URL) }
 router.post("/image-edit", verifyToken, requireAdmin, async (req, res) => {
-  const { image_base64, image_url, prompt, provider = "openai" } = req.body;
+  const { image_base64, image_url, prompt: rawPrompt, provider = "openai" } = req.body;
+  const prompt = rawPrompt ? `${PRESERVE_ALL_ITEMS_CLAUSE}\n\n${rawPrompt}` : rawPrompt;
   if (!prompt) return res.status(400).json({ message: "prompt is required" });
   if (!image_base64 && !image_url) {
     return res.status(400).json({ message: "image_base64 or image_url is required" });
