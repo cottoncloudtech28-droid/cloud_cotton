@@ -106,27 +106,85 @@ async function resolveItems(items) {
     if (!product)
       throw { status: 400, message: `Product not found: ${item.name}` };
 
-    let availableStock;
-    let targetSizeIndex = -1;
+    const useSize = !!(product.sizes && product.sizes.length > 0 && size);
+    const useColor = !!(product.colors && product.colors.length > 0 && color);
+    const targetSizeIndex = useSize ? product.sizes.findIndex((sz) => sz.label === size) : -1;
+    const targetColorIndex = useColor ? product.colors.findIndex((c) => c.label === color) : -1;
 
-    if (product.sizes && product.sizes.length > 0 && size) {
-      targetSizeIndex = product.sizes.findIndex((sz) => sz.label === size);
-      availableStock = targetSizeIndex >= 0 ? product.sizes[targetSizeIndex].stock : 0;
-    } else {
-      availableStock = product.stock;
-    }
+    const sizeStock = useSize ? (targetSizeIndex >= 0 ? product.sizes[targetSizeIndex].stock : 0) : null;
+    const colorStock = useColor ? (targetColorIndex >= 0 ? product.colors[targetColorIndex].stock : 0) : null;
+
+    // Most-restrictive-wins: if both a size and a color are selected, the smaller of the two governs.
+    let availableStock;
+    if (sizeStock !== null && colorStock !== null) availableStock = Math.min(sizeStock, colorStock);
+    else if (sizeStock !== null) availableStock = sizeStock;
+    else if (colorStock !== null) availableStock = colorStock;
+    else availableStock = product.stock;
 
     if (availableStock < item.qty) {
-      const variantLabel = size ? ` (${size})` : "";
+      const variantParts = [size, color].filter(Boolean);
+      const variantLabel = variantParts.length ? ` (${variantParts.join(", ")})` : "";
       throw {
         status: 400,
         message: `"${product.name}${variantLabel}" only has ${availableStock} in stock — you requested ${item.qty}`,
       };
     }
 
-    resolved.push({ product, size, color, item, targetSizeIndex });
+    resolved.push({ product, size, color, item, targetSizeIndex, targetColorIndex });
   }
   return resolved;
+}
+
+// Adjust a product's size and/or color variant stock (tracked independently — not a combined
+// size×color matrix), recompute the flat total, save, and write one StockLog row per variant
+// dimension that actually changed. delta > 0 restores stock, delta < 0 deducts it.
+async function adjustVariantStock(product, { size, color }, delta, { reason, orderId = null, note = null, performedBy }) {
+  const logs = [];
+
+  const sizeIdx = size && product.sizes?.length ? product.sizes.findIndex((sz) => sz.label === size) : -1;
+  if (sizeIdx >= 0) {
+    const before = product.sizes[sizeIdx].stock;
+    product.sizes[sizeIdx].stock = Math.max(0, before + delta);
+    logs.push({ size, color: null, stockBefore: before, stockAfter: product.sizes[sizeIdx].stock });
+    product.markModified("sizes");
+  }
+
+  const colorIdx = color && product.colors?.length ? product.colors.findIndex((c) => c.label === color) : -1;
+  if (colorIdx >= 0) {
+    const before = product.colors[colorIdx].stock;
+    product.colors[colorIdx].stock = Math.max(0, before + delta);
+    logs.push({ size: null, color, stockBefore: before, stockAfter: product.colors[colorIdx].stock });
+    product.markModified("colors");
+  }
+
+  if (sizeIdx < 0 && colorIdx < 0) {
+    const before = product.stock;
+    product.stock = Math.max(0, before + delta);
+    logs.push({ size: null, color: null, stockBefore: before, stockAfter: product.stock });
+  } else if (product.sizes && product.sizes.length > 0) {
+    product.stock = product.sizes.reduce((s, sz) => s + sz.stock, 0);
+  } else if (product.colors && product.colors.length > 0) {
+    product.stock = product.colors.reduce((s, c) => s + c.stock, 0);
+  }
+
+  await product.save({ validateBeforeSave: false });
+
+  for (const log of logs) {
+    await StockLog.create({
+      product: product._id,
+      productName: product.name,
+      sku: product.sku ?? null,
+      size: log.size,
+      color: log.color,
+      change: log.stockAfter - log.stockBefore,
+      stockBefore: log.stockBefore,
+      stockAfter: log.stockAfter,
+      reason,
+      orderId,
+      note,
+      performedBy,
+    });
+  }
 }
 
 function normalizeItems(resolved) {
@@ -145,32 +203,9 @@ function normalizeItems(resolved) {
 }
 
 async function decrementStock(resolved, order, userId) {
-  for (const { product, size, item, targetSizeIndex } of resolved) {
+  for (const { product, size, color, item } of resolved) {
     try {
-      let stockBefore, stockAfter;
-
-      if (targetSizeIndex >= 0) {
-        stockBefore = product.sizes[targetSizeIndex].stock;
-        product.sizes[targetSizeIndex].stock = Math.max(0, stockBefore - item.qty);
-        stockAfter = product.sizes[targetSizeIndex].stock;
-        product.stock = product.sizes.reduce((s, sz) => s + sz.stock, 0);
-        product.markModified("sizes");
-      } else {
-        stockBefore = product.stock;
-        product.stock = Math.max(0, stockBefore - item.qty);
-        stockAfter = product.stock;
-      }
-
-      await product.save({ validateBeforeSave: false });
-
-      await StockLog.create({
-        product: product._id,
-        productName: product.name,
-        sku: product.sku ?? null,
-        size: size ?? null,
-        change: -(item.qty),
-        stockBefore,
-        stockAfter,
+      await adjustVariantStock(product, { size, color }, -item.qty, {
         reason: "order",
         orderId: order.orderId,
         performedBy: userId,
@@ -459,26 +494,9 @@ router.post("/:id/cancel", verifyToken, async (req, res) => {
         const product = await Product.findById(item.productId);
         if (!product) continue;
 
-        let stockBefore, stockAfter;
-        if (item.size && product.sizes && product.sizes.length > 0) {
-          const idx = product.sizes.findIndex((sz) => sz.label === item.size);
-          if (idx >= 0) {
-            stockBefore = product.sizes[idx].stock;
-            product.sizes[idx].stock += item.qty;
-            stockAfter = product.sizes[idx].stock;
-            product.stock = product.sizes.reduce((s, sz) => s + sz.stock, 0);
-            product.markModified("sizes");
-          } else {
-            stockBefore = product.stock; product.stock += item.qty; stockAfter = product.stock;
-          }
-        } else {
-          stockBefore = product.stock; product.stock += item.qty; stockAfter = product.stock;
-        }
-        await product.save({ validateBeforeSave: false });
-        await StockLog.create({
-          product: product._id, productName: product.name, sku: product.sku ?? null,
-          size: item.size ?? null, change: item.qty, stockBefore, stockAfter,
-          reason: "cancellation", orderId: order.orderId,
+        await adjustVariantStock(product, { size: item.size, color: item.color }, item.qty, {
+          reason: "cancellation",
+          orderId: order.orderId,
           note: `Customer cancelled: ${reason || "No reason given"}`,
           performedBy: req.user.userId,
         });
@@ -528,40 +546,10 @@ router.patch("/:id/status", verifyToken, requireAdmin, async (req, res) => {
           const product = await Product.findById(item.productId);
           if (!product) continue;
 
-          let stockBefore, stockAfter;
-
-          if (item.size && product.sizes && product.sizes.length > 0) {
-            const idx = product.sizes.findIndex((sz) => sz.label === item.size);
-            if (idx >= 0) {
-              stockBefore = product.sizes[idx].stock;
-              product.sizes[idx].stock += item.qty;
-              stockAfter = product.sizes[idx].stock;
-              product.stock = product.sizes.reduce((s, sz) => s + sz.stock, 0);
-              product.markModified("sizes");
-            } else {
-              stockBefore = product.stock;
-              product.stock += item.qty;
-              stockAfter = product.stock;
-            }
-          } else {
-            stockBefore = product.stock;
-            product.stock += item.qty;
-            stockAfter = product.stock;
-          }
-
-          await product.save({ validateBeforeSave: false });
-
-          await StockLog.create({
-            product:     product._id,
-            productName: product.name,
-            sku:         product.sku ?? null,
-            size:        item.size ?? null,
-            change:      item.qty,
-            stockBefore,
-            stockAfter,
-            reason:      "cancellation",
-            orderId:     order.orderId,
-            note:        `Cancelled: ${order.orderId}`,
+          await adjustVariantStock(product, { size: item.size, color: item.color }, item.qty, {
+            reason: "cancellation",
+            orderId: order.orderId,
+            note: `Cancelled: ${order.orderId}`,
             performedBy: req.user.userId,
           });
         } catch (_) {

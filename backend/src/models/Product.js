@@ -5,6 +5,11 @@ const sizeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const colorSchema = new mongoose.Schema(
+  { label: { type: String, required: true, trim: true, maxlength: 50 }, stock: { type: Number, default: 0, min: 0 } },
+  { _id: false }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name:              { type: String, required: true, trim: true, maxlength: 120 },
@@ -17,7 +22,7 @@ const productSchema = new mongoose.Schema(
     category:          { type: String, required: true, default: "stationery" },
     stock:             { type: Number, default: 0, min: 0 },
     is_active:         { type: Boolean, default: true },
-    colors:            { type: [String], default: [] },
+    colors:            { type: [colorSchema], default: [] },
     tags:              { type: [String], default: [] },
     sizes:             { type: [sizeSchema], default: [] },
     sku:               { type: String, unique: true, sparse: true },
@@ -56,9 +61,11 @@ productSchema.pre("save", function (next) {
   if (this.images && this.images.length > 0) {
     this.image_url = this.images[0];
   }
-  // Sync total stock from sizes
+  // Sync total stock from sizes (or colors, when there are no sizes)
   if (this.sizes && this.sizes.length > 0) {
     this.stock = this.sizes.reduce((s, sz) => s + (sz.stock || 0), 0);
+  } else if (this.colors && this.colors.length > 0) {
+    this.stock = this.colors.reduce((s, c) => s + (c.stock || 0), 0);
   }
   next();
 });

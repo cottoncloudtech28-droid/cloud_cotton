@@ -32,7 +32,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { apiFetch, uploadFile, getCategories, bulkDeleteProducts, bulkEditProducts } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Product, ProductSize, Category } from "@/lib/types";
+import type { Product, ProductSize, ProductColor, Category } from "@/lib/types";
 
 // ── AI image-editing presets ──────────────────────────────────────────────────
 const AI_BACKGROUNDS = [
@@ -102,7 +102,7 @@ const schema = z.object({
   discount_percent: z.number().int().min(0).max(100),
   category: z.string().trim().min(1, "Category is required").max(40),
   stock: z.number().int().min(0).max(100_000),
-  colors: z.array(z.string()).optional(),
+  colors: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0) })).optional(),
   tags: z.array(z.string()).optional(),
   images: z.array(z.string()).optional(),
   sizes: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0) })).optional(),
@@ -112,7 +112,7 @@ const emptyForm = {
   name: "", short_description: "", description: "",
   price: 0, discount_percent: 0,
   category: "stationery", stock: 0,
-  colors: [] as string[],
+  colors: [] as ProductColor[],
   tags: [] as string[],
   images: [] as string[],
   sizes: [] as ProductSize[],
@@ -190,6 +190,37 @@ function SizeRows({ sizes, onChange }: { sizes: ProductSize[]; onChange: (s: Pro
       ))}
       <Button type="button" variant="outline" size="sm" onClick={addRow}>
         <Plus className="h-3.5 w-3.5 mr-1" /> Add size
+      </Button>
+    </div>
+  );
+}
+
+// ── Color rows ────────────────────────────────────────────────────────────────
+function ColorRows({ colors, onChange }: { colors: ProductColor[]; onChange: (c: ProductColor[]) => void }) {
+  const addRow = () => onChange([...colors, { label: "", stock: 0 }]);
+  const removeRow = (i: number) => onChange(colors.filter((_, idx) => idx !== i));
+  const update = (i: number, field: keyof ProductColor, val: string | number) =>
+    onChange(colors.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5"><span className="text-sm">🎨</span> Colors</Label>
+      <p className="text-xs text-muted-foreground">Each color tracks its own stock, so a color can sell out on its own.</p>
+      {colors.map((c, i) => (
+        <div key={i} className="flex gap-2 items-center">
+          <Input value={c.label} onChange={(e) => update(i, "label", e.target.value)}
+            placeholder="e.g. sakura pink" className="flex-1" />
+          <Input type="number" min="0" value={c.stock}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => update(i, "stock", parseInt(e.target.value) || 0)}
+            placeholder="Stock" className="w-24" />
+          <button type="button" onClick={() => removeRow(i)}
+            className="text-muted-foreground hover:text-destructive transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={addRow}>
+        <Plus className="h-3.5 w-3.5 mr-1" /> Add color
       </Button>
     </div>
   );
@@ -531,10 +562,14 @@ function ProductForm({ form, setField, onSubmit, editingId, sku, onCancel, categ
           <CategoryPicker value={form.category} onChange={(v) => setField("category", v)} categories={categories} />
         </div>
         <div>
-          <Label>Stock {form.sizes.length > 0 && <span className="text-muted-foreground font-normal">(auto)</span>}</Label>
+          <Label>Stock {(form.sizes.length > 0 || form.colors.length > 0) && <span className="text-muted-foreground font-normal">(auto)</span>}</Label>
           <Input type="number" min="0"
-            value={form.sizes.length > 0 ? form.sizes.reduce((s, sz) => s + sz.stock, 0) : form.stock}
-            disabled={form.sizes.length > 0}
+            value={
+              form.sizes.length > 0 ? form.sizes.reduce((s, sz) => s + sz.stock, 0)
+              : form.colors.length > 0 ? form.colors.reduce((s, c) => s + c.stock, 0)
+              : form.stock
+            }
+            disabled={form.sizes.length > 0 || form.colors.length > 0}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setField("stock", parseInt(e.target.value) || 0)} className="mt-1.5" />
         </div>
@@ -543,8 +578,7 @@ function ProductForm({ form, setField, onSubmit, editingId, sku, onCancel, categ
       <MultiImageUploader images={form.images} onChange={(imgs) => setField("images", imgs)} productName={form.name} />
       <Separator />
       <div className="space-y-4">
-        <ChipInput label="Colors" icon={<span className="text-sm">🎨</span>}
-          values={form.colors} onChange={(v) => setField("colors", v)} placeholder="sakura pink, sky blue…" />
+        <ColorRows colors={form.colors} onChange={(v) => setField("colors", v)} />
         <ChipInput label="Tags" icon={<Tag className="h-4 w-4" />}
           values={form.tags} onChange={(v) => setField("tags", v)} placeholder="kawaii, gift, pastel…" />
       </div>
@@ -683,18 +717,6 @@ function ProductDetailPanel({ p, onEdit, onToggle, onDelete }: {
             </div>
           </div>
 
-          {/* Colors */}
-          {p.colors && p.colors.length > 0 && (
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1.5">Colors</p>
-              <div className="flex flex-wrap gap-1.5">
-                {p.colors.map((c) => (
-                  <Badge key={c} variant="secondary" className="capitalize">{c}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Tags */}
           {p.tags && p.tags.length > 0 && (
             <div>
@@ -736,6 +758,27 @@ function ProductDetailPanel({ p, onEdit, onToggle, onDelete }: {
                     <span className="font-medium">{sz.label}</span>
                     <span className={`text-right font-semibold ${sz.stock === 0 ? "text-red-500" : sz.stock <= 5 ? "text-amber-600" : "text-green-700"}`}>
                       {sz.stock}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Color variants */}
+          {p.colors && p.colors.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1.5">Color variants</p>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="grid grid-cols-2 bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                  <span>Color</span>
+                  <span className="text-right">Stock</span>
+                </div>
+                {p.colors.map((c, i) => (
+                  <div key={i} className="grid grid-cols-2 px-3 py-2 border-t border-border text-sm">
+                    <span className="font-medium capitalize">{c.label}</span>
+                    <span className={`text-right font-semibold ${c.stock === 0 ? "text-red-500" : c.stock <= 10 ? "text-amber-600" : "text-green-700"}`}>
+                      {c.stock}
                     </span>
                   </div>
                 ))}
@@ -820,6 +863,8 @@ export default function AdminPage() {
       discount_percent: Number(form.discount_percent),
       stock: form.sizes.length > 0
         ? form.sizes.reduce((s, sz) => s + sz.stock, 0)
+        : form.colors.length > 0
+        ? form.colors.reduce((s, c) => s + c.stock, 0)
         : Number(form.stock),
     });
     if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }

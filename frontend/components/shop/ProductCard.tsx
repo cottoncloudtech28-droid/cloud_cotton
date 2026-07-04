@@ -29,7 +29,7 @@ export default function ProductCard({ p }: { p: Product }) {
   const final = +(p.price * (1 - p.discount_percent / 100)).toFixed(2);
   const colors = p.colors ?? [];
   const hasChoices = colors.length > 1;
-  const [selected, setSelected] = useState<string>(hasChoices ? "" : colors[0] ?? "");
+  const [selected, setSelected] = useState<string>(hasChoices ? "" : colors[0]?.label ?? "");
   const [inWishlist, setInWishlist] = useState(false);
 
   useEffect(() => {
@@ -46,6 +46,8 @@ export default function ProductCard({ p }: { p: Product }) {
       return;
     }
     if (hasChoices && !selected) { toast.error("Please choose a color first"); return; }
+    const selectedColorObj = colors.find((c) => c.label === selected);
+    if (selectedColorObj && selectedColorObj.stock === 0) { toast.error("This color is out of stock"); return; }
     const variant = selected ? { ...p, id: `${p.id}::${selected}`, name: `${p.name} – ${selected}` } : p;
     add(variant);
     toast.success(`Added to cart`);
@@ -132,7 +134,11 @@ export default function ProductCard({ p }: { p: Product }) {
               <SelectValue placeholder="Choose a color" />
             </SelectTrigger>
             <SelectContent>
-              {colors.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              {colors.map((c) => (
+                <SelectItem key={c.label} value={c.label} disabled={c.stock === 0}>
+                  {c.label}{c.stock === 0 ? " (Out of stock)" : ""}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )}

@@ -29,8 +29,11 @@ import {
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch, addToWishlist, removeFromWishlist, getWishlistIds } from "@/lib/api";
-import type { Product, ProductSize } from "@/lib/types";
+import type { Product, ProductSize, ProductColor } from "@/lib/types";
 import { toast } from "sonner";
+
+// Colors with stock at or below this show a "N left" count next to the option; above it, nothing is shown.
+const LOW_COLOR_STOCK_THRESHOLD = 10;
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function DetailSkeleton() {
@@ -92,7 +95,7 @@ export default function ProductDetailClient() {
         setProduct(p);
         // Auto-select if only one option
         const colors = p.colors ?? [];
-        if (colors.length === 1) setSelectedColor(colors[0]);
+        if (colors.length === 1) setSelectedColor(colors[0].label);
         const sizes = p.sizes ?? [];
         if (sizes.length === 1) setSelectedSize(sizes[0].label);
 
@@ -138,13 +141,25 @@ export default function ProductDetailClient() {
     ? product.images
     : product.image_url ? [product.image_url] : [];
 
-  const colors = product.colors ?? [];
+  const colors: ProductColor[] = product.colors ?? [];
   const hasColorChoice = colors.length > 1;
   const sizes: ProductSize[] = product.sizes ?? [];
   const tags = product.tags ?? [];
 
   const selectedSizeObj = sizes.find((sz) => sz.label === selectedSize);
-  const effectiveStock = sizes.length > 0 ? (selectedSizeObj?.stock ?? 0) : product.stock;
+  const selectedColorObj = colors.find((c) => c.label === selectedColor);
+  const needsSize = sizes.length > 0 && !selectedSize;
+  const needsColor = hasColorChoice && !selectedColor;
+
+  // Most-restrictive-wins: if both a size and a color are selected, the smaller stock governs.
+  const sizeStock = sizes.length > 0 ? (selectedSizeObj?.stock ?? 0) : null;
+  const colorStock = colors.length > 0 ? (selectedColorObj?.stock ?? 0) : null;
+  const effectiveStock =
+    needsSize || needsColor ? 0
+    : sizeStock !== null && colorStock !== null ? Math.min(sizeStock, colorStock)
+    : sizeStock !== null ? sizeStock
+    : colorStock !== null ? colorStock
+    : product.stock;
   const maxQty = Math.min(effectiveStock, 10);
 
   const finalPrice = +(product.price * (1 - product.discount_percent / 100)).toFixed(2);
@@ -152,12 +167,16 @@ export default function ProductDetailClient() {
 
   const canAdd =
     effectiveStock > 0 &&
-    (colors.length === 0 || !hasColorChoice || !!selectedColor) &&
+    (!hasColorChoice || !!selectedColor) &&
     (sizes.length === 0 || !!selectedSize);
 
   const stockInfo = (() => {
-    if (sizes.length > 0 && !selectedSize)
+    if (needsSize && needsColor)
+      return { label: "Select a size and color to check stock", color: "text-muted-foreground", icon: "📏" };
+    if (needsSize)
       return { label: "Select a size to check stock", color: "text-muted-foreground", icon: "📏" };
+    if (needsColor)
+      return { label: "Select a color to check stock", color: "text-muted-foreground", icon: "🎨" };
     const s = effectiveStock;
     if (s === 0) return { label: "Out of stock", color: "text-destructive", icon: "⛔" };
     if (s <= 5) return { label: `Only ${s} left!`, color: "text-amber-600", icon: "⚠️" };
@@ -181,6 +200,7 @@ export default function ProductDetailClient() {
     if (!canAdd) {
       if (sizes.length > 0 && !selectedSize) { toast.error("Please select a size"); return; }
       if (hasColorChoice && !selectedColor) { toast.error("Please choose a color"); return; }
+      if (effectiveStock === 0) { toast.error("This item is out of stock"); return; }
       return;
     }
     const variant = buildVariant();
@@ -374,11 +394,23 @@ export default function ProductDetailClient() {
                       <SelectValue placeholder="Choose a color" />
                     </SelectTrigger>
                     <SelectContent>
-                      {colors.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {colors.map((c) => (
+                        <SelectItem key={c.label} value={c.label} disabled={c.stock === 0}>
+                          {c.label}
+                          {c.stock === 0
+                            ? " (Out of stock)"
+                            : c.stock <= LOW_COLOR_STOCK_THRESHOLD
+                            ? ` (${c.stock} left)`
+                            : ""}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Badge variant="secondary" className="px-3 py-1 text-sm">{colors[0]}</Badge>
+                  <Badge variant="secondary" className="px-3 py-1 text-sm">{colors[0]?.label}</Badge>
+                )}
+                {selectedColorObj && selectedColorObj.stock > 0 && selectedColorObj.stock <= LOW_COLOR_STOCK_THRESHOLD && (
+                  <p className="text-xs text-amber-600 font-medium">⚠️ Only {selectedColorObj.stock} left in this color</p>
                 )}
               </div>
             )}
@@ -509,8 +541,9 @@ export default function ProductDetailClient() {
                     {[
                       ["Category", product.category.replace(/-/g, " ")],
                       ["SKU", product.sku ?? "—"],
-                      ["Stock", sizes.length > 0 ? `${product.stock} total units` : `${product.stock} units`],
+                      ["Stock", (sizes.length > 0 || colors.length > 0) ? `${product.stock} total units` : `${product.stock} units`],
                       ...(sizes.length > 0 ? sizes.map((sz) => [`Stock – ${sz.label}`, `${sz.stock} units`]) : []),
+                      ...(colors.length > 0 ? colors.map((c) => [`Stock – ${c.label}`, `${c.stock} units`]) : []),
                     ].map(([k, v]) => (
                       <div key={k} className="flex justify-between py-1 border-b border-border/40 last:border-0">
                         <dt className="text-muted-foreground capitalize">{k}</dt>

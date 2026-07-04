@@ -166,7 +166,9 @@ export default function BulkUploadPage() {
         const blob = dataUrlToBlob(r.currentDataUrl);
         const ext = blob.type.split("/")[1] || "png";
         const { url } = await uploadFile(blob, `bulk-${r.id}.${ext}`);
-        const colors = r.colorsText.split(",").map((s) => s.trim()).filter(Boolean);
+        const stock = Number(r.stock) || 0;
+        const colors = r.colorsText.split(",").map((s) => s.trim()).filter(Boolean)
+          .map((label) => ({ label, stock }));
         await apiFetch("/api/products", {
           method: "POST",
           body: JSON.stringify({ name: r.name.trim(), description: r.description.trim() || null, price: Number(r.price), category: r.category.trim() || "stationery", stock: Number(r.stock) || 0, image_url: url, colors }),

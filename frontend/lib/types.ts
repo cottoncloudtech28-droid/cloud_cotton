@@ -3,6 +3,11 @@ export interface ProductSize {
   stock: number;
 }
 
+export interface ProductColor {
+  label: string;
+  stock: number;
+}
+
 export interface Product {
   id: string;
   slug?: string | null;
@@ -16,7 +21,7 @@ export interface Product {
   category: string;
   stock: number;
   is_active?: boolean;
-  colors?: string[] | null;
+  colors?: ProductColor[] | null;
   tags?: string[];
   sizes?: ProductSize[];
   sku?: string;
@@ -81,6 +86,7 @@ export interface StockLog {
   productName: string;
   sku: string | null;
   size: string | null;
+  color: string | null;
   change: number;
   stockBefore: number;
   stockAfter: number;

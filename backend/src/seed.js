@@ -204,7 +204,12 @@ async function seed() {
 
   let count = 0;
   for (const data of products) {
-    const p = new Product(data);
+    // colors above are written as plain label strings for readability; convert to
+    // { label, stock } here, starting each color at the product's own stock count.
+    const colors = Array.isArray(data.colors)
+      ? data.colors.map((label) => ({ label, stock: data.stock ?? 0 }))
+      : [];
+    const p = new Product({ ...data, colors });
     await p.save();
     console.log(`  ${p.name} → ${p.slug}`);
     count++;
