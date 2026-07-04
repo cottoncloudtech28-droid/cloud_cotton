@@ -506,11 +506,11 @@ export default function CartPage() {
                 <p className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
                   <Star className="h-3.5 w-3.5 text-primary fill-primary" /> You might also like
                 </p>
-                <div className="flex gap-3 overflow-x-auto pb-1 snap-x scrollbar-none">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {recommendations.map((p) => {
                     const final = +(p.price * (1 - p.discount_percent / 100)).toFixed(2);
                     return (
-                      <div key={p.id} className="shrink-0 snap-start w-36 border border-border rounded-2xl overflow-hidden bg-background hover:border-primary/40 transition-colors">
+                      <div key={p.id} className="border border-border rounded-2xl overflow-hidden bg-background hover:border-primary/40 transition-colors">
                         <Link href={`/product/${p.slug ?? p.id}`}>
                           <div className="aspect-square bg-gradient-hero overflow-hidden">
                             {p.image_url
