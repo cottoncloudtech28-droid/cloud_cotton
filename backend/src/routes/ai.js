@@ -92,13 +92,18 @@ Return ONLY the JSON object, no markdown, no extra text.`;
 
 // ── Provider implementations ──────────────────────────────────────────────────
 
-// OpenAI gpt-image-1 — instruction-based edit via the Images Edits endpoint
+// OpenAI gpt-image-1 — instruction-based edit via the Images Edits endpoint.
+// quality: "high" renders the fuller, more detailed lifestyle scenes properly instead of
+// the softer/cheaper default. input_fidelity: "high" keeps the actual product (shape, print,
+// color) accurate instead of letting it drift while the background is reimagined around it.
 async function editWithOpenAI(buffer, mime, prompt) {
   const ext = mime.split("/")[1] || "png";
   const form = new FormData();
   form.append("model", "gpt-image-1");
   form.append("prompt", prompt);
   form.append("size", "1024x1024");
+  form.append("quality", "high");
+  form.append("input_fidelity", "high");
   form.append("image", new Blob([buffer], { type: mime }), `product.${ext}`);
 
   const response = await fetch("https://api.openai.com/v1/images/edits", {
