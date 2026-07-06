@@ -12,6 +12,7 @@ const sizeZ = z.object({
 const colorZ = z.object({
   label: z.string().trim().min(1).max(50),
   stock: z.number().int().min(0),
+  images: z.array(z.string()).default([]),
 });
 
 const schema = z.object({
@@ -56,7 +57,11 @@ const parseBody = (body) => ({
   reorder_point:    Number(body.reorder_point ?? 5),
   images:           Array.isArray(body.images) ? body.images : [],
   colors:           Array.isArray(body.colors)
-                      ? body.colors.map((c) => ({ label: c.label, stock: Number(c.stock ?? 0) }))
+                      ? body.colors.map((c) => ({
+                          label: c.label,
+                          stock: Number(c.stock ?? 0),
+                          images: Array.isArray(c.images) ? c.images : [],
+                        }))
                       : [],
   tags:             Array.isArray(body.tags) ? body.tags : [],
   sizes:            Array.isArray(body.sizes)

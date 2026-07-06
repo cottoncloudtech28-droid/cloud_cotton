@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, ShoppingBag, ImageOff } from "lucide-react";
+import { Heart, ShoppingBag, ImageOff, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { addToWishlist, removeFromWishlist, getWishlistIds } from "@/lib/api";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -31,6 +31,24 @@ export default function ProductCard({ p }: { p: Product }) {
   const hasChoices = colors.length > 1;
   const [selected, setSelected] = useState<string>(hasChoices ? "" : colors[0]?.label ?? "");
   const [inWishlist, setInWishlist] = useState(false);
+  const images = p.images?.length ? p.images : p.image_url ? [p.image_url] : [];
+  const [imgIndex, setImgIndex] = useState(0);
+  const touchStartX = useRef(0);
+
+  const showImage = (i: number, e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    setImgIndex((i + images.length) % images.length);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) > 40) showImage(imgIndex + (delta < 0 ? 1 : -1));
+  };
 
   useEffect(() => {
     if (!user) { setInWishlist(false); return; }
@@ -38,6 +56,15 @@ export default function ProductCard({ p }: { p: Product }) {
       .then((ids) => setInWishlist(ids.includes(p.id)))
       .catch(() => {});
   }, [user, p.id]);
+
+  // Switch to the color's linked image, if it has one
+  useEffect(() => {
+    if (!selected) return;
+    const colorImages = colors.find((c) => c.label === selected)?.images;
+    if (!colorImages?.length) return;
+    const idx = images.indexOf(colorImages[0]);
+    if (idx !== -1) setImgIndex(idx);
+  }, [selected]);
 
   const handleAdd = () => {
     if (!user) {
@@ -77,10 +104,15 @@ export default function ProductCard({ p }: { p: Product }) {
   return (
     <Card className="group overflow-hidden border border-border/60 bg-card rounded-3xl h-full flex flex-col">
       {/* ── Clickable image → product page ── */}
-      <Link href={productHref} className="block relative aspect-square bg-gradient-hero overflow-hidden">
-        {p.image_url ? (
+      <Link
+        href={productHref}
+        className="block relative aspect-square bg-gradient-hero overflow-hidden"
+        onTouchStart={images.length > 1 ? handleTouchStart : undefined}
+        onTouchEnd={images.length > 1 ? handleTouchEnd : undefined}
+      >
+        {images.length > 0 ? (
           <img
-            src={p.image_url}
+            src={images[imgIndex]}
             alt={p.name}
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-bounce"
@@ -90,6 +122,39 @@ export default function ProductCard({ p }: { p: Product }) {
             <ImageOff className="h-10 w-10 text-muted-foreground/25" />
           </div>
         )}
+
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={(e) => showImage(imgIndex - 1, e)}
+              aria-label="Previous image"
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-background/80 hidden md:grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+            >
+              <ChevronLeft className="h-4 w-4 text-foreground" />
+            </button>
+            <button
+              onClick={(e) => showImage(imgIndex + 1, e)}
+              aria-label="Next image"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-background/80 hidden md:grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+            >
+              <ChevronRight className="h-4 w-4 text-foreground" />
+            </button>
+
+            <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1.5 z-10">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => showImage(i, e)}
+                  aria-label={`Show image ${i + 1}`}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === imgIndex ? "w-4 bg-background" : "w-1.5 bg-background/60"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
         {p.discount_percent > 0 && (
           <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground border-0">
             -{p.discount_percent}%

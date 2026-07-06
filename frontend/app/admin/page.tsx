@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner";
 import {
   Pencil, Trash2, Plus, Upload, X, ImagePlus, Tag, Ruler,
-  ChevronDown, ChevronUp, Package, Eye, EyeOff, Wand2, Sparkles,
+  ChevronDown, ChevronUp, Package, Eye, EyeOff, Wand2, Sparkles, Star,
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -98,7 +98,7 @@ const schema = z.object({
   discount_percent: z.number().int().min(0).max(100),
   category: z.string().trim().min(1, "Category is required").max(40),
   stock: z.number().int().min(0).max(100_000),
-  colors: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0) })).optional(),
+  colors: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0), images: z.array(z.string()).optional() })).optional(),
   tags: z.array(z.string()).optional(),
   images: z.array(z.string()).optional(),
   sizes: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0) })).optional(),
@@ -201,27 +201,53 @@ function SizeRows({ sizes, onChange }: { sizes: ProductSize[]; onChange: (s: Pro
 }
 
 // ── Color rows ────────────────────────────────────────────────────────────────
-function ColorRows({ colors, onChange }: { colors: ProductColor[]; onChange: (c: ProductColor[]) => void }) {
-  const addRow = () => onChange([...colors, { label: "", stock: 0 }]);
+function ColorRows({ colors, onChange, images = [] }: { colors: ProductColor[]; onChange: (c: ProductColor[]) => void; images?: string[] }) {
+  const addRow = () => onChange([...colors, { label: "", stock: 0, images: [] }]);
   const removeRow = (i: number) => onChange(colors.filter((_, idx) => idx !== i));
   const update = (i: number, field: keyof ProductColor, val: string | number) =>
     onChange(colors.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
+  const toggleImage = (i: number, url: string) =>
+    onChange(colors.map((c, idx) => {
+      if (idx !== i) return c;
+      const current = c.images ?? [];
+      const next = current.includes(url) ? current.filter((u) => u !== url) : [...current, url];
+      return { ...c, images: next };
+    }));
   return (
     <div className="space-y-2">
       <Label className="flex items-center gap-1.5"><span className="text-sm">🎨</span> Colors</Label>
-      <p className="text-xs text-muted-foreground">Each color tracks its own stock, so a color can sell out on its own.</p>
+      <p className="text-xs text-muted-foreground">Each color tracks its own stock, so a color can sell out on its own. Pick which uploaded images belong to a color — selecting that color will then switch the gallery to those images.</p>
       {colors.map((c, i) => (
-        <div key={i} className="flex gap-2 items-center">
-          <Input value={c.label} onChange={(e) => update(i, "label", e.target.value)}
-            placeholder="e.g. sakura pink" className="flex-1" />
-          <Input type="number" min="0" value={c.stock}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => update(i, "stock", parseInt(e.target.value) || 0)}
-            placeholder="Stock" className="w-24" />
-          <button type="button" onClick={() => removeRow(i)}
-            className="text-muted-foreground hover:text-destructive transition-colors">
-            <X className="h-4 w-4" />
-          </button>
+        <div key={i} className="space-y-1.5 rounded-lg border border-border p-2">
+          <div className="flex gap-2 items-center">
+            <Input value={c.label} onChange={(e) => update(i, "label", e.target.value)}
+              placeholder="e.g. sakura pink" className="flex-1" />
+            <Input type="number" min="0" value={c.stock}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => update(i, "stock", parseInt(e.target.value) || 0)}
+              placeholder="Stock" className="w-24" />
+            <button type="button" onClick={() => removeRow(i)}
+              className="text-muted-foreground hover:text-destructive transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {images.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {images.map((url, idx) => {
+                const active = (c.images ?? []).includes(url);
+                return (
+                  <button key={url + idx} type="button" title={active ? "Linked to this color — click to unlink" : "Click to link to this color"}
+                    onClick={() => toggleImage(i, url)}
+                    className={cn(
+                      "h-10 w-10 rounded-md overflow-hidden border-2 transition-colors",
+                      active ? "border-primary ring-2 ring-primary/40" : "border-border opacity-50 hover:opacity-100"
+                    )}>
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       ))}
       <Button type="button" variant="outline" size="sm" onClick={addRow}>
@@ -258,6 +284,13 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
     onChange(images.filter((_, idx) => idx !== i));
     if (aiIndex === i) setAiIndex(null);
     else if (aiIndex !== null && i < aiIndex) setAiIndex(aiIndex - 1);
+  };
+
+  const makePrimary = (i: number) => {
+    if (i === 0) return;
+    onChange([images[i], ...images.filter((_, idx) => idx !== i)]);
+    setAiIndex((prev) => (prev === null ? prev : prev === i ? 0 : prev < i ? prev + 1 : prev));
+    toast.success("Set as primary image");
   };
 
   // Close only the AI edit panel on Escape, instead of letting it bubble up
@@ -306,7 +339,7 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
     <div className="space-y-2">
       <Label className="flex items-center gap-1.5"><ImagePlus className="h-4 w-4" /> Product images</Label>
       <p className="text-xs text-muted-foreground">
-        First image is the primary. Hover an image for AI editing — generate extra angles/backgrounds and add them as new gallery images. Drag-to-reorder not yet supported.
+        First image is the primary. Hover an image to set it as primary (star), AI-edit it, or remove it — generate extra angles/backgrounds and add them as new gallery images. Drag-to-reorder not yet supported.
       </p>
 
       {images.length > 0 && (
@@ -319,9 +352,16 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
               )}>
               <img src={url} alt={`Image ${i + 1}`} className="h-full w-full object-cover" />
               {i === 0 && (
-                <span className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[9px] px-1 rounded">Primary</span>
+                <span className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[10px] font-medium px-1.5 py-0.5 rounded">Primary</span>
               )}
               <div className="absolute top-0.5 right-0.5 hidden group-hover:flex gap-0.5">
+                {i !== 0 && (
+                  <button type="button" title="Set as primary"
+                    onClick={() => makePrimary(i)}
+                    className="h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-amber-500">
+                    <Star className="h-3 w-3" />
+                  </button>
+                )}
                 <button type="button" title="AI edit"
                   onClick={() => { setAiIndex(i); setPrompt(""); }}
                   className="h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-primary">
@@ -616,7 +656,7 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
       <MultiImageUploader images={form.images} onChange={(imgs) => setField("images", imgs)} productName={form.name} />
       <Separator />
       <div className="space-y-4">
-        <ColorRows colors={form.colors} onChange={(v) => setField("colors", v)} />
+        <ColorRows colors={form.colors} onChange={(v) => setField("colors", v)} images={form.images} />
         <ChipInput label="Tags" icon={<Tag className="h-4 w-4" />}
           values={form.tags} onChange={(v) => setField("tags", v)} placeholder="kawaii, gift, pastel…" />
       </div>

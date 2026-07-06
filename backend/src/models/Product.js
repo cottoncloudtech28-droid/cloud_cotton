@@ -6,7 +6,11 @@ const sizeSchema = new mongoose.Schema(
 );
 
 const colorSchema = new mongoose.Schema(
-  { label: { type: String, required: true, trim: true, maxlength: 50 }, stock: { type: Number, default: 0, min: 0 } },
+  {
+    label:  { type: String, required: true, trim: true, maxlength: 50 },
+    stock:  { type: Number, default: 0, min: 0 },
+    images: { type: [String], default: [] }, // subset of the product's images shown when this color is selected
+  },
   { _id: false }
 );
 

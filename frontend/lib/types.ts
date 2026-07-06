@@ -6,6 +6,7 @@ export interface ProductSize {
 export interface ProductColor {
   label: string;
   stock: number;
+  images?: string[];
 }
 
 export interface Product {

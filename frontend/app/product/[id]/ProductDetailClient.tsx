@@ -84,6 +84,7 @@ export default function ProductDetailClient() {
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setQty(1);
     setActiveImg(0);
@@ -92,6 +93,7 @@ export default function ProductDetailClient() {
 
     apiFetch(`/api/products/${id}`)
       .then(async (p: Product) => {
+        if (cancelled) return;
         setProduct(p);
         // Auto-select if only one option
         const colors = p.colors ?? [];
@@ -111,16 +113,29 @@ export default function ProductDetailClient() {
           apiFetch(`/api/products?cat=${encodeURIComponent(p.category)}&limit=8`),
           user ? getWishlistIds() : Promise.resolve([]),
         ]);
+        if (cancelled) return;
         if (rel.status === "fulfilled") {
           const relProds: Product[] = (rel.value as any).products ?? rel.value;
-          setRelated(relProds.filter((x) => x.id !== id).slice(0, 4));
+          setRelated(relProds.filter((x) => x.id !== p.id).slice(0, 4));
         }
         if (wids.status === "fulfilled")
           setInWishlist((wids.value as string[]).includes(id));
       })
-      .catch(() => router.push("/shop"))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!cancelled) router.push("/shop"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
   }, [id, user]);
+
+  // Switch to the color's linked image, if it has one
+  useEffect(() => {
+    if (!product || !selectedColor) return;
+    const colorImages = (product.colors ?? []).find((c) => c.label === selectedColor)?.images;
+    if (!colorImages?.length) return;
+    const allImgs = product.images?.length > 0 ? product.images : product.image_url ? [product.image_url] : [];
+    const idx = allImgs.indexOf(colorImages[0]);
+    if (idx !== -1) setActiveImg(idx);
+  }, [selectedColor, product]);
 
   useEffect(() => {
     const el = ctaRef.current;
