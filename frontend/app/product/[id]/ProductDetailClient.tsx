@@ -310,7 +310,7 @@ export default function ProductDetailClient() {
         </div>
       </div>
 
-      <main className="container py-8 space-y-16">
+      <main className="container py-6 sm:py-8 space-y-10 sm:space-y-16">
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
@@ -327,7 +327,7 @@ export default function ProductDetailClient() {
         </nav>
 
         {/* Main layout */}
-        <div className="grid md:grid-cols-2 gap-10 lg:gap-16">
+        <div className="grid md:grid-cols-2 gap-6 md:gap-10 lg:gap-16">
 
           {/* ── Left: Image gallery ────────────────────────────────────────── */}
           <div className="space-y-3">
@@ -371,7 +371,7 @@ export default function ProductDetailClient() {
                   {product.category.replace(/-/g, " ")}
                 </Badge>
               </Link>
-              <h1 className="text-3xl md:text-4xl font-bold leading-tight">{product.name}</h1>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">{product.name}</h1>
               {product.short_description && (
                 <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                   {product.short_description}
@@ -381,7 +381,7 @@ export default function ProductDetailClient() {
 
             {/* Price */}
             <div className="flex items-baseline gap-3 flex-wrap">
-              <span className="text-4xl font-extrabold">₹{finalPrice}</span>
+              <span className="text-3xl sm:text-4xl font-extrabold">₹{finalPrice}</span>
               {product.discount_percent > 0 && (
                 <>
                   <span className="text-xl text-muted-foreground line-through">₹{product.price}</span>

@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import Navbar from "@/components/shop/Navbar";
 import Footer from "@/components/shop/Footer";
+import Navbar from "@/components/shop/Navbar";
 import ProductCard from "@/components/shop/ProductCard";
-import type { Product, Category } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
-import { Sparkles, Cloud, ShoppingBag } from "lucide-react";
+import type { Category, Product } from "@/lib/types";
+import { Cloud, ShoppingBag, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 const hero = "/hero.jpg";
 
@@ -27,6 +27,8 @@ export default function Home() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [reviews, setReviews] = useState<typeof FALLBACK_REVIEWS>(FALLBACK_REVIEWS);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [activeReview, setActiveReview] = useState(0);
+  const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
     apiFetch("/api/products?limit=8&sort=newest")
@@ -73,17 +75,17 @@ export default function Home() {
 
         {/* ── HERO ── */}
         <section className="relative overflow-hidden">
-          <div className="container grid md:grid-cols-2 gap-8 items-center py-12 md:py-20">
-            <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-700">
+          <div className="container grid md:grid-cols-2 gap-6 md:gap-8 items-center py-8 md:py-20">
+            <div className="space-y-5 animate-in fade-in slide-in-from-left-4 duration-700 text-center md:text-left">
               <span className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-accent-foreground">
-                <Cloud className="h-3.5 w-3.5" /> Freshly stocked & oh-so-cute
+                <Cloud className="h-3.5 w-3.5" /> Freshly stocked &amp; oh-so-cute
               </span>
 
-              <h1 className="text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight uppercase bg-gradient-primary bg-clip-text text-transparent">
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight uppercase bg-gradient-primary bg-clip-text text-transparent">
                 Cotton Cloud<br />Company
               </h1>
 
-              <p className="text-2xl md:text-3xl max-w-md font-[Fredoka] italic text-secondary-foreground">
+              <p className="text-xl md:text-3xl max-w-md mx-auto md:mx-0 font-[Fredoka] italic text-secondary-foreground">
                 <span className="relative inline-block">
                   <span className="absolute inset-x-0 bottom-1 h-3 bg-accent/70 -z-10 rounded-sm" />
                   Your happy place
@@ -93,12 +95,12 @@ export default function Home() {
                 <Sparkles className="inline-block ml-1 h-5 w-5 text-primary fill-primary/40" />
               </p>
 
-              <p className="text-base text-muted-foreground max-w-md">
+              <p className="text-base text-muted-foreground max-w-md mx-auto md:mx-0">
                 Hand-picked kawaii stationery, quirky knick-knacks and irresistibly cute toys.
                 Made for daydreamers and desk-decorators.
               </p>
             </div>
-            <div className="relative">
+            <div className="relative mt-4 md:mt-0">
               <div className="absolute -inset-4 bg-gradient-primary opacity-20 blur-3xl rounded-full" />
               <img src={hero} alt="Kawaii stationery flat lay" width={1536} height={896}
                 className="relative rounded-[2rem] shadow-cute w-full h-auto" />
@@ -231,19 +233,18 @@ export default function Home() {
             <h2 className="text-2xl md:text-3xl font-bold">What people are saying 💬</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+          {/* ── Desktop: 3-column grid ── */}
+          <div className="hidden md:grid md:grid-cols-3 gap-5">
             {reviewsLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-44 rounded-2xl md:rounded-3xl" />
+                  <Skeleton key={i} className="h-44 rounded-3xl" />
                 ))
               : reviews.map((t) => (
                   <div
                     key={t.id}
-                    className="relative rounded-2xl md:rounded-3xl bg-card border border-border/60 p-5 md:p-6 flex flex-col gap-3"
+                    className="relative rounded-3xl bg-card border border-border/60 p-6 flex flex-col gap-3"
                   >
-                    <div className="flex gap-0.5 text-amber-400 text-sm">
-                      {"★".repeat(t.rating)}
-                    </div>
+                    <div className="flex gap-0.5 text-amber-400 text-sm">{"★".repeat(t.rating)}</div>
                     <p className="text-sm text-foreground/80 leading-relaxed flex-1">"{t.text}"</p>
                     <div className="flex items-center gap-3 pt-1 border-t border-border/40">
                       <div className="h-9 w-9 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 border border-border/40 grid place-items-center text-lg flex-shrink-0">
@@ -257,6 +258,91 @@ export default function Home() {
                   </div>
                 ))
             }
+          </div>
+
+          {/* ── Mobile: Swipe carousel ── */}
+          <div className="md:hidden">
+            {reviewsLoading ? (
+              <Skeleton className="h-52 rounded-2xl" />
+            ) : (
+              <>
+                {/* Carousel track */}
+                <div
+                  className="overflow-hidden rounded-2xl"
+                  onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+                  onTouchEnd={(e) => {
+                    if (touchStartX.current === null) return;
+                    const dx = e.changedTouches[0].clientX - touchStartX.current;
+                    if (dx < -40) setActiveReview((p) => Math.min(p + 1, reviews.length - 1));
+                    if (dx > 40)  setActiveReview((p) => Math.max(p - 1, 0));
+                    touchStartX.current = null;
+                  }}
+                >
+                  <div
+                    className="flex transition-transform duration-300 ease-in-out"
+                    style={{ transform: `translateX(-${activeReview * 100}%)` }}
+                  >
+                    {reviews.map((t) => (
+                      <div
+                        key={t.id}
+                        className="min-w-full rounded-2xl bg-card border border-border/60 p-5 flex flex-col gap-3"
+                      >
+                        <div className="flex gap-0.5 text-amber-400 text-base">{"★".repeat(t.rating)}</div>
+                        <p className="text-sm text-foreground/80 leading-relaxed flex-1">"{t.text}"</p>
+                        <div className="flex items-center gap-3 pt-1 border-t border-border/40">
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 border border-border/40 grid place-items-center text-xl flex-shrink-0">
+                            {t.avatar}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-foreground leading-none">{t.name}</p>
+                            {t.location && <p className="text-xs text-muted-foreground mt-0.5">{t.location}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Controls row */}
+                <div className="flex items-center justify-between mt-4 px-1">
+                  {/* Prev button */}
+                  <button
+                    onClick={() => setActiveReview((p) => Math.max(p - 1, 0))}
+                    disabled={activeReview === 0}
+                    aria-label="Previous review"
+                    className="h-9 w-9 rounded-full flex items-center justify-center border border-border/60 bg-card text-foreground disabled:opacity-30 transition-colors hover:bg-accent active:scale-95"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Dot indicators */}
+                  <div className="flex gap-2">
+                    {reviews.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setActiveReview(i)}
+                        aria-label={`Go to review ${i + 1}`}
+                        className={`rounded-full transition-all duration-200 ${
+                          i === activeReview
+                            ? "w-5 h-2.5 bg-primary"
+                            : "w-2.5 h-2.5 bg-border hover:bg-muted-foreground"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Next button */}
+                  <button
+                    onClick={() => setActiveReview((p) => Math.min(p + 1, reviews.length - 1))}
+                    disabled={activeReview === reviews.length - 1}
+                    aria-label="Next review"
+                    className="h-9 w-9 rounded-full flex items-center justify-center border border-border/60 bg-card text-foreground disabled:opacity-30 transition-colors hover:bg-accent active:scale-95"
+                  >
+                    ›
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </section>
 

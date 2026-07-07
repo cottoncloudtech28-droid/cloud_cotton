@@ -74,14 +74,14 @@ function OrderCard({
   return (
     <Card className="overflow-hidden border border-border/60 rounded-3xl">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 bg-muted/30 border-b border-border/50">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-2 px-5 py-4 bg-muted/30 border-b border-border/50">
+        <div className="min-w-0">
           <p className="font-bold text-sm tracking-tight">Order #{order.orderId}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canCancel && (
             <button
               onClick={() => setShowCancelConfirm(true)}
@@ -187,7 +187,7 @@ function OrderCard({
                   : <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-5 w-5 text-muted-foreground/25" /></div>}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{item.name}</p>
+                <p className="text-sm font-semibold line-clamp-2 leading-snug">{item.name}</p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-1">
                   {item.color && (
                     <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border/50">{item.color}</span>
@@ -208,7 +208,7 @@ function OrderCard({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-5 py-3 bg-muted/20 border-t border-border/50 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3 bg-muted/20 border-t border-border/50 gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary/70" />
           <span className="text-xs text-muted-foreground truncate">
@@ -389,9 +389,9 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <Navbar />
-      <main className="flex-1 container py-6 space-y-4">
+      <main className="flex-1 container py-4 sm:py-6 space-y-4">
         {/* ── Two-column layout ── */}
-        <div className="grid lg:grid-cols-[300px_1fr] gap-5 items-start">
+        <div className="grid lg:grid-cols-[300px_1fr] gap-4 sm:gap-5 items-start">
 
           {/* ══ LEFT SIDEBAR ══ */}
           <div className="space-y-4 lg:sticky lg:top-6">

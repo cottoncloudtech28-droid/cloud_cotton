@@ -98,7 +98,7 @@ export default function CategoryPage() {
               className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white text-center px-4">
               <span className="text-5xl mb-2">{category.emoji}</span>
-              <h1 className="text-4xl md:text-5xl font-extrabold">{category.name}</h1>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold">{category.name}</h1>
               {category.description && (
                 <p className="mt-2 text-base text-white/90 max-w-lg">{category.description}</p>
               )}
@@ -108,7 +108,7 @@ export default function CategoryPage() {
           <div className="bg-muted py-12 border-b border-border">
             <div className="container text-center space-y-2">
               <span className="text-5xl">{category.emoji}</span>
-              <h1 className="text-4xl md:text-5xl font-extrabold mt-2">{category.name}</h1>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mt-2">{category.name}</h1>
               {category.description && (
                 <p className="text-muted-foreground text-base max-w-lg mx-auto mt-1">
                   {category.description}
@@ -118,7 +118,7 @@ export default function CategoryPage() {
           </div>
         )}
 
-        <div className="container py-8 space-y-6">
+        <div className="container py-6 sm:py-8 space-y-5 sm:space-y-6">
 
           {/* Breadcrumb */}
           <nav className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
@@ -131,7 +131,7 @@ export default function CategoryPage() {
 
           {/* Search + tag filters */}
           <div className="space-y-3">
-            <div className="relative max-w-sm">
+            <div className="relative w-full sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input value={q} onChange={(e) => setQ(e.target.value)}
                 placeholder={`Search in ${category.name}…`}

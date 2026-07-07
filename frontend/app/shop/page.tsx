@@ -73,20 +73,20 @@ function ShopContent() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="container py-8 space-y-8">
+      <main className="container py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* Header */}
-        <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-4xl font-bold">Shop everything cute</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-4xl font-bold">Shop everything cute</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               {loading ? "Loading…" : `${total} adorable item${total !== 1 ? "s" : ""} waiting for a new home`}
             </p>
           </div>
 
           {/* Sort */}
           <Select value={sort} onValueChange={(v) => pushParam("sort", v)}>
-            <SelectTrigger className="w-48 rounded-full">
+            <SelectTrigger className="w-full sm:w-48 rounded-full">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -99,7 +99,7 @@ function ShopContent() {
 
         {/* Search */}
         <SmartSearch
-          className="max-w-md"
+          className="w-full sm:max-w-md"
           placeholder="Search cuties, tags, keywords…"
         />
 

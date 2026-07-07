@@ -53,9 +53,9 @@ function AuthContent() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="container py-12">
-        <Card className="p-8 rounded-3xl max-w-md mx-auto">
-          <h1 className="text-3xl font-bold mb-1">
+      <main className="container py-8 sm:py-12">
+        <Card className="p-5 sm:p-8 rounded-3xl max-w-md mx-auto">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1">
             {mode === "signin" ? "Welcome back" : "Join the cute club"}
           </h1>
           <p className="text-muted-foreground mb-6">

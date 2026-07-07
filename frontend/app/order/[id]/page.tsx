@@ -88,10 +88,10 @@ export default function OrderConfirmationPage() {
   return (
     <div className="min-h-screen flex flex-col bg-muted/20">
       <Navbar />
-      <main className="flex-1 container py-10 space-y-5" style={{ maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+      <main className="flex-1 container py-6 sm:py-10 space-y-5" style={{ maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
 
         {/* ── Hero card ── */}
-        <div className="rounded-3xl bg-card border border-green-200/60 p-8 text-center space-y-4">
+        <div className="rounded-3xl bg-card border border-green-200/60 p-5 sm:p-8 text-center space-y-4">
           <div className="relative mx-auto h-20 w-20">
             <div className="absolute inset-0 rounded-full bg-green-100 animate-ping opacity-30" />
             <div className="relative h-20 w-20 rounded-full bg-green-100 grid place-items-center">
@@ -183,7 +183,7 @@ export default function OrderConfirmationPage() {
                       : <div className="h-full w-full flex items-center justify-center"><ImageOff className="h-5 w-5 text-muted-foreground/30" /></div>}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{item.name}</p>
+                    <p className="font-medium text-sm line-clamp-2 leading-snug">{item.name}</p>
                     {(item.color || item.size) && (
                       <p className="text-xs text-muted-foreground mt-0.5">{[item.color, item.size].filter(Boolean).join(" / ")}</p>
                     )}
@@ -259,7 +259,7 @@ export default function OrderConfirmationPage() {
         </div>
 
         {/* ── CTAs ── */}
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Link href={`/track-order?id=${order.orderId}`}>
             <Button variant="outline" className="w-full rounded-2xl h-12 gap-2 border-border hover:border-primary/50 hover:text-primary">
               <Truck className="h-4 w-4" /> Track order

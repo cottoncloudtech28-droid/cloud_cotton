@@ -398,11 +398,14 @@ export default function CartPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container py-8">
+      <main className="flex-1 container py-6 px-4 sm:px-6">
         {/* ── Top quick-pay bar ── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <h1 className="text-2xl sm:text-4xl font-bold">Your cart</h1>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col xs:flex-row flex-wrap items-start xs:items-center justify-between gap-3 mb-6">
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-bold">Your cart</h1>
+            <p className="text-xs text-muted-foreground mt-0.5 sm:hidden">{items.length} item{items.length !== 1 ? "s" : ""} · ₹{grandTotal}</p>
+          </div>
+          <div className="flex items-center gap-3 w-full xs:w-auto">
             <div className="text-right hidden sm:block">
               <p className="text-xs text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""} · ₹{grandTotal}</p>
               {!addrValid
@@ -417,16 +420,16 @@ export default function CartPage() {
             {!addrValid ? (
               <Button
                 onClick={() => handlePayClick()}
-                className="rounded-full h-10 px-5 font-semibold text-sm shadow-sm gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
+                className="flex-1 xs:flex-none rounded-full h-10 px-5 font-semibold text-sm shadow-sm gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
               >
-                <MapPin className="h-4 w-4" />
+                <MapPin className="h-4 w-4 shrink-0" />
                 Add delivery address
               </Button>
             ) : paymentMethod === "razorpay" ? (
               <button
                 disabled={placing}
                 onClick={() => handlePayClick()}
-                className="rounded-full h-10 px-5 font-semibold text-sm shadow-sm flex items-center gap-2 transition-opacity disabled:opacity-50"
+                className="flex-1 xs:flex-none rounded-full h-10 px-5 font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
                 style={{ background: "linear-gradient(135deg, #3395FF 0%, #1a6fd4 100%)", color: "white", border: "none" }}
               >
                 {placing ? "Opening…" : (
@@ -439,7 +442,7 @@ export default function CartPage() {
               </button>
             ) : (
               <Button
-                className="rounded-full bg-gradient-primary text-primary-foreground border-0 h-10 px-6 font-semibold text-sm shadow-sm"
+                className="flex-1 xs:flex-none rounded-full bg-gradient-primary text-primary-foreground border-0 h-10 px-6 font-semibold text-sm shadow-sm"
                 disabled={placing}
                 onClick={() => handlePayClick()}
               >
@@ -449,7 +452,7 @@ export default function CartPage() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
+        <div className="grid lg:grid-cols-[1fr_400px] gap-5 sm:gap-8 items-start">
 
           {/* ── Left: cart items ── */}
           <div className="rounded-3xl bg-card p-5 space-y-3">
@@ -462,15 +465,15 @@ export default function CartPage() {
               {items.map(({ product: p, qty }) => {
                 const final = +(p.price * (1 - p.discount_percent / 100)).toFixed(2);
                 return (
-                  <div key={p.id} className="flex items-center gap-4 p-3.5 rounded-2xl border border-border hover:border-primary/30 transition-colors">
-                    <div className="h-18 w-18 rounded-xl overflow-hidden bg-gradient-hero shrink-0" style={{ width: 72, height: 72 }}>
+                  <div key={p.id} className="flex items-start sm:items-center gap-3 p-3 sm:p-3.5 rounded-2xl border border-border hover:border-primary/30 transition-colors">
+                    <div className="rounded-xl overflow-hidden bg-gradient-hero shrink-0" style={{ width: 60, height: 60 }}>
                       {p.image_url
                         ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
                         : <div className="h-full w-full flex items-center justify-center bg-muted"><ImageOff className="h-6 w-6 text-muted-foreground/25" /></div>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{p.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <p className="font-semibold text-sm leading-snug line-clamp-2">{p.name}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                         <span className="text-sm font-medium">₹{final}</span>
                         {p.discount_percent > 0 && (
                           <>
@@ -480,15 +483,29 @@ export default function CartPage() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">Subtotal: ₹{(final * qty).toFixed(2)}</p>
+                      {/* Mobile: qty + remove inline under the text */}
+                      <div className="flex items-center gap-2 mt-2 sm:hidden">
+                        <Input
+                          type="number" min={1} value={qty}
+                          onChange={(e) => setQty(p.id, parseInt(e.target.value) || 0)}
+                          className="w-16 h-8 rounded-full text-center text-sm"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => remove(p.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <Input
-                      type="number" min={1} value={qty}
-                      onChange={(e) => setQty(p.id, parseInt(e.target.value) || 0)}
-                      className="w-20 rounded-full text-center"
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => remove(p.id)} className="text-muted-foreground hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {/* Desktop: qty + remove on the right */}
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
+                      <Input
+                        type="number" min={1} value={qty}
+                        onChange={(e) => setQty(p.id, parseInt(e.target.value) || 0)}
+                        className="w-20 rounded-full text-center"
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => remove(p.id)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
@@ -556,9 +573,9 @@ export default function CartPage() {
                 {items.map(({ product: p, qty }) => {
                   const final = +(p.price * (1 - p.discount_percent / 100)).toFixed(2);
                   return (
-                    <div key={p.id} className="flex justify-between py-2">
-                      <span className="text-muted-foreground truncate max-w-[200px]">{p.name} × {qty}</span>
-                      <span className="font-medium shrink-0 ml-2">₹{(final * qty).toFixed(2)}</span>
+                    <div key={p.id} className="flex justify-between py-2 gap-2">
+                      <span className="text-muted-foreground line-clamp-2 min-w-0 flex-1 text-xs sm:text-sm">{p.name} × {qty}</span>
+                      <span className="font-medium shrink-0 text-sm">₹{(final * qty).toFixed(2)}</span>
                     </div>
                   );
                 })}
@@ -745,7 +762,7 @@ export default function CartPage() {
                         )}
                       </div>
                       <p className="text-sm font-medium">{a.fullName}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5 break-words">
                         {a.line1}{a.line2 ? `, ${a.line2}` : ""}, {a.city}, {a.state} — {a.pincode}
                       </p>
                       <p className="text-xs text-muted-foreground">{a.phone}</p>
@@ -843,7 +860,7 @@ export default function CartPage() {
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-primary" /> Payment method
               </h2>
-              <div className={`grid gap-3 ${codEnabled ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className={`grid gap-3 ${codEnabled ? "grid-cols-2" : "grid-cols-1"} max-w-full`}>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod("razorpay")}
