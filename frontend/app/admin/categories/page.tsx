@@ -229,6 +229,7 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
           <div>
             <Label>Sort order</Label>
             <Input type="number" min="0" value={draft.sort_order}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setDraft((d) => ({ ...d, sort_order: parseInt(e.target.value) || 0 }))} className="w-24" />
           </div>
         </div>
@@ -331,6 +332,7 @@ function NewCategoryForm({ onCreated }: { onCreated: (c: Category) => void }) {
           <div>
             <Label>Sort order</Label>
             <Input type="number" value={form.sort_order}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setForm((f) => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} className="w-24" />
           </div>
         </div>

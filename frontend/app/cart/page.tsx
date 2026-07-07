@@ -487,6 +487,7 @@ export default function CartPage() {
                       <div className="flex items-center gap-2 mt-2 sm:hidden">
                         <Input
                           type="number" min={1} value={qty}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => setQty(p.id, parseInt(e.target.value) || 0)}
                           className="w-16 h-8 rounded-full text-center text-sm"
                         />
@@ -499,6 +500,7 @@ export default function CartPage() {
                     <div className="hidden sm:flex items-center gap-2 shrink-0">
                       <Input
                         type="number" min={1} value={qty}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => setQty(p.id, parseInt(e.target.value) || 0)}
                         className="w-20 rounded-full text-center"
                       />

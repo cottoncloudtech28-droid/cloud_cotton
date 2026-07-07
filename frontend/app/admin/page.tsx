@@ -983,6 +983,7 @@ function SpecificationsSection({ specFields, values, onChange }: {
                 <div key={f.key}>
                   <Label>{f.label}{f.unit ? <span className="text-muted-foreground font-normal"> ({f.unit})</span> : null}</Label>
                   <Input type="number" value={v === undefined || v === null ? "" : String(v)}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => onChange(f.key, e.target.value === "" ? "" : Number(e.target.value))}
                     placeholder="—" className="mt-1.5" />
                 </div>
@@ -1835,17 +1836,20 @@ export default function AdminPage() {
                 <div>
                   <Label>Price (₹)</Label>
                   <Input type="number" placeholder="No change" value={bulkEditForm.price}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setBulkEditForm((f) => ({ ...f, price: e.target.value }))} className="mt-1.5" />
                 </div>
                 <div>
                   <Label>Stock</Label>
                   <Input type="number" placeholder="No change" value={bulkEditForm.stock}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setBulkEditForm((f) => ({ ...f, stock: e.target.value }))} className="mt-1.5" />
                 </div>
               </div>
               <div>
                 <Label>Discount (%)</Label>
                 <Input type="number" placeholder="No change" value={bulkEditForm.discount_percent}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setBulkEditForm((f) => ({ ...f, discount_percent: e.target.value }))} className="mt-1.5" />
               </div>
               <div className="flex gap-2 pt-2">
