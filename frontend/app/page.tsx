@@ -21,7 +21,8 @@ const FALLBACK_REVIEWS = [
 const AVATARS = ["🌸", "🎀", "🌈", "🍭", "✨", "🦋", "🌷", "🎐"];
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
+  const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -30,9 +31,46 @@ export default function Home() {
   const [activeReview, setActiveReview] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
+  // Fisher-Yates shuffle (creates a new array)
+  const shuffle = <T,>(arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
   useEffect(() => {
-    apiFetch("/api/products?limit=8&sort=newest")
-      .then((data) => setProducts((data?.products || data || []).slice(0, 8)))
+    // Fetch newest + popular in parallel, then deduplicate and shuffle
+    Promise.all([
+      apiFetch("/api/products?limit=12&sort=newest"),
+      apiFetch("/api/products?limit=12&sort=popular"),
+    ])
+      .then(([newestData, popularData]) => {
+        const newest: Product[] = (newestData?.products || newestData || []).slice(0, 12);
+        const popular: Product[] = (popularData?.products || popularData || []).slice(0, 12);
+
+        // Shuffle both sets
+        const shuffledNewest = shuffle(newest);
+        const shuffledPopular = shuffle(popular);
+
+        // Pick 8 for new arrivals
+        const arrivals = shuffledNewest.slice(0, 8);
+
+        // For best sellers, remove any products already in arrivals, then pick 8
+        const arrivalIds = new Set(arrivals.map((p) => p.id));
+        const filteredPopular = shuffledPopular.filter((p) => !arrivalIds.has(p.id));
+
+        // If not enough unique popular products, fill from remaining newest
+        const remainingNewest = shuffledNewest.filter(
+          (p) => !arrivalIds.has(p.id) && !filteredPopular.some((fp) => fp.id === p.id)
+        );
+        const sellers = [...filteredPopular, ...remainingNewest].slice(0, 8);
+
+        setNewArrivals(arrivals);
+        setBestSellers(sellers);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
 
@@ -197,33 +235,49 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── TRENDING PRODUCTS ── */}
-        <section id="new-arrivals" className="container pb-8 md:pb-10 scroll-mt-20">
+        {/* ── NEW ARRIVALS ── */}
+        <section id="new-arrivals" className="container pb-6 md:pb-8 scroll-mt-20">
           <div className="flex items-end justify-between mb-4 md:mb-6">
             <div>
-              <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Handpicked for you</p>
-              <h2 className="text-2xl md:text-3xl font-bold">Trending Now</h2>
+              <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Just arrived</p>
+              <h2 className="text-2xl md:text-3xl font-bold">New Arrivals ✨</h2>
             </div>
-            <Link href="/shop" className="text-sm text-primary font-bold hover:underline shrink-0">View all →</Link>
+            <Link href="/shop?sort=newest" className="text-sm text-primary font-bold hover:underline shrink-0">View all →</Link>
           </div>
 
           {loading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="aspect-[3/4] rounded-2xl md:rounded-3xl" />
               ))}
             </div>
-          ) : products.length === 0 ? (
+          ) : newArrivals.length === 0 ? (
             <div className="text-center py-12 rounded-2xl bg-card border border-border/60">
               <div className="text-5xl mb-3">🧸</div>
               <p className="text-muted-foreground text-sm">No products yet — sign in as admin to add some!</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              {products.map((p) => <ProductCard key={p.id} p={p} />)}
+              {newArrivals.map((p) => <ProductCard key={p.id} p={p} />)}
             </div>
           )}
         </section>
+
+        {/* ── BEST SELLERS ── */}
+        {!loading && bestSellers.length > 0 && (
+          <section className="container pb-8 md:pb-10">
+            <div className="flex items-end justify-between mb-4 md:mb-6">
+              <div>
+                <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Customer favorites</p>
+                <h2 className="text-2xl md:text-3xl font-bold">Best Sellers 🌟</h2>
+              </div>
+              <Link href="/shop?sort=popular" className="text-sm text-primary font-bold hover:underline shrink-0">View all →</Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              {bestSellers.map((p) => <ProductCard key={p.id} p={p} />)}
+            </div>
+          </section>
+        )}
 
 
         {/* ── TESTIMONIALS ── */}
