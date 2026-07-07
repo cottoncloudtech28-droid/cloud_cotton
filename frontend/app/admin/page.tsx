@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import {
   Sheet,
   SheetContent,
@@ -25,14 +26,15 @@ import {
 import { toast } from "sonner";
 import {
   Pencil, Trash2, Plus, Upload, X, ImagePlus, Tag, Ruler,
-  ChevronDown, ChevronUp, Package, Eye, EyeOff, Wand2, Sparkles, Star,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Package, Eye, EyeOff, Wand2, Sparkles, Star,
+  ZoomIn, ZoomOut, Download, RefreshCw,
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { apiFetch, uploadFile, getCategories, bulkDeleteProducts, bulkEditProducts } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Product, ProductSize, ProductColor, Category } from "@/lib/types";
+import type { Product, ProductSize, ProductColor, Category, SpecField, ProductSpec } from "@/lib/types";
 
 // ── AI image-editing presets ──────────────────────────────────────────────────
 const AI_BACKGROUNDS = [
@@ -116,9 +118,23 @@ const emptyForm = {
   sku: "",
   hsn_code: "",
   gst_rate: 12,
+  // Spec values keyed by the category spec-field key. Serialized to ProductSpec[] on save.
+  specifications: {} as Record<string, string | number | boolean>,
 };
 
 type FormState = typeof emptyForm;
+
+// Combine a category's spec-field definitions with the admin-entered values into the
+// snapshotted ProductSpec[] we persist. Empty/unset values are dropped.
+function buildSpecs(specFields: SpecField[], values: Record<string, string | number | boolean>): ProductSpec[] {
+  return (specFields ?? [])
+    .map((f) => ({ key: f.key, label: f.label, type: f.type, unit: f.unit || "", value: values[f.key] }))
+    .filter((s) => {
+      if (s.type === "boolean") return s.value === true; // only store features the product actually has
+      return s.value !== undefined && s.value !== null && String(s.value).trim() !== "";
+    })
+    .map((s) => ({ ...s, value: s.value as string | number | boolean }));
+}
 
 // Client-side SKU suggestion — mirrors the backend's own auto-gen format (KCS-{CATEGORY}-{RANDOM})
 // so what the admin sees while adding a product matches what actually gets saved.
@@ -257,6 +273,161 @@ function ColorRows({ colors, onChange, images = [] }: { colors: ProductColor[]; 
   );
 }
 
+// ── Fullscreen image lightbox: zoom, pan, prev/next, download/replace/remove ──
+function ImageLightbox({
+  images, index, onIndexChange, onClose, onReplace, onRemove,
+}: {
+  images: string[];
+  index: number;
+  onIndexChange: (i: number) => void;
+  onClose: () => void;
+  onReplace: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [downloading, setDownloading] = useState(false);
+  const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const src = images[index];
+
+  const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+  useEffect(resetView, [index]);
+
+  const goPrev = () => onIndexChange((index - 1 + images.length) % images.length);
+  const goNext = () => onIndexChange((index + 1) % images.length);
+
+  // Capture Escape/arrows here so they don't also close the Sheet drawer underneath.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); onClose(); }
+      else if (e.key === "ArrowLeft" && images.length > 1) { e.stopPropagation(); e.preventDefault(); goPrev(); }
+      else if (e.key === "ArrowRight" && images.length > 1) { e.stopPropagation(); e.preventDefault(); goNext(); }
+    };
+    document.addEventListener("keydown", handler, true);
+    return () => document.removeEventListener("keydown", handler, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, images.length]);
+
+  const zoomBy = (delta: number) => setZoom((z) => Math.min(4, Math.max(1, +(z + delta).toFixed(2))));
+  const handleWheel = (e: React.WheelEvent) => { e.preventDefault(); zoomBy(e.deltaY > 0 ? -0.25 : 0.25); };
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return;
+    dragRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current) return;
+    setPan({ x: dragRef.current.panX + (e.clientX - dragRef.current.x), y: dragRef.current.panY + (e.clientY - dragRef.current.y) });
+  };
+  const handleMouseUp = () => { dragRef.current = null; };
+
+  const download = async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = src.split("/").pop()?.split("?")[0] || `image-${index + 1}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.error("Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-sm select-none" onClick={onClose}>
+      {/* Top bar */}
+      <div className="absolute top-4 left-4 right-4 flex items-center justify-between gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+        <span className="text-white/80 text-sm font-medium">{index + 1} / {images.length}</span>
+        <div className="flex items-center gap-1.5">
+          <button type="button" title="Zoom out" onClick={() => zoomBy(-0.5)}
+            className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors">
+            <ZoomOut className="h-4 w-4" />
+          </button>
+          <button type="button" title="Zoom in" onClick={() => zoomBy(0.5)}
+            className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors">
+            <ZoomIn className="h-4 w-4" />
+          </button>
+          <button type="button" title="Download" onClick={download} disabled={downloading}
+            className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors disabled:opacity-50">
+            <Download className="h-4 w-4" />
+          </button>
+          <button type="button" title="Replace image" onClick={() => replaceInputRef.current?.click()}
+            className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors">
+            <RefreshCw className="h-4 w-4" />
+          </button>
+          <input ref={replaceInputRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onReplace(f);
+              if (replaceInputRef.current) replaceInputRef.current.value = "";
+            }} />
+          <button type="button" title="Remove image" onClick={onRemove}
+            className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-destructive transition-colors">
+            <Trash2 className="h-4 w-4" />
+          </button>
+          <button type="button" title="Close" onClick={onClose}
+            className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Prev / Next */}
+      {images.length > 1 && (
+        <>
+          <button type="button" title="Previous" onClick={(e) => { e.stopPropagation(); goPrev(); }}
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors">
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <button type="button" title="Next" onClick={(e) => { e.stopPropagation(); goNext(); }}
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors">
+            <ChevronRight className="h-6 w-6" />
+          </button>
+        </>
+      )}
+
+      {/* Image */}
+      <div
+        className="max-h-[85vh] max-w-[92vw] overflow-hidden flex items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <img
+          key={index}
+          src={src}
+          alt={`Image ${index + 1}`}
+          className={cn(
+            "max-h-[85vh] max-w-[92vw] rounded-xl shadow-2xl object-contain transition-transform duration-100",
+            zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"
+          )}
+          style={{ transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)` }}
+          onClick={(e) => { e.stopPropagation(); if (zoom === 1) zoomBy(1); }}
+          draggable={false}
+        />
+      </div>
+
+      {zoom > 1 && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); resetView(); }}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-white/80 bg-white/10 px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors">
+          Reset zoom
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Multi-image uploader (with AI editing) ────────────────────────────────────
 function MultiImageUploader({ images, onChange, productName = "" }: { images: string[]; onChange: (imgs: string[]) => void; productName?: string }) {
   const [uploading, setUploading] = useState(false);
@@ -267,7 +438,7 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
   const [provider, setProvider] = useState<"openai" | "gemini">("openai");
   const [prompt, setPrompt] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const upload = async (files: FileList) => {
     setUploading(true);
@@ -284,6 +455,24 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
     onChange(images.filter((_, idx) => idx !== i));
     if (aiIndex === i) setAiIndex(null);
     else if (aiIndex !== null && i < aiIndex) setAiIndex(aiIndex - 1);
+    setLightboxIndex((prev) => {
+      if (prev === null) return null;
+      const remaining = images.length - 1;
+      if (remaining <= 0) return null;
+      if (i < prev) return prev - 1;
+      if (i === prev) return Math.min(prev, remaining - 1);
+      return prev;
+    });
+  };
+
+  const replaceAt = async (i: number, file: File) => {
+    try {
+      const { url } = await uploadFile(file);
+      onChange(images.map((u, idx) => (idx === i ? url : u)));
+      toast.success("Image replaced");
+    } catch (e: any) {
+      toast.error(e.message || "Replace failed");
+    }
   };
 
   const makePrimary = (i: number) => {
@@ -350,7 +539,9 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
                 "relative h-20 w-20 rounded-lg overflow-hidden border group",
                 aiIndex === i ? "border-primary ring-2 ring-primary/40" : "border-border"
               )}>
-              <img src={url} alt={`Image ${i + 1}`} className="h-full w-full object-cover" />
+              <img src={url} alt={`Image ${i + 1}`} loading="lazy"
+                className="h-full w-full object-cover cursor-zoom-in"
+                onClick={() => setLightboxIndex(i)} />
               {i === 0 && (
                 <span className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[10px] font-medium px-1.5 py-0.5 rounded">Primary</span>
               )}
@@ -417,7 +608,7 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
           {/* Preview with processing overlay — click to fullscreen */}
           <div
             className="relative h-28 w-28 rounded-lg overflow-hidden border border-border bg-muted cursor-zoom-in"
-            onClick={() => !processing && setLightboxSrc(images[aiIndex])}
+            onClick={() => !processing && setLightboxIndex(aiIndex)}
             title="Click to view full size"
           >
             <img src={images[aiIndex]} alt="" className="h-full w-full object-cover" />
@@ -492,25 +683,15 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
       )}
 
       {/* Fullscreen lightbox */}
-      {lightboxSrc && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-sm"
-          onClick={() => setLightboxSrc(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setLightboxSrc(null)}
-            className="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <img
-            src={lightboxSrc}
-            alt="Full size preview"
-            className="max-h-[90vh] max-w-[90vw] rounded-xl shadow-2xl object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
+      {lightboxIndex !== null && images[lightboxIndex] && (
+        <ImageLightbox
+          images={images}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onReplace={(file) => replaceAt(lightboxIndex, file)}
+          onRemove={() => removeAt(lightboxIndex)}
+        />
       )}
     </div>
   );
@@ -563,6 +744,72 @@ function CategoryPicker({ value, onChange, categories }: {
   );
 }
 
+// ── Category-based specifications inputs ──────────────────────────────────────
+function SpecificationsSection({ specFields, values, onChange }: {
+  specFields: SpecField[];
+  values: Record<string, string | number | boolean>;
+  onChange: (key: string, value: string | number | boolean) => void;
+}) {
+  if (!specFields || specFields.length === 0) return null;
+  const sorted = [...specFields].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return (
+    <>
+      <Separator />
+      <div className="space-y-3">
+        <div>
+          <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Specifications</Label>
+          <p className="text-xs text-muted-foreground mt-1">Based on the selected category. Manage these fields in Admin → Categories.</p>
+        </div>
+        <div className="space-y-3">
+          {sorted.map((f) => {
+            const v = values[f.key];
+            if (f.type === "boolean") {
+              return (
+                <div key={f.key} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+                  <Label className="cursor-pointer">{f.label}</Label>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-muted-foreground w-6 text-right">{v === true ? "Yes" : "No"}</span>
+                    <Switch checked={v === true} onCheckedChange={(c) => onChange(f.key, c)} />
+                  </div>
+                </div>
+              );
+            }
+            if (f.type === "select") {
+              return (
+                <div key={f.key}>
+                  <Label>{f.label}</Label>
+                  <select value={(v as string) ?? ""} onChange={(e) => onChange(f.key, e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1.5">
+                    <option value="">— Not specified —</option>
+                    {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              );
+            }
+            if (f.type === "number") {
+              return (
+                <div key={f.key}>
+                  <Label>{f.label}{f.unit ? <span className="text-muted-foreground font-normal"> ({f.unit})</span> : null}</Label>
+                  <Input type="number" value={v === undefined || v === null ? "" : String(v)}
+                    onChange={(e) => onChange(f.key, e.target.value === "" ? "" : Number(e.target.value))}
+                    placeholder="—" className="mt-1.5" />
+                </div>
+              );
+            }
+            return (
+              <div key={f.key}>
+                <Label>{f.label}</Label>
+                <Input value={(v as string) ?? ""} onChange={(e) => onChange(f.key, e.target.value)}
+                  placeholder="—" className="mt-1.5" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Product form inside the drawer ────────────────────────────────────────────
 function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories }: {
   form: FormState;
@@ -581,6 +828,31 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.category, editingId]);
+
+  // Transient AI-description helper — not saved on the product, just feeds the prompt.
+  const [keywords, setKeywords] = useState("");
+  const [describing, setDescribing] = useState(false);
+  const generateDescription = async () => {
+    if (!form.name.trim()) { toast.error("Add a product name first"); return; }
+    setDescribing(true);
+    try {
+      const data = await apiFetch("/api/ai/describe", {
+        method: "POST",
+        body: JSON.stringify({
+          name: form.name,
+          category: form.category,
+          colors: form.colors.map((c) => c.label),
+          keywords,
+        }),
+      });
+      setField("description", data.description || "");
+      toast.success("Description generated ✨");
+    } catch (e: any) {
+      toast.error(e.message || "Description generation failed");
+    } finally {
+      setDescribing(false);
+    }
+  };
 
   return (
     <form onSubmit={onSubmit} className="space-y-6 pb-8">
@@ -613,11 +885,22 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
           <p className="text-xs text-muted-foreground mt-1 text-right">{form.short_description.length}/300</p>
         </div>
         <div>
-          <Label>Full description</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label>Full description</Label>
+            <Button type="button" size="sm" variant="ghost" className="h-7 rounded-full"
+              onClick={generateDescription} disabled={describing}>
+              <Sparkles className="h-3 w-3 mr-1" /> {describing ? "Writing…" : "Generate with AI"}
+            </Button>
+          </div>
+          <Input value={keywords} onChange={(e) => setKeywords(e.target.value)}
+            placeholder="e.g. leak-proof, gift-ready, pastel, BPA-free" className="mt-1.5" />
+          <p className="text-xs text-muted-foreground mt-1">
+            Add your product keywords, features, or highlights to help AI generate the perfect description.
+          </p>
           <Textarea value={form.description}
             onChange={(e) => setField("description", e.target.value)}
             rows={4} maxLength={2000}
-            placeholder="Detailed product description, materials, care instructions, etc." className="mt-1.5" />
+            placeholder="Detailed product description, materials, care instructions, etc." className="mt-2" />
           <p className="text-xs text-muted-foreground mt-1 text-right">{form.description.length}/2000</p>
         </div>
       </div>
@@ -661,6 +944,11 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
           values={form.tags} onChange={(v) => setField("tags", v)} placeholder="kawaii, gift, pastel…" />
       </div>
       <SizeRows sizes={form.sizes} onChange={(v) => setField("sizes", v)} />
+      <SpecificationsSection
+        specFields={categories.find((c) => c.slug === form.category)?.spec_fields ?? []}
+        values={form.specifications}
+        onChange={(key, value) => setField("specifications", { ...form.specifications, [key]: value })}
+      />
       <Separator />
       {/* GST / Tax fields */}
       <div>
@@ -946,6 +1234,7 @@ export default function AdminPage() {
         : Number(form.stock),
     });
     if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
+    const specFields = categories.find((c) => c.slug === form.category)?.spec_fields ?? [];
     const payload = {
       ...parsed.data,
       images: form.images,
@@ -953,6 +1242,7 @@ export default function AdminPage() {
       sku: form.sku?.trim() || undefined,
       hsn_code: (form as any).hsn_code || null,
       gst_rate: Number((form as any).gst_rate) || 12,
+      specifications: buildSpecs(specFields, form.specifications),
     };
     try {
       await (editingId
@@ -980,6 +1270,8 @@ export default function AdminPage() {
       sku: p.sku ?? "",
       hsn_code: p.hsn_code ?? "",
       gst_rate: p.gst_rate ?? 12,
+      // Load saved spec values back into the keyed map so toggles/inputs pre-fill.
+      specifications: Object.fromEntries((p.specifications ?? []).map((s) => [s.key, s.value as string | number | boolean])),
     });
     setDrawerOpen(true);
   };

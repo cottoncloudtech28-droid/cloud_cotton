@@ -15,8 +15,9 @@ import { Upload, Wand2, Trash2, Sparkles, RotateCcw } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { apiFetch, uploadFile } from "@/lib/api";
+import { apiFetch, uploadFile, getCategories } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { Category } from "@/lib/types";
 
 type Row = {
   id: string; file: File; originalDataUrl: string; currentDataUrl: string;
@@ -38,8 +39,6 @@ const PRESET_ANGLES = [
   { label: "3/4 view", value: "Show the product from a flattering 3/4 angle, slightly elevated, soft shadow" },
   { label: "Top-down", value: "Show the product from a top-down flat lay angle, perfectly centered" },
 ];
-
-const CATEGORIES = ["stationery", "bottles", "tumblers", "food jars", "toys", "quirky"];
 
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -63,19 +62,25 @@ export default function BulkUploadPage() {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     if (!loading && !user) router.push(`/auth?redirect=${encodeURIComponent("/admin/bulk")}`);
   }, [user, loading, router]);
 
+  useEffect(() => {
+    getCategories().then(setCategories).catch(() => {});
+  }, []);
+
   const addFiles = async (files: FileList | null) => {
     if (!files) return;
     const next: Row[] = [];
+    const defaultCategory = categories[0]?.slug || "stationery";
     for (const f of Array.from(files)) {
       if (!f.type.startsWith("image/")) continue;
       const dataUrl = await fileToDataUrl(f);
       const baseName = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", price: "", category: "stationery", stock: "10", colorsText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
+      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", price: "", category: defaultCategory, stock: "10", colorsText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
     }
     setRows((r) => [...r, ...next]);
   };
@@ -126,7 +131,7 @@ export default function BulkUploadPage() {
         method: "POST",
         body: JSON.stringify({
           image_base64: row.originalDataUrl,
-          categories: CATEGORIES,
+          categories: categories.map((c) => c.slug),
           backgrounds: PRESET_BACKGROUNDS.map((p) => p.label),
           angles: PRESET_ANGLES.map((p) => p.label),
         }),
@@ -135,7 +140,7 @@ export default function BulkUploadPage() {
       const angle = PRESET_ANGLES.find((p) => p.label === data.angle)?.value;
       update(row.id, {
         name: data.name || row.name,
-        category: CATEGORIES.includes(data.category) ? data.category : row.category,
+        category: categories.some((c) => c.slug === data.category) ? data.category : row.category,
         colorsText: Array.isArray(data.colors) ? data.colors.join(", ") : row.colorsText,
         description: data.description || row.description,
         price: data.price ? String(data.price) : row.price,
@@ -278,7 +283,7 @@ export default function BulkUploadPage() {
                           <Input type="number" value={r.stock} onChange={(e) => update(r.id, { stock: e.target.value })} /></div>
                         <div><Label>Category</Label>
                           <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={r.category} onChange={(e) => update(r.id, { category: e.target.value })}>
-                            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                            {categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
                           </select></div>
                         <div><Label>Colors (comma-separated)</Label>
                           <Input placeholder="pink, lilac, mint" value={r.colorsText} onChange={(e) => update(r.id, { colorsText: e.target.value })} /></div>

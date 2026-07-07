@@ -21,7 +21,79 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getCategories, updateCategory, deleteCategory, uploadFile, apiFetch } from "@/lib/api";
-import type { Category } from "@/lib/types";
+import type { Category, SpecField, SpecFieldType } from "@/lib/types";
+
+const SPEC_TYPES: { value: SpecFieldType; label: string }[] = [
+  { value: "boolean", label: "Yes / No toggle" },
+  { value: "text", label: "Text" },
+  { value: "number", label: "Number" },
+  { value: "select", label: "Dropdown" },
+];
+
+const slugifyKey = (s: string) =>
+  s.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+
+// ── Category spec-field definitions editor ─────────────────────────────────────
+function SpecFieldsEditor({ fields, onChange }: { fields: SpecField[]; onChange: (f: SpecField[]) => void }) {
+  const update = (i: number, patch: Partial<SpecField>) =>
+    onChange(fields.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
+
+  const setLabel = (i: number, label: string) => {
+    const f = fields[i];
+    // Freeze the key on first label so saved product values keep matching across renames.
+    const key = f.key || slugifyKey(label);
+    update(i, { label, key });
+  };
+
+  const add = () =>
+    onChange([...fields, { key: "", label: "", type: "boolean", options: [], unit: "", sort_order: fields.length }]);
+
+  const remove = (i: number) => onChange(fields.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-3">
+      <Label className="flex items-center gap-1.5">Specification fields</Label>
+      <p className="text-xs text-muted-foreground -mt-1">
+        Fields shown when adding/editing a product in this category. Yes/No toggles are great for features;
+        use text, number, or dropdown for other details.
+      </p>
+      {fields.length > 0 && (
+        <div className="space-y-2">
+          {fields.map((f, i) => (
+            <div key={i} className="rounded-lg border border-border p-3 space-y-2 bg-muted/30">
+              <div className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <Input value={f.label} onChange={(e) => setLabel(i, e.target.value)}
+                    placeholder="e.g. Leak-proof, Capacity, Material" className="h-9" />
+                </div>
+                <select value={f.type}
+                  onChange={(e) => update(i, { type: e.target.value as SpecFieldType })}
+                  className="h-9 rounded-md border border-input bg-background px-2 text-sm">
+                  {SPEC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(i)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+              {f.type === "select" && (
+                <Input value={(f.options ?? []).join(", ")}
+                  onChange={(e) => update(i, { options: e.target.value.split(",").map((o) => o.trim()).filter(Boolean) })}
+                  placeholder="Options, comma-separated: Small, Medium, Large" className="h-9 text-xs" />
+              )}
+              {f.type === "number" && (
+                <Input value={f.unit ?? ""} onChange={(e) => update(i, { unit: e.target.value })}
+                  placeholder="Unit (optional): ml, cm, g…" className="h-9 text-xs w-40" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <Button type="button" variant="outline" size="sm" className="border-dashed" onClick={add}>
+        <Plus className="h-4 w-4 mr-1.5" /> Add specification field
+      </Button>
+    </div>
+  );
+}
 
 // ── Inline edit row ───────────────────────────────────────────────────────────
 function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: Category) => void; onDeleted: (slug: string) => void }) {
@@ -32,10 +104,11 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
   const [draft, setDraft] = useState({
     name: cat.name, description: cat.description,
     emoji: cat.emoji, banner_url: cat.banner_url ?? "", sort_order: cat.sort_order,
+    spec_fields: cat.spec_fields ?? [],
   });
 
   const cancel = () => {
-    setDraft({ name: cat.name, description: cat.description, emoji: cat.emoji, banner_url: cat.banner_url ?? "", sort_order: cat.sort_order });
+    setDraft({ name: cat.name, description: cat.description, emoji: cat.emoji, banner_url: cat.banner_url ?? "", sort_order: cat.sort_order, spec_fields: cat.spec_fields ?? [] });
     setEditing(false);
   };
 
@@ -45,6 +118,7 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
       const updated = await updateCategory(cat.slug, {
         name: draft.name, description: draft.description,
         emoji: draft.emoji, banner_url: draft.banner_url || null, sort_order: draft.sort_order,
+        spec_fields: draft.spec_fields,
       });
       onSaved(updated);
       setEditing(false);
@@ -98,6 +172,9 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
           <p className="text-xs text-muted-foreground font-mono">{cat.slug}</p>
           {cat.description && (
             <p className="text-sm text-muted-foreground mt-0.5 truncate">{cat.description}</p>
+          )}
+          {(cat.spec_fields?.length ?? 0) > 0 && (
+            <p className="text-xs text-primary mt-0.5">{cat.spec_fields!.length} spec field{cat.spec_fields!.length !== 1 ? "s" : ""}</p>
           )}
         </div>
         <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">order {cat.sort_order}</span>
@@ -189,6 +266,10 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
             placeholder="or paste a URL" className="text-xs" />
         )}
       </div>
+
+      <Separator />
+      <SpecFieldsEditor fields={draft.spec_fields}
+        onChange={(spec_fields) => setDraft((d) => ({ ...d, spec_fields }))} />
     </Card>
   );
 }
@@ -197,7 +278,7 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
 function NewCategoryForm({ onCreated }: { onCreated: (c: Category) => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ slug: "", name: "", description: "", emoji: "🌸", sort_order: 10 });
+  const [form, setForm] = useState<{ slug: string; name: string; description: string; emoji: string; sort_order: number; spec_fields: SpecField[] }>({ slug: "", name: "", description: "", emoji: "🌸", sort_order: 10, spec_fields: [] });
 
   const handleSlug = (v: string) =>
     setForm((f) => ({ ...f, slug: v.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") }));
@@ -209,7 +290,7 @@ function NewCategoryForm({ onCreated }: { onCreated: (c: Category) => void }) {
     try {
       const cat = await apiFetch("/api/categories", { method: "POST", body: JSON.stringify(form) });
       onCreated(cat);
-      setForm({ slug: "", name: "", description: "", emoji: "🌸", sort_order: 10 });
+      setForm({ slug: "", name: "", description: "", emoji: "🌸", sort_order: 10, spec_fields: [] });
       setOpen(false);
       toast.success(`"${cat.name}" created`);
     } catch (e: any) {
@@ -257,6 +338,10 @@ function NewCategoryForm({ onCreated }: { onCreated: (c: Category) => void }) {
           <Label>Description</Label>
           <Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             rows={2} placeholder="Category description…" maxLength={500} />
+        </div>
+        <div className="sm:col-span-2">
+          <SpecFieldsEditor fields={form.spec_fields}
+            onChange={(spec_fields) => setForm((f) => ({ ...f, spec_fields }))} />
         </div>
         <div className="sm:col-span-2 flex gap-2">
           <Button type="submit" disabled={saving}>Create</Button>

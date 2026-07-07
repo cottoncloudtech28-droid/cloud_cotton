@@ -6,7 +6,7 @@ router.post("/describe", verifyToken, requireAdmin, async (req, res) => {
   if (!process.env.OPENAI_API_KEY) {
     return res.status(501).json({ message: "Set OPENAI_API_KEY in backend/.env to enable AI descriptions" });
   }
-  const { name, category, colors } = req.body;
+  const { name, category, colors, keywords } = req.body;
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -19,7 +19,7 @@ router.post("/describe", verifyToken, requireAdmin, async (req, res) => {
         messages: [
           {
             role: "user",
-            content: `Write a cute 1-2 sentence product description for a Cotton Cloud Company kawaii shop item. Product: "${name}", category: "${category}", colors: ${JSON.stringify(colors || [])}. Make it playful, aesthetic, and appealing to young women. Under 100 words.`,
+            content: `Write a cute 1-2 sentence product description for a Cotton Cloud Company kawaii shop item. Product: "${name}", category: "${category}", colors: ${JSON.stringify(colors || [])}.${keywords?.trim() ? ` Keywords/features to highlight: ${keywords.trim()}.` : ""} Make it playful, aesthetic, and appealing to young women. Under 100 words.`,
           },
         ],
       }),

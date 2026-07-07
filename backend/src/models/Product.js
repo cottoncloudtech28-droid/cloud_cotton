@@ -14,6 +14,19 @@ const colorSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// A resolved specification value on a product. Label/type are snapshotted from the
+// category's spec_fields at save time so the product detail page is self-contained.
+const specSchema = new mongoose.Schema(
+  {
+    key:   { type: String, required: true, trim: true },
+    label: { type: String, required: true, trim: true, maxlength: 60 },
+    type:  { type: String, enum: ["boolean", "text", "number", "select"], default: "boolean" },
+    value: { type: mongoose.Schema.Types.Mixed, default: null },
+    unit:  { type: String, default: "", maxlength: 20 },
+  },
+  { _id: false }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name:              { type: String, required: true, trim: true, maxlength: 120 },
@@ -34,6 +47,7 @@ const productSchema = new mongoose.Schema(
     slug:              { type: String, unique: true, sparse: true },
     hsn_code:          { type: String, default: null, trim: true },
     gst_rate:          { type: Number, default: 12, enum: [0, 5, 12, 18, 28] },
+    specifications:    { type: [specSchema], default: [] }, // category-based specs (snapshotted label/type)
   },
   { timestamps: true }
 );

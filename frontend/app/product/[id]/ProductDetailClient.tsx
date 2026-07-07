@@ -24,7 +24,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  ShoppingBag, Heart, Minus, Plus, Truck, Shield, ChevronRight, Share2, ImageOff,
+  ShoppingBag, Heart, Minus, Plus, Truck, Shield, ChevronRight, Share2, ImageOff, Check,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,8 +32,8 @@ import { apiFetch, addToWishlist, removeFromWishlist, getWishlistIds } from "@/l
 import type { Product, ProductSize, ProductColor } from "@/lib/types";
 import { toast } from "sonner";
 
-// Colors with stock at or below this show a "N left" count next to the option; above it, nothing is shown.
-const LOW_COLOR_STOCK_THRESHOLD = 10;
+// Low-stock indicators (main status, per-size, per-color) only show when stock is below this.
+const LOW_STOCK_THRESHOLD = 5;
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function DetailSkeleton() {
@@ -160,6 +160,9 @@ export default function ProductDetailClient() {
   const hasColorChoice = colors.length > 1;
   const sizes: ProductSize[] = product.sizes ?? [];
   const tags = product.tags ?? [];
+  const specs = product.specifications ?? [];
+  const booleanSpecs = specs.filter((s) => s.type === "boolean" && s.value === true);
+  const detailSpecs = specs.filter((s) => s.type !== "boolean");
 
   const selectedSizeObj = sizes.find((sz) => sz.label === selectedSize);
   const selectedColorObj = colors.find((c) => c.label === selectedColor);
@@ -194,7 +197,7 @@ export default function ProductDetailClient() {
       return { label: "Select a color to check stock", color: "text-muted-foreground", icon: "🎨" };
     const s = effectiveStock;
     if (s === 0) return { label: "Out of stock", color: "text-destructive", icon: "⛔" };
-    if (s <= 5) return { label: `Only ${s} left!`, color: "text-amber-600", icon: "⚠️" };
+    if (s < LOW_STOCK_THRESHOLD) return { label: `Only ${s} left!`, color: "text-amber-600", icon: "⚠️" };
     return { label: "In stock", color: "text-green-600", icon: "✅" };
   })();
 
@@ -388,7 +391,7 @@ export default function ProductDetailClient() {
                           : "border-border hover:border-primary hover:bg-muted"
                       }`}>
                       {sz.label}
-                      {sz.stock > 0 && sz.stock <= 5 && (
+                      {sz.stock > 0 && sz.stock < LOW_STOCK_THRESHOLD && (
                         <span className="ml-1 text-[10px] text-amber-600 font-normal">({sz.stock})</span>
                       )}
                     </button>
@@ -414,7 +417,7 @@ export default function ProductDetailClient() {
                           {c.label}
                           {c.stock === 0
                             ? " (Out of stock)"
-                            : c.stock <= LOW_COLOR_STOCK_THRESHOLD
+                            : c.stock < LOW_STOCK_THRESHOLD
                             ? ` (${c.stock} left)`
                             : ""}
                         </SelectItem>
@@ -424,7 +427,7 @@ export default function ProductDetailClient() {
                 ) : (
                   <Badge variant="secondary" className="px-3 py-1 text-sm">{colors[0]?.label}</Badge>
                 )}
-                {selectedColorObj && selectedColorObj.stock > 0 && selectedColorObj.stock <= LOW_COLOR_STOCK_THRESHOLD && (
+                {selectedColorObj && selectedColorObj.stock > 0 && selectedColorObj.stock < LOW_STOCK_THRESHOLD && (
                   <p className="text-xs text-amber-600 font-medium">⚠️ Only {selectedColorObj.stock} left in this color</p>
                 )}
               </div>
@@ -544,6 +547,39 @@ export default function ProductDetailClient() {
                   </AccordionTrigger>
                   <AccordionContent className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                     {product.description}
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              {specs.length > 0 && (booleanSpecs.length > 0 || detailSpecs.length > 0) && (
+                <AccordionItem value="specs">
+                  <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                    Specifications
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    {booleanSpecs.length > 0 && (
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {booleanSpecs.map((s) => (
+                          <li key={s.key} className="flex items-center gap-2 text-sm">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-green-700 shrink-0">
+                              <Check className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="text-foreground">{s.label}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {detailSpecs.length > 0 && (
+                      <dl className="text-sm space-y-2">
+                        {detailSpecs.map((s) => (
+                          <div key={s.key} className="flex justify-between gap-4 py-1 border-b border-border/40 last:border-0">
+                            <dt className="text-muted-foreground">{s.label}</dt>
+                            <dd className="font-medium text-right">
+                              {String(s.value)}{s.unit ? ` ${s.unit}` : ""}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
                   </AccordionContent>
                 </AccordionItem>
               )}

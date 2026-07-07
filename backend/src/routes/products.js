@@ -15,6 +15,14 @@ const colorZ = z.object({
   images: z.array(z.string()).default([]),
 });
 
+const specZ = z.object({
+  key:   z.string().trim().min(1),
+  label: z.string().trim().min(1).max(60),
+  type:  z.enum(["boolean", "text", "number", "select"]).default("boolean"),
+  value: z.any(),
+  unit:  z.string().trim().max(20).optional().default(""),
+});
+
 const schema = z.object({
   name:              z.string().trim().min(1).max(120),
   short_description: z.string().trim().max(300).nullable().optional(),
@@ -28,6 +36,7 @@ const schema = z.object({
   colors:            z.array(colorZ).default([]),
   tags:              z.array(z.string().trim().max(30)).default([]),
   sizes:             z.array(sizeZ).default([]),
+  specifications:    z.array(specZ).default([]),
   reorder_point:     z.number().int().min(0).default(5).optional(),
   sku:               z.string().trim().max(40).optional()
                        .transform((v) => (v ? v.toUpperCase() : undefined)),
@@ -66,6 +75,15 @@ const parseBody = (body) => ({
   tags:             Array.isArray(body.tags) ? body.tags : [],
   sizes:            Array.isArray(body.sizes)
                       ? body.sizes.map((s) => ({ label: s.label, stock: Number(s.stock ?? 0) }))
+                      : [],
+  specifications:   Array.isArray(body.specifications)
+                      ? body.specifications.map((s) => ({
+                          key: s.key,
+                          label: s.label,
+                          type: s.type || "boolean",
+                          value: s.value ?? null,
+                          unit: s.unit || "",
+                        }))
                       : [],
 });
 

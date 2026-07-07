@@ -9,6 +9,27 @@ export interface ProductColor {
   images?: string[];
 }
 
+export type SpecFieldType = "boolean" | "text" | "number" | "select";
+
+// A specification field definition attached to a category.
+export interface SpecField {
+  key: string;
+  label: string;
+  type: SpecFieldType;
+  options?: string[];
+  unit?: string;
+  sort_order?: number;
+}
+
+// A resolved specification value saved on a product (label/type snapshotted).
+export interface ProductSpec {
+  key: string;
+  label: string;
+  type: SpecFieldType;
+  value: string | number | boolean | null;
+  unit?: string;
+}
+
 export interface Product {
   id: string;
   slug?: string | null;
@@ -29,6 +50,7 @@ export interface Product {
   reorder_point?: number;
   hsn_code?: string | null;
   gst_rate?: number;
+  specifications?: ProductSpec[];
   createdAt?: string;
 }
 
@@ -40,6 +62,7 @@ export interface Category {
   banner_url: string | null;
   emoji: string;
   sort_order: number;
+  spec_fields?: SpecField[];
 }
 
 export interface OrderItem {

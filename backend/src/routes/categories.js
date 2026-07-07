@@ -51,13 +51,40 @@ router.get("/:slug", async (req, res) => {
   }
 });
 
+// Normalise the spec_fields payload into clean field definitions.
+const sanitizeSpecFields = (fields) => {
+  if (!Array.isArray(fields)) return undefined;
+  return fields
+    .filter((f) => f && f.label && String(f.label).trim())
+    .map((f, i) => {
+      const label = String(f.label).trim().slice(0, 60);
+      const type = ["boolean", "text", "number", "select"].includes(f.type) ? f.type : "boolean";
+      const key = (f.key && String(f.key).trim())
+        ? String(f.key).trim()
+        : label.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || `field-${i}`;
+      return {
+        key,
+        label,
+        type,
+        options: type === "select" && Array.isArray(f.options)
+          ? f.options.map((o) => String(o).trim()).filter(Boolean)
+          : [],
+        unit: type === "number" && f.unit ? String(f.unit).trim().slice(0, 20) : "",
+        sort_order: Number.isFinite(f.sort_order) ? f.sort_order : i,
+      };
+    });
+};
+
 // PUT /api/categories/:slug  — admin: update category info
 router.put("/:slug", verifyToken, requireAdmin, async (req, res) => {
-  const { name, description, banner_url, emoji, sort_order } = req.body;
+  const { name, description, banner_url, emoji, sort_order, spec_fields } = req.body;
   try {
+    const update = { name, description, banner_url: banner_url || null, emoji, sort_order };
+    const cleanSpecs = sanitizeSpecFields(spec_fields);
+    if (cleanSpecs !== undefined) update.spec_fields = cleanSpecs;
     const cat = await Category.findOneAndUpdate(
       { slug: req.params.slug },
-      { name, description, banner_url: banner_url || null, emoji, sort_order },
+      update,
       { new: true, upsert: true, runValidators: true }
     );
     res.json(mapCat(cat));
@@ -68,10 +95,13 @@ router.put("/:slug", verifyToken, requireAdmin, async (req, res) => {
 
 // POST /api/categories  — admin: create new category
 router.post("/", verifyToken, requireAdmin, async (req, res) => {
-  const { slug, name, description, banner_url, emoji, sort_order } = req.body;
+  const { slug, name, description, banner_url, emoji, sort_order, spec_fields } = req.body;
   if (!slug || !name) return res.status(400).json({ message: "slug and name are required" });
   try {
-    const cat = await Category.create({ slug, name, description, banner_url, emoji, sort_order });
+    const cat = await Category.create({
+      slug, name, description, banner_url, emoji, sort_order,
+      spec_fields: sanitizeSpecFields(spec_fields) || [],
+    });
     res.status(201).json(mapCat(cat));
   } catch (e) {
     res.status(500).json({ message: e.message });
