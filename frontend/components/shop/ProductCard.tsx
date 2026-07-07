@@ -187,39 +187,39 @@ export default function ProductCard({ p }: { p: Product }) {
         <button
           onClick={handleWishlist}
           aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
-          className={`absolute top-3 right-3 h-9 w-9 rounded-full backdrop-blur grid place-items-center transition-bounce ${
+          className={`absolute top-2 right-2 sm:top-3 sm:right-3 h-8 w-8 sm:h-9 sm:w-9 rounded-full backdrop-blur grid place-items-center transition-bounce ${
             inWishlist
               ? "bg-primary/20 border border-primary/40"
               : "bg-background/80 hover:bg-background"
           }`}
         >
-          <Heart className={`h-4 w-4 ${inWishlist ? "fill-primary text-primary" : "text-primary"}`} />
+          <Heart className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${inWishlist ? "fill-primary text-primary" : "text-primary"}`} />
         </button>
       </Link>
 
       {/* ── Info + actions (no Link wrapper — stays on card) ── */}
-      <div className="p-4 space-y-2 flex-1 flex flex-col">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">{p.category.replace("-", " ")}</p>
+      <div className="p-3 sm:p-4 space-y-1 sm:space-y-2 flex-1 flex flex-col">
+        <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">{p.category.replace("-", " ")}</p>
         <Link href={productHref} className="block hover:underline underline-offset-2">
-          <h3 className="font-semibold leading-tight line-clamp-1">{p.name}</h3>
+          <h3 className="text-sm sm:text-base font-semibold leading-tight line-clamp-1">{p.name}</h3>
         </Link>
         {p.short_description && (
-          <p className="text-sm text-muted-foreground line-clamp-2">{p.short_description}</p>
+          <p className="hidden sm:block text-sm text-muted-foreground line-clamp-2">{p.short_description}</p>
         )}
-        <div className="flex items-baseline gap-2 pt-1 flex-1 items-end">
-          <span className="text-lg font-bold text-foreground">₹{final}</span>
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-1 flex-1 items-end">
+          <span className="text-base sm:text-lg font-bold text-foreground">₹{final}</span>
           {p.discount_percent > 0 && (
-            <span className="text-sm text-muted-foreground line-through">₹{p.price}</span>
+            <span className="text-xs sm:text-sm text-muted-foreground line-through">₹{p.price}</span>
           )}
           {p.stock === 0 && (
-            <Badge variant="outline" className="ml-auto">Sold out</Badge>
+            <Badge variant="outline" className="ml-auto text-[10px] sm:text-xs">Sold out</Badge>
           )}
         </div>
 
         {/* Color picker — isolated, never triggers navigation */}
         {hasChoices && (
           <Select value={selected} onValueChange={setSelected}>
-            <SelectTrigger className="w-full rounded-full mt-1">
+            <SelectTrigger className="w-full rounded-full mt-1 h-8 sm:h-10 text-xs sm:text-sm px-2.5 sm:px-3">
               <SelectValue placeholder="Choose a color" />
             </SelectTrigger>
             <SelectContent>
@@ -235,7 +235,7 @@ export default function ProductCard({ p }: { p: Product }) {
         {/* Character/design picker — isolated, never triggers navigation */}
         {hasCharacterChoices && (
           <Select value={selectedCharacter} onValueChange={setSelectedCharacter}>
-            <SelectTrigger className="w-full rounded-full mt-1">
+            <SelectTrigger className="w-full rounded-full mt-1 h-8 sm:h-10 text-xs sm:text-sm px-2.5 sm:px-3">
               <SelectValue placeholder="Choose a character/design" />
             </SelectTrigger>
             <SelectContent>
@@ -252,9 +252,9 @@ export default function ProductCard({ p }: { p: Product }) {
           size="sm"
           disabled={p.stock === 0}
           onClick={handleAdd}
-          className="w-full mt-2 rounded-full bg-gradient-primary text-primary-foreground border-0"
+          className="w-full mt-2 h-8 sm:h-9 text-xs sm:text-sm rounded-full bg-gradient-primary text-primary-foreground border-0"
         >
-          <ShoppingBag className="mr-2 h-4 w-4" /> Add to cart
+          <ShoppingBag className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Add to cart
         </Button>
       </div>
     </Card>

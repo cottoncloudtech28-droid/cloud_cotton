@@ -73,7 +73,7 @@ export default function CategoryPage() {
         <main>
           <Skeleton className="h-48 w-full rounded-none" />
           <div className="container py-8 space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
               ))}
@@ -93,7 +93,7 @@ export default function CategoryPage() {
 
         {/* ── Banner ─────────────────────────────────────────────────────── */}
         {category.banner_url ? (
-          <div className="relative h-52 md:h-72 overflow-hidden">
+          <div className="relative h-72 md:h-96 overflow-hidden">
             <img src={category.banner_url} alt={category.name}
               className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white text-center px-4">
@@ -174,7 +174,7 @@ export default function CategoryPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {filtered.map((p) => <ProductCard key={p.id} p={p} />)}
             </div>
           )}

@@ -28,7 +28,7 @@ import { formatDescription } from "@/lib/formatText";
 import {
   Pencil, Trash2, Plus, Upload, X, ImagePlus, Tag, Ruler,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Package, Eye, EyeOff, Wand2, Sparkles, Star,
-  ZoomIn, ZoomOut, Download, RefreshCw,
+  ZoomIn, ZoomOut, Download, RefreshCw, Bold, List,
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -247,6 +247,73 @@ function ChipInput({
           placeholder={placeholder ?? "Type and press Enter"} className="flex-1" />
         <Button type="button" variant="outline" size="sm" onClick={add}>Add</Button>
       </div>
+    </div>
+  );
+}
+
+// ── Description formatting toolbar ───────────────────────────────────────────
+// Wraps the current selection in **bold**, or inserts a placeholder at the cursor
+// if nothing is selected.
+function applyBold(value: string, start: number, end: number) {
+  if (start === end) {
+    const insertion = "bold text";
+    const newValue = value.slice(0, start) + `**${insertion}**` + value.slice(end);
+    return { value: newValue, selStart: start + 2, selEnd: start + 2 + insertion.length };
+  }
+  const selected = value.slice(start, end);
+  const newValue = value.slice(0, start) + `**${selected}**` + value.slice(end);
+  return { value: newValue, selStart: start + 2, selEnd: end + 2 };
+}
+
+// Toggles a "- " bullet prefix on every line touched by the current selection
+// (or just the current line, if nothing is selected). Blank lines are left alone.
+function applyBullet(value: string, start: number, end: number) {
+  const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+  const nextBreak = value.indexOf("\n", end);
+  const lineEnd = nextBreak === -1 ? value.length : nextBreak;
+  const block = value.slice(lineStart, lineEnd);
+  const lines = block.split("\n");
+  const contentLines = lines.filter((l) => l.trim() !== "");
+  const allBulleted = contentLines.length > 0 && contentLines.every((l) => /^\s*-\s/.test(l));
+  const newLines = lines.map((l) => {
+    if (l.trim() === "") return l;
+    if (allBulleted) return l.replace(/^(\s*)-\s?/, "$1");
+    return /^\s*-\s/.test(l) ? l : `- ${l}`;
+  });
+  const newBlock = newLines.join("\n");
+  const newValue = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
+  const delta = newBlock.length - block.length;
+  return { value: newValue, selStart: start, selEnd: Math.max(start, end + delta) };
+}
+
+function DescriptionToolbar({
+  textareaRef, value, onChange,
+}: {
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const run = (fn: typeof applyBold) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const { selectionStart, selectionEnd } = el;
+    const result = fn(value, selectionStart, selectionEnd);
+    onChange(result.value);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(result.selStart, result.selEnd);
+    });
+  };
+  return (
+    <div className="flex gap-1.5">
+      <Button type="button" variant="outline" size="sm" className="h-7 px-2.5"
+        title="Bold selected text" onClick={() => run(applyBold)}>
+        <Bold className="h-3.5 w-3.5" />
+      </Button>
+      <Button type="button" variant="outline" size="sm" className="h-7 px-2.5"
+        title="Bullet list" onClick={() => run(applyBullet)}>
+        <List className="h-3.5 w-3.5" />
+      </Button>
     </div>
   );
 }
@@ -957,6 +1024,7 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
   // Transient AI-description helper — not saved on the product, just feeds the prompt.
   const [keywords, setKeywords] = useState("");
   const [describing, setDescribing] = useState(false);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   // One-click "read the photo and fill the form" — same /analyze endpoint the bulk
   // uploader uses. Only fills fields the admin hasn't already typed, so it never
@@ -1067,13 +1135,20 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
           <p className="text-xs text-muted-foreground mt-1">
             Add your product keywords, features, or highlights to help AI generate the perfect description.
           </p>
-          <Textarea value={form.description}
+          <div className="mt-2 mb-1.5">
+            <DescriptionToolbar
+              textareaRef={descriptionRef}
+              value={form.description}
+              onChange={(v) => setField("description", v)}
+            />
+          </div>
+          <Textarea ref={descriptionRef} value={form.description}
             onChange={(e) => setField("description", e.target.value)}
             rows={4} maxLength={2000}
-            placeholder="Detailed product description, materials, care instructions, etc." className="mt-2" />
+            placeholder="Detailed product description, materials, care instructions, etc." />
           <div className="flex items-start justify-between gap-2 mt-1">
             <p className="text-[11px] text-muted-foreground">
-              Tip: start a line with "- " for a bullet point, and wrap text in **double asterisks** for bold headings.
+              Select text and click Bold/Bullet above, or start a line with "- " for a bullet point and wrap text in **double asterisks** for bold headings.
             </p>
             <p className="text-xs text-muted-foreground text-right shrink-0">{form.description.length}/2000</p>
           </div>
