@@ -24,7 +24,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  ShoppingBag, Heart, Minus, Plus, Truck, Shield, ChevronRight, Share2, ImageOff, Check,
+  ShoppingBag, Heart, Minus, Plus, Truck, Shield, ChevronRight, Share2, ImageOff, Check, X,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -83,6 +83,7 @@ export default function ProductDetailClient() {
   const [inWishlist, setInWishlist] = useState(false);
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -151,6 +152,13 @@ export default function ProductDetailClient() {
     const idx = allImgs.indexOf(characterImages[0]);
     if (idx !== -1) setActiveImg(idx);
   }, [selectedCharacter, product]);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightboxOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxOpen]);
 
   useEffect(() => {
     const el = ctaRef.current;
@@ -310,6 +318,47 @@ export default function ProductDetailClient() {
         </div>
       </div>
 
+      {/* ── FULLSCREEN IMAGE LIGHTBOX ── */}
+      {lightboxOpen && allImages[activeImg] && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Close"
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white transition-colors z-10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <img
+            src={allImages[activeImg]}
+            alt={product.name}
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-[92vw] max-h-[88vh] object-contain select-none"
+          />
+
+          {allImages.length > 1 && (
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 px-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {allImages.map((url, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveImg(i)}
+                  className={`h-2.5 w-2.5 rounded-full transition-colors ${
+                    i === activeImg ? "bg-white" : "bg-white/35 hover:bg-white/60"
+                  }`}
+                  aria-label={`View image ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <main className="container py-6 sm:py-8 space-y-10 sm:space-y-16">
 
         {/* Breadcrumb */}
@@ -332,10 +381,13 @@ export default function ProductDetailClient() {
           {/* ── Left: Image gallery ────────────────────────────────────────── */}
           <div className="space-y-3">
             {/* Main image */}
-            <div className="aspect-square rounded-2xl overflow-hidden bg-muted border border-border relative">
+            <div
+              className="aspect-square rounded-2xl overflow-hidden bg-muted border border-border relative cursor-zoom-in"
+              onClick={() => allImages[activeImg] && setLightboxOpen(true)}
+            >
               {allImages[activeImg] ? (
                 <img key={activeImg} src={allImages[activeImg]} alt={product.name}
-                  className="w-full h-full object-contain" />
+                  className="w-full h-full object-cover" />
               ) : (
                 <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-16 w-16 text-muted-foreground/20" /></div>
               )}
@@ -354,7 +406,7 @@ export default function ProductDetailClient() {
                     className={`flex-shrink-0 h-16 w-16 rounded-lg overflow-hidden border-2 transition-colors ${
                       i === activeImg ? "border-primary" : "border-transparent hover:border-border"
                     }`}>
-                    <img src={url} alt={`View ${i + 1}`} className="w-full h-full object-contain" />
+                    <img src={url} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -433,23 +485,24 @@ export default function ProductDetailClient() {
                   Color{selectedColor ? <span className="font-normal text-muted-foreground">: {selectedColor}</span> : ""}
                 </p>
                 {hasColorChoice ? (
-                  <Select value={selectedColor} onValueChange={setSelectedColor}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a color" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {colors.map((c) => (
-                        <SelectItem key={c.label} value={c.label} disabled={c.stock === 0}>
-                          {c.label}
-                          {c.stock === 0
-                            ? " (Out of stock)"
-                            : c.stock < LOW_STOCK_THRESHOLD
-                            ? ` (${c.stock} left)`
-                            : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {colors.map((c) => (
+                      <button key={c.label} onClick={() => setSelectedColor(c.label)}
+                        disabled={c.stock === 0}
+                        className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                          selectedColor === c.label
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : c.stock === 0
+                            ? "border-border text-muted-foreground line-through cursor-not-allowed opacity-50"
+                            : "border-border hover:border-primary hover:bg-muted"
+                        }`}>
+                        {c.label}
+                        {c.stock > 0 && c.stock < LOW_STOCK_THRESHOLD && (
+                          <span className="ml-1 text-[10px] text-amber-600 font-normal">({c.stock})</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 ) : (
                   <Badge variant="secondary" className="px-3 py-1 text-sm">{colors[0]?.label}</Badge>
                 )}
@@ -651,10 +704,6 @@ export default function ProductDetailClient() {
                     {[
                       ["Category", product.category.replace(/-/g, " ")],
                       ["SKU", product.sku ?? "—"],
-                      ["Stock", (sizes.length > 0 || colors.length > 0 || characters.length > 0) ? `${product.stock} total units` : `${product.stock} units`],
-                      ...(sizes.length > 0 ? sizes.map((sz) => [`Stock – ${sz.label}`, `${sz.stock} units`]) : []),
-                      ...(colors.length > 0 ? colors.map((c) => [`Stock – ${c.label}`, `${c.stock} units`]) : []),
-                      ...(characters.length > 0 ? characters.map((c) => [`Stock – ${c.label}`, `${c.stock} units`]) : []),
                     ].map(([k, v]) => (
                       <div key={k} className="flex justify-between py-1 border-b border-border/40 last:border-0">
                         <dt className="text-muted-foreground capitalize">{k}</dt>
