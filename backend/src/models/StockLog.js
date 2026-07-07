@@ -7,6 +7,7 @@ const stockLogSchema = new mongoose.Schema(
     sku:         { type: String, default: null },
     size:        { type: String, default: null },   // which size variant was affected
     color:       { type: String, default: null },   // which color variant was affected
+    character:   { type: String, default: null },   // which character/design variant was affected
     change:      { type: Number, required: true },  // negative = deducted, positive = restocked
     stockBefore: { type: Number, required: true },
     stockAfter:  { type: Number, required: true },

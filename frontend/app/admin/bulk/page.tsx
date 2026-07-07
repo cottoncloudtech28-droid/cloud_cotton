@@ -22,7 +22,7 @@ import type { Category } from "@/lib/types";
 type Row = {
   id: string; file: File; originalDataUrl: string; currentDataUrl: string;
   editing: boolean; describing: boolean; analyzing: boolean; name: string; description: string;
-  price: string; category: string; stock: string; colorsText: string;
+  price: string; category: string; stock: string; colorsText: string; charactersText: string;
   bgPrompt: string; anglePrompt: string; provider: "openai" | "gemini";
 };
 
@@ -32,13 +32,34 @@ const PRESET_BACKGROUNDS = [
   { label: "Teen bedroom fairy lights", value: "Place the product on a white marble side table in a cozy bedroom scene, a wall behind draped with warm blurred fairy lights and softly out-of-focus framed photo prints, gentle golden bokeh glow, evening ambient lighting, dreamy kawaii teen-bedroom aesthetic, the product stays sharp, centered and the clear focal point against the softly blurred background" },
   { label: "Café counter with greenery", value: "Place the product on a warm marble café counter, softly blurred hanging potted plants and a blurred café interior with warm pendant lighting and out-of-focus patrons in the background, natural daylight spilling in from a nearby window, lifestyle editorial coffee-shop aesthetic, the product stays in sharp focus and centered in the foreground" },
   { label: "School entryway bench", value: "Place the product on a light wood entryway bench beside a sunlit window, softly blurred backpacks in muted colors lined up nearby and neatly folded clothing beside them, a leafy courtyard visible softly out of focus through the window, warm natural daylight, tidy back-to-school lifestyle aesthetic, the product stays sharp, centered and well-lit" },
+  { label: "Minimal studio", value: "Place the product at the center of a clean seamless studio backdrop in a soft neutral beige-to-white gradient, smooth even softbox lighting from both sides with a gentle diffused shadow directly beneath the product, no props and no clutter, crisp premium e-commerce catalog aesthetic, the product perfectly centered, sharply in focus and evenly lit as the sole hero of the frame" },
+  { label: "Marble luxury shelf", value: "Place the product on a polished white Carrara marble surface with soft grey veining, an elegant blurred backdrop of a champagne-gold wall and a single softly out-of-focus fresh orchid stem to one side, refined directional lighting with a subtle reflection under the product, upscale boutique luxury aesthetic, the product stays sharp, centered and clearly the premium focal point" },
+  { label: "Scandinavian shelf", value: "Place the product on a pale birch-wood floating shelf against a matte off-white wall, a softly blurred trailing green pothos plant and a small ceramic vase out of focus to the sides, bright airy diffused daylight, clean minimalist Scandinavian interior aesthetic, gentle natural shadow beneath the product, the product stays sharp, centered and the clear focal point" },
+  { label: "Garden picnic", value: "Place the product on a soft checkered cotton picnic blanket spread over sunlit grass, softly blurred wildflowers, a woven wicker basket and dappled greenery out of focus behind it, warm golden-hour sunlight with gentle lens flare, cheerful outdoor lifestyle aesthetic, the product stays sharp, centered and clearly in focus in the foreground" },
+  { label: "Coastal beach", value: "Place the product on smooth pale sand near a calm turquoise shoreline, softly blurred rolling waves, a few scattered seashells and beach grass out of focus behind it, bright airy sunlight with a fresh breezy feel, relaxed coastal summer aesthetic, soft natural shadow on the sand, the product stays sharp, centered and the clear hero of the scene" },
+  { label: "Festive Diwali", value: "Place the product on a rich silk fabric surface surrounded by softly blurred glowing diyas, marigold flowers and warm fairy lights out of focus behind it, gentle golden bokeh and a warm celebratory glow, elegant Indian festive Diwali aesthetic, the product stays sharp, centered and clearly the focal point against the softly blurred festive background" },
+  { label: "Cozy Christmas", value: "Place the product on a rustic wooden surface beside a softly blurred decorated Christmas tree with warm twinkling lights, pine sprigs, a red ribbon and out-of-focus wrapped gifts behind it, warm cozy golden bokeh, festive holiday lifestyle aesthetic, the product stays sharp, centered and the clear hero against the softly blurred holiday background" },
+  { label: "Home office desk", value: "Place the product on a clean light-oak desk beside a softly blurred laptop, a small potted succulent, a stack of notebooks and a warm desk lamp out of focus behind it, bright natural daylight from a nearby window, tidy modern work-from-home aesthetic, gentle shadow beneath the product, the product stays sharp, centered and clearly in focus" },
+  { label: "Boho macramé", value: "Place the product on a woven jute surface against a softly blurred cream macramé wall hanging, trailing green plants and warm terracotta pottery out of focus to the sides, warm earthy natural daylight, relaxed bohemian lifestyle aesthetic, soft natural shadow beneath the product, the product stays sharp, centered and the clear focal point" },
 ];
 
 const PRESET_ANGLES = [
   { label: "Front", value: "Show the product from a clean straight-on front angle, centered, e-commerce style" },
   { label: "3/4 view", value: "Show the product from a flattering 3/4 angle, slightly elevated, soft shadow" },
   { label: "Top-down", value: "Show the product from a top-down flat lay angle, perfectly centered" },
+  { label: "Close-up detail", value: "Show a tight close-up of the product highlighting its texture and fine detail, shallow depth of field, sharp focus on the material" },
+  { label: "Low angle hero", value: "Show the product from a slightly low hero angle looking up, making it feel bold and premium, soft shadow and even lighting" },
+  { label: "Side profile", value: "Show the product from a clean side profile angle, centered, revealing its full silhouette, e-commerce style" },
 ];
+
+// Combine what the user has already typed with a clicked preset so presets add to
+// (rather than wipe) any custom text. Avoids duplicating a preset that's already there.
+const appendPrompt = (current: string, preset: string) => {
+  const base = current.trim();
+  if (!base) return preset;
+  if (base.includes(preset)) return base;
+  return `${base.replace(/[.\s]+$/, "")}. ${preset}`;
+};
 
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -80,7 +101,7 @@ export default function BulkUploadPage() {
       if (!f.type.startsWith("image/")) continue;
       const dataUrl = await fileToDataUrl(f);
       const baseName = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", price: "", category: defaultCategory, stock: "10", colorsText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
+      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", price: "", category: defaultCategory, stock: "10", colorsText: "", charactersText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
     }
     setRows((r) => [...r, ...next]);
   };
@@ -143,7 +164,7 @@ export default function BulkUploadPage() {
         category: categories.some((c) => c.slug === data.category) ? data.category : row.category,
         colorsText: Array.isArray(data.colors) ? data.colors.join(", ") : row.colorsText,
         description: data.description || row.description,
-        price: data.price ? String(data.price) : row.price,
+        price: data.price ? String(Math.round(Number(data.price))) : row.price,
         bgPrompt: bg || row.bgPrompt,
         anglePrompt: angle || row.anglePrompt,
         analyzing: false,
@@ -175,9 +196,11 @@ export default function BulkUploadPage() {
         const stock = Number(r.stock) || 0;
         const colors = r.colorsText.split(",").map((s) => s.trim()).filter(Boolean)
           .map((label) => ({ label, stock }));
+        const characters = r.charactersText.split(",").map((s) => s.trim()).filter(Boolean)
+          .map((label) => ({ label, stock }));
         await apiFetch("/api/products", {
           method: "POST",
-          body: JSON.stringify({ name: r.name.trim(), description: r.description.trim() || null, price: Number(r.price), category: r.category.trim() || "stationery", stock: Number(r.stock) || 0, image_url: url, colors }),
+          body: JSON.stringify({ name: r.name.trim(), description: r.description.trim() || null, price: Number(r.price), category: r.category.trim() || "stationery", stock: Number(r.stock) || 0, image_url: url, colors, characters }),
         });
         ok++;
       } catch (e: any) {
@@ -287,6 +310,8 @@ export default function BulkUploadPage() {
                           </select></div>
                         <div><Label>Colors (comma-separated)</Label>
                           <Input placeholder="pink, lilac, mint" value={r.colorsText} onChange={(e) => update(r.id, { colorsText: e.target.value })} /></div>
+                        <div><Label>Character / design (comma-separated)</Label>
+                          <Input placeholder="Doraemon, Hello Kitty" value={r.charactersText} onChange={(e) => update(r.id, { charactersText: e.target.value })} /></div>
                         <div className="sm:col-span-2">
                           <div className="flex items-center justify-between">
                             <Label>Description</Label>
@@ -319,11 +344,12 @@ export default function BulkUploadPage() {
                           <Label className="text-xs">Background</Label>
                           <div className="flex flex-wrap gap-1 mb-2">
                             {PRESET_BACKGROUNDS.map((p) => (
-                              <Badge key={p.label} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => update(r.id, { bgPrompt: p.value })}>{p.label}</Badge>
+                              <Badge key={p.label} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => update(r.id, { bgPrompt: appendPrompt(r.bgPrompt, p.value) })}>{p.label}</Badge>
                             ))}
                           </div>
-                          <div className="flex gap-2">
-                            <Input value={r.bgPrompt} onChange={(e) => update(r.id, { bgPrompt: e.target.value })} placeholder="Describe new background" />
+                          <p className="text-[11px] text-muted-foreground mb-1.5">Pick a preset to fill in a detailed prompt, then edit it or add your own details before applying.</p>
+                          <div className="flex gap-2 items-end">
+                            <Textarea value={r.bgPrompt} onChange={(e) => update(r.id, { bgPrompt: e.target.value })} placeholder="Describe the new background, or pick a preset above and tweak it…" rows={4} className="resize-y min-h-[88px] text-sm" />
                             <Button size="sm" className="rounded-full" disabled={r.editing} onClick={() => runEdit(r, r.bgPrompt)}>Apply</Button>
                           </div>
                         </div>
@@ -331,11 +357,12 @@ export default function BulkUploadPage() {
                           <Label className="text-xs">Angle / framing</Label>
                           <div className="flex flex-wrap gap-1 mb-2">
                             {PRESET_ANGLES.map((p) => (
-                              <Badge key={p.label} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => update(r.id, { anglePrompt: p.value })}>{p.label}</Badge>
+                              <Badge key={p.label} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => update(r.id, { anglePrompt: appendPrompt(r.anglePrompt, p.value) })}>{p.label}</Badge>
                             ))}
                           </div>
-                          <div className="flex gap-2">
-                            <Input value={r.anglePrompt} onChange={(e) => update(r.id, { anglePrompt: e.target.value })} placeholder="e.g. show from 3/4 angle" />
+                          <p className="text-[11px] text-muted-foreground mb-1.5">Pick a preset or type your own framing instructions — you can combine both.</p>
+                          <div className="flex gap-2 items-end">
+                            <Textarea value={r.anglePrompt} onChange={(e) => update(r.id, { anglePrompt: e.target.value })} placeholder="e.g. show from a flattering 3/4 angle, slightly elevated…" rows={3} className="resize-y min-h-[66px] text-sm" />
                             <Button size="sm" variant="secondary" className="rounded-full" disabled={r.editing} onClick={() => runEdit(r, r.anglePrompt)}>Apply</Button>
                           </div>
                         </div>

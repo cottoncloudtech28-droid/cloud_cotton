@@ -29,7 +29,8 @@ import {
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch, addToWishlist, removeFromWishlist, getWishlistIds } from "@/lib/api";
-import type { Product, ProductSize, ProductColor } from "@/lib/types";
+import type { Product, ProductSize, ProductColor, ProductCharacter } from "@/lib/types";
+import { formatDescription } from "@/lib/formatText";
 import { toast } from "sonner";
 
 // Low-stock indicators (main status, per-size, per-color) only show when stock is below this.
@@ -77,6 +78,7 @@ export default function ProductDetailClient() {
   const [activeImg, setActiveImg] = useState(0);
   const [qty, setQty] = useState(1);
   const [selectedColor, setSelectedColor] = useState("");
+  const [selectedCharacter, setSelectedCharacter] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
   const [inWishlist, setInWishlist] = useState(false);
   const [wishlistBusy, setWishlistBusy] = useState(false);
@@ -89,6 +91,7 @@ export default function ProductDetailClient() {
     setQty(1);
     setActiveImg(0);
     setSelectedColor("");
+    setSelectedCharacter("");
     setSelectedSize("");
 
     apiFetch(`/api/products/${id}`)
@@ -98,6 +101,8 @@ export default function ProductDetailClient() {
         // Auto-select if only one option
         const colors = p.colors ?? [];
         if (colors.length === 1) setSelectedColor(colors[0].label);
+        const characters = p.characters ?? [];
+        if (characters.length === 1) setSelectedCharacter(characters[0].label);
         const sizes = p.sizes ?? [];
         if (sizes.length === 1) setSelectedSize(sizes[0].label);
 
@@ -137,6 +142,16 @@ export default function ProductDetailClient() {
     if (idx !== -1) setActiveImg(idx);
   }, [selectedColor, product]);
 
+  // Switch to the character/design's linked image, if it has one
+  useEffect(() => {
+    if (!product || !selectedCharacter) return;
+    const characterImages = (product.characters ?? []).find((c) => c.label === selectedCharacter)?.images;
+    if (!characterImages?.length) return;
+    const allImgs = product.images?.length > 0 ? product.images : product.image_url ? [product.image_url] : [];
+    const idx = allImgs.indexOf(characterImages[0]);
+    if (idx !== -1) setActiveImg(idx);
+  }, [selectedCharacter, product]);
+
   useEffect(() => {
     const el = ctaRef.current;
     if (!el) return;
@@ -158,6 +173,8 @@ export default function ProductDetailClient() {
 
   const colors: ProductColor[] = product.colors ?? [];
   const hasColorChoice = colors.length > 1;
+  const characters: ProductCharacter[] = product.characters ?? [];
+  const hasCharacterChoice = characters.length > 1;
   const sizes: ProductSize[] = product.sizes ?? [];
   const tags = product.tags ?? [];
   const specs = product.specifications ?? [];
@@ -166,17 +183,19 @@ export default function ProductDetailClient() {
 
   const selectedSizeObj = sizes.find((sz) => sz.label === selectedSize);
   const selectedColorObj = colors.find((c) => c.label === selectedColor);
+  const selectedCharacterObj = characters.find((c) => c.label === selectedCharacter);
   const needsSize = sizes.length > 0 && !selectedSize;
   const needsColor = hasColorChoice && !selectedColor;
+  const needsCharacter = hasCharacterChoice && !selectedCharacter;
 
-  // Most-restrictive-wins: if both a size and a color are selected, the smaller stock governs.
+  // Most-restrictive-wins: when multiple variant axes are selected, the smallest stock governs.
   const sizeStock = sizes.length > 0 ? (selectedSizeObj?.stock ?? 0) : null;
   const colorStock = colors.length > 0 ? (selectedColorObj?.stock ?? 0) : null;
+  const characterStock = characters.length > 0 ? (selectedCharacterObj?.stock ?? 0) : null;
+  const variantStocks = [sizeStock, colorStock, characterStock].filter((s): s is number => s !== null);
   const effectiveStock =
-    needsSize || needsColor ? 0
-    : sizeStock !== null && colorStock !== null ? Math.min(sizeStock, colorStock)
-    : sizeStock !== null ? sizeStock
-    : colorStock !== null ? colorStock
+    needsSize || needsColor || needsCharacter ? 0
+    : variantStocks.length > 0 ? Math.min(...variantStocks)
     : product.stock;
   const maxQty = Math.min(effectiveStock, 10);
 
@@ -186,15 +205,17 @@ export default function ProductDetailClient() {
   const canAdd =
     effectiveStock > 0 &&
     (!hasColorChoice || !!selectedColor) &&
+    (!hasCharacterChoice || !!selectedCharacter) &&
     (sizes.length === 0 || !!selectedSize);
 
   const stockInfo = (() => {
-    if (needsSize && needsColor)
-      return { label: "Select a size and color to check stock", color: "text-muted-foreground", icon: "📏" };
-    if (needsSize)
-      return { label: "Select a size to check stock", color: "text-muted-foreground", icon: "📏" };
-    if (needsColor)
-      return { label: "Select a color to check stock", color: "text-muted-foreground", icon: "🎨" };
+    const missing = [
+      needsSize && "size",
+      needsColor && "color",
+      needsCharacter && "character/design",
+    ].filter(Boolean) as string[];
+    if (missing.length > 0)
+      return { label: `Select a ${missing.join(" and ")} to check stock`, color: "text-muted-foreground", icon: "📏" };
     const s = effectiveStock;
     if (s === 0) return { label: "Out of stock", color: "text-destructive", icon: "⛔" };
     if (s < LOW_STOCK_THRESHOLD) return { label: `Only ${s} left!`, color: "text-amber-600", icon: "⚠️" };
@@ -203,13 +224,17 @@ export default function ProductDetailClient() {
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   const buildVariant = () => {
-    const parts: string[] = [];
-    if (selectedSize) parts.push(selectedSize);
-    if (selectedColor) parts.push(selectedColor);
-    const suffix = parts.join(", ");
+    // Key-prefixed composite ID segments (not positional) so the backend can tell
+    // size/color/character apart regardless of which subset is present.
+    const idParts: string[] = [];
+    if (selectedSize) idParts.push(`s=${selectedSize}`);
+    if (selectedColor) idParts.push(`c=${selectedColor}`);
+    if (selectedCharacter) idParts.push(`ch=${selectedCharacter}`);
+    const nameParts = [selectedSize, selectedColor, selectedCharacter].filter(Boolean);
+    const suffix = nameParts.join(", ");
     return {
       ...product,
-      id: parts.length ? `${product.id}::${parts.join("::")}` : product.id,
+      id: idParts.length ? `${product.id}::${idParts.join("::")}` : product.id,
       name: suffix ? `${product.name} – ${suffix}` : product.name,
     };
   };
@@ -218,6 +243,7 @@ export default function ProductDetailClient() {
     if (!canAdd) {
       if (sizes.length > 0 && !selectedSize) { toast.error("Please select a size"); return; }
       if (hasColorChoice && !selectedColor) { toast.error("Please choose a color"); return; }
+      if (hasCharacterChoice && !selectedCharacter) { toast.error("Please choose a character/design"); return; }
       if (effectiveStock === 0) { toast.error("This item is out of stock"); return; }
       return;
     }
@@ -309,7 +335,7 @@ export default function ProductDetailClient() {
             <div className="aspect-square rounded-2xl overflow-hidden bg-muted border border-border relative">
               {allImages[activeImg] ? (
                 <img key={activeImg} src={allImages[activeImg]} alt={product.name}
-                  className="w-full h-full object-cover" />
+                  className="w-full h-full object-contain" />
               ) : (
                 <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-16 w-16 text-muted-foreground/20" /></div>
               )}
@@ -328,7 +354,7 @@ export default function ProductDetailClient() {
                     className={`flex-shrink-0 h-16 w-16 rounded-lg overflow-hidden border-2 transition-colors ${
                       i === activeImg ? "border-primary" : "border-transparent hover:border-border"
                     }`}>
-                    <img src={url} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
+                    <img src={url} alt={`View ${i + 1}`} className="w-full h-full object-contain" />
                   </button>
                 ))}
               </div>
@@ -429,6 +455,39 @@ export default function ProductDetailClient() {
                 )}
                 {selectedColorObj && selectedColorObj.stock > 0 && selectedColorObj.stock < LOW_STOCK_THRESHOLD && (
                   <p className="text-xs text-amber-600 font-medium">⚠️ Only {selectedColorObj.stock} left in this color</p>
+                )}
+              </div>
+            )}
+
+            {/* Character/design selector */}
+            {characters.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">
+                  Character / Design{selectedCharacter ? <span className="font-normal text-muted-foreground">: {selectedCharacter}</span> : ""}
+                </p>
+                {hasCharacterChoice ? (
+                  <Select value={selectedCharacter} onValueChange={setSelectedCharacter}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a character/design" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {characters.map((c) => (
+                        <SelectItem key={c.label} value={c.label} disabled={c.stock === 0}>
+                          {c.label}
+                          {c.stock === 0
+                            ? " (Out of stock)"
+                            : c.stock < LOW_STOCK_THRESHOLD
+                            ? ` (${c.stock} left)`
+                            : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Badge variant="secondary" className="px-3 py-1 text-sm">{characters[0]?.label}</Badge>
+                )}
+                {selectedCharacterObj && selectedCharacterObj.stock > 0 && selectedCharacterObj.stock < LOW_STOCK_THRESHOLD && (
+                  <p className="text-xs text-amber-600 font-medium">⚠️ Only {selectedCharacterObj.stock} left in this character/design</p>
                 )}
               </div>
             )}
@@ -545,8 +604,8 @@ export default function ProductDetailClient() {
                   <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                     Description
                   </AccordionTrigger>
-                  <AccordionContent className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {product.description}
+                  <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
+                    {formatDescription(product.description)}
                   </AccordionContent>
                 </AccordionItem>
               )}
@@ -592,9 +651,10 @@ export default function ProductDetailClient() {
                     {[
                       ["Category", product.category.replace(/-/g, " ")],
                       ["SKU", product.sku ?? "—"],
-                      ["Stock", (sizes.length > 0 || colors.length > 0) ? `${product.stock} total units` : `${product.stock} units`],
+                      ["Stock", (sizes.length > 0 || colors.length > 0 || characters.length > 0) ? `${product.stock} total units` : `${product.stock} units`],
                       ...(sizes.length > 0 ? sizes.map((sz) => [`Stock – ${sz.label}`, `${sz.stock} units`]) : []),
                       ...(colors.length > 0 ? colors.map((c) => [`Stock – ${c.label}`, `${c.stock} units`]) : []),
+                      ...(characters.length > 0 ? characters.map((c) => [`Stock – ${c.label}`, `${c.stock} units`]) : []),
                     ].map(([k, v]) => (
                       <div key={k} className="flex justify-between py-1 border-b border-border/40 last:border-0">
                         <dt className="text-muted-foreground capitalize">{k}</dt>

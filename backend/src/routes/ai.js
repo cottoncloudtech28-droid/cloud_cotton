@@ -84,6 +84,12 @@ Return ONLY the JSON object, no markdown, no extra text.`;
     } catch {
       throw new Error("Could not parse AI response");
     }
+    // The model often ignores the "integer" instruction and returns a charm price
+    // like 249.79 — round to a whole rupee so the storefront never shows odd paise.
+    if (parsed.price != null && parsed.price !== "") {
+      const rounded = Math.round(Number(parsed.price));
+      parsed.price = Number.isFinite(rounded) ? rounded : undefined;
+    }
     res.json(parsed);
   } catch (e) {
     res.status(500).json({ message: e.message });

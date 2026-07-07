@@ -15,6 +15,12 @@ const colorZ = z.object({
   images: z.array(z.string()).default([]),
 });
 
+const characterZ = z.object({
+  label: z.string().trim().min(1).max(50),
+  stock: z.number().int().min(0),
+  images: z.array(z.string()).default([]),
+});
+
 const specZ = z.object({
   key:   z.string().trim().min(1),
   label: z.string().trim().min(1).max(60),
@@ -34,6 +40,7 @@ const schema = z.object({
   image_url:         z.string().nullable().optional(),
   images:            z.array(z.string()).default([]),
   colors:            z.array(colorZ).default([]),
+  characters:        z.array(characterZ).default([]),
   tags:              z.array(z.string().trim().max(30)).default([]),
   sizes:             z.array(sizeZ).default([]),
   specifications:    z.array(specZ).default([]),
@@ -49,11 +56,13 @@ const mapDoc = (doc) => {
   delete obj.__v;
   // Ensure image_url reflects images[0]
   if (obj.images && obj.images.length > 0) obj.image_url = obj.images[0];
-  // Ensure stock reflects sum of sizes (or colors, when there are no sizes)
+  // Ensure stock reflects sum of sizes (or colors, or characters, in that fallback order)
   if (obj.sizes && obj.sizes.length > 0) {
     obj.stock = obj.sizes.reduce((s, sz) => s + (sz.stock || 0), 0);
   } else if (obj.colors && obj.colors.length > 0) {
     obj.stock = obj.colors.reduce((s, c) => s + (c.stock || 0), 0);
+  } else if (obj.characters && obj.characters.length > 0) {
+    obj.stock = obj.characters.reduce((s, c) => s + (c.stock || 0), 0);
   }
   return obj;
 };
@@ -67,6 +76,13 @@ const parseBody = (body) => ({
   images:           Array.isArray(body.images) ? body.images : [],
   colors:           Array.isArray(body.colors)
                       ? body.colors.map((c) => ({
+                          label: c.label,
+                          stock: Number(c.stock ?? 0),
+                          images: Array.isArray(c.images) ? c.images : [],
+                        }))
+                      : [],
+  characters:       Array.isArray(body.characters)
+                      ? body.characters.map((c) => ({
                           label: c.label,
                           stock: Number(c.stock ?? 0),
                           images: Array.isArray(c.images) ? c.images : [],
@@ -357,14 +373,14 @@ router.patch("/bulk", verifyToken, requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/products/:id/stock  — admin: adjust single product stock
-// body: { stock, size?, color?, note?, reason? }
+// body: { stock, size?, color?, character?, note?, reason? }
 router.patch("/:id/stock", verifyToken, requireAdmin, async (req, res) => {
-  const { stock, size, color, note, reason } = req.body;
+  const { stock, size, color, character, note, reason } = req.body;
   try {
     const p = await Product.findById(req.params.id);
     if (!p) return res.status(404).json({ message: "Product not found" });
 
-    let stockBefore, stockAfter, targetSize = null, targetColor = null;
+    let stockBefore, stockAfter, targetSize = null, targetColor = null, targetCharacter = null;
 
     if (size && p.sizes && p.sizes.length > 0) {
       const idx = p.sizes.findIndex((sz) => sz.label === size);
@@ -384,6 +400,15 @@ router.patch("/:id/stock", verifyToken, requireAdmin, async (req, res) => {
       p.stock = p.colors.reduce((s, c) => s + c.stock, 0);
       p.markModified("colors");
       targetColor = color;
+    } else if (character && p.characters && p.characters.length > 0) {
+      const idx = p.characters.findIndex((c) => c.label === character);
+      if (idx < 0) return res.status(400).json({ message: `Character/design "${character}" not found on this product` });
+      stockBefore = p.characters[idx].stock;
+      p.characters[idx].stock = Math.max(0, parseInt(stock) || 0);
+      stockAfter = p.characters[idx].stock;
+      p.stock = p.characters.reduce((s, c) => s + c.stock, 0);
+      p.markModified("characters");
+      targetCharacter = character;
     } else {
       stockBefore = p.stock;
       p.stock = Math.max(0, parseInt(stock) || 0);
@@ -398,6 +423,7 @@ router.patch("/:id/stock", verifyToken, requireAdmin, async (req, res) => {
       sku:         p.sku ?? null,
       size:        targetSize,
       color:       targetColor,
+      character:   targetCharacter,
       change:      stockAfter - stockBefore,
       stockBefore,
       stockAfter,

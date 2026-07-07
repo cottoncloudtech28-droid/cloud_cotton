@@ -278,7 +278,7 @@ export default function CartPage() {
     try {
       const orderItems = items.map(({ product: p, qty }) => ({
         productId: p.id, name: p.name, image_url: p.image_url ?? null,
-        price: p.price, discount_percent: p.discount_percent, qty, color: null, size: null,
+        price: p.price, discount_percent: p.discount_percent, qty, color: null, character: null, size: null,
       }));
 
       if (paymentMethod === "cod") {

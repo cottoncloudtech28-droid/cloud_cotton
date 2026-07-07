@@ -24,6 +24,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { formatDescription } from "@/lib/formatText";
 import {
   Pencil, Trash2, Plus, Upload, X, ImagePlus, Tag, Ruler,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Package, Eye, EyeOff, Wand2, Sparkles, Star,
@@ -34,7 +35,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { apiFetch, uploadFile, getCategories, bulkDeleteProducts, bulkEditProducts } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Product, ProductSize, ProductColor, Category, SpecField, ProductSpec } from "@/lib/types";
+import type { Product, ProductSize, ProductColor, ProductCharacter, Category, SpecField, ProductSpec } from "@/lib/types";
 
 // ── AI image-editing presets ──────────────────────────────────────────────────
 const AI_BACKGROUNDS = [
@@ -58,11 +59,50 @@ const AI_BACKGROUNDS = [
     label: "School entryway bench",
     value: "Place the product on a light wood entryway bench beside a sunlit window, softly blurred backpacks in muted colors lined up nearby and neatly folded clothing beside them, a leafy courtyard visible softly out of focus through the window, warm natural daylight, tidy back-to-school lifestyle aesthetic, the product stays sharp, centered and well-lit",
   },
+  {
+    label: "Minimal studio",
+    value: "Place the product at the center of a clean seamless studio backdrop in a soft neutral beige-to-white gradient, smooth even softbox lighting from both sides with a gentle diffused shadow directly beneath the product, no props and no clutter, crisp premium e-commerce catalog aesthetic, the product perfectly centered, sharply in focus and evenly lit as the sole hero of the frame",
+  },
+  {
+    label: "Marble luxury shelf",
+    value: "Place the product on a polished white Carrara marble surface with soft grey veining, an elegant blurred backdrop of a champagne-gold wall and a single softly out-of-focus fresh orchid stem to one side, refined directional lighting with a subtle reflection under the product, upscale boutique luxury aesthetic, the product stays sharp, centered and clearly the premium focal point",
+  },
+  {
+    label: "Scandinavian shelf",
+    value: "Place the product on a pale birch-wood floating shelf against a matte off-white wall, a softly blurred trailing green pothos plant and a small ceramic vase out of focus to the sides, bright airy diffused daylight, clean minimalist Scandinavian interior aesthetic, gentle natural shadow beneath the product, the product stays sharp, centered and the clear focal point",
+  },
+  {
+    label: "Garden picnic",
+    value: "Place the product on a soft checkered cotton picnic blanket spread over sunlit grass, softly blurred wildflowers, a woven wicker basket and dappled greenery out of focus behind it, warm golden-hour sunlight with gentle lens flare, cheerful outdoor lifestyle aesthetic, the product stays sharp, centered and clearly in focus in the foreground",
+  },
+  {
+    label: "Coastal beach",
+    value: "Place the product on smooth pale sand near a calm turquoise shoreline, softly blurred rolling waves, a few scattered seashells and beach grass out of focus behind it, bright airy sunlight with a fresh breezy feel, relaxed coastal summer aesthetic, soft natural shadow on the sand, the product stays sharp, centered and the clear hero of the scene",
+  },
+  {
+    label: "Festive Diwali",
+    value: "Place the product on a rich silk fabric surface surrounded by softly blurred glowing diyas, marigold flowers and warm fairy lights out of focus behind it, gentle golden bokeh and a warm celebratory glow, elegant Indian festive Diwali aesthetic, the product stays sharp, centered and clearly the focal point against the softly blurred festive background",
+  },
+  {
+    label: "Cozy Christmas",
+    value: "Place the product on a rustic wooden surface beside a softly blurred decorated Christmas tree with warm twinkling lights, pine sprigs, a red ribbon and out-of-focus wrapped gifts behind it, warm cozy golden bokeh, festive holiday lifestyle aesthetic, the product stays sharp, centered and the clear hero against the softly blurred holiday background",
+  },
+  {
+    label: "Home office desk",
+    value: "Place the product on a clean light-oak desk beside a softly blurred laptop, a small potted succulent, a stack of notebooks and a warm desk lamp out of focus behind it, bright natural daylight from a nearby window, tidy modern work-from-home aesthetic, gentle shadow beneath the product, the product stays sharp, centered and clearly in focus",
+  },
+  {
+    label: "Boho macramé",
+    value: "Place the product on a woven jute surface against a softly blurred cream macramé wall hanging, trailing green plants and warm terracotta pottery out of focus to the sides, warm earthy natural daylight, relaxed bohemian lifestyle aesthetic, soft natural shadow beneath the product, the product stays sharp, centered and the clear focal point",
+  },
 ];
 const AI_ANGLES = [
   { label: "Front", value: "Show the product from a clean straight-on front angle, perfectly centered, e-commerce style, soft even lighting" },
   { label: "3/4 view", value: "Show the product from a flattering 3/4 angle, slightly elevated perspective, soft drop shadow, lifestyle feel" },
   { label: "Top-down", value: "Flat lay top-down view of the product, perfectly centered on a pastel or marble surface, editorial style" },
+  { label: "Close-up detail", value: "Tight close-up of the product highlighting its texture and fine detail, shallow depth of field, sharp focus on the material, soft even lighting" },
+  { label: "Low angle hero", value: "Show the product from a slightly low hero angle looking up, making it feel bold and premium, soft drop shadow and even lighting, centered" },
+  { label: "Side profile", value: "Show the product from a clean side profile angle, centered, revealing its full silhouette, e-commerce style, soft even lighting" },
 ];
 const AI_STYLES = [
   {
@@ -80,7 +120,31 @@ const AI_STYLES = [
     value: (name: string) =>
       `Flat lay lifestyle photo of ${name} from directly above. Arranged on a light pastel background with minimal props — dried flowers, washi tape, or small stationery items around it. Soft natural window light, editorial aesthetic. No text, no watermark.`,
   },
+  {
+    label: "Clean white catalog",
+    value: (name: string) =>
+      `Clean e-commerce catalog photo of ${name} on a pure seamless white background (#FFFFFF), centered straight-on, bright even studio lighting, soft natural shadow beneath, true-to-life colors, crisp and sharp, 1:1 square, no props, no text, no watermark.`,
+  },
+  {
+    label: "Premium marble",
+    value: (name: string) =>
+      `Premium product photo of ${name} on a polished white marble surface with soft grey veining, elegant champagne-gold blurred backdrop, refined directional lighting with a subtle reflection beneath, upscale boutique aesthetic, true-to-life colors, 1:1 square, no text, no watermark.`,
+  },
+  {
+    label: "Festive glow",
+    value: (name: string) =>
+      `Warm festive product photo of ${name} on a rich silk surface surrounded by softly blurred glowing diyas, marigold flowers and golden fairy-light bokeh, celebratory Indian festive aesthetic, product centered and sharply in focus, vibrant true-to-life colors, 1:1 square, no text, no watermark.`,
+  },
 ];
+
+// Combine what the user has already typed with a clicked preset so presets add to
+// (rather than wipe) any custom text. Avoids duplicating a preset that's already there.
+const appendPrompt = (current: string, preset: string) => {
+  const base = current.trim();
+  if (!base) return preset;
+  if (base.includes(preset)) return base;
+  return `${base.replace(/[.\s]+$/, "")}. ${preset}`;
+};
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const [meta, b64] = dataUrl.split(",");
@@ -101,6 +165,7 @@ const schema = z.object({
   category: z.string().trim().min(1, "Category is required").max(40),
   stock: z.number().int().min(0).max(100_000),
   colors: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0), images: z.array(z.string()).optional() })).optional(),
+  characters: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0), images: z.array(z.string()).optional() })).optional(),
   tags: z.array(z.string()).optional(),
   images: z.array(z.string()).optional(),
   sizes: z.array(z.object({ label: z.string().min(1), stock: z.number().int().min(0) })).optional(),
@@ -112,6 +177,7 @@ const emptyForm = {
   price: 0, discount_percent: 0,
   category: "stationery", stock: 0,
   colors: [] as ProductColor[],
+  characters: [] as ProductCharacter[],
   tags: [] as string[],
   images: [] as string[],
   sizes: [] as ProductSize[],
@@ -268,6 +334,63 @@ function ColorRows({ colors, onChange, images = [] }: { colors: ProductColor[]; 
       ))}
       <Button type="button" variant="outline" size="sm" onClick={addRow}>
         <Plus className="h-3.5 w-3.5 mr-1" /> Add color
+      </Button>
+    </div>
+  );
+}
+
+// ── Character/design rows ──────────────────────────────────────────────────────
+function CharacterRows({ characters, onChange, images = [] }: { characters: ProductCharacter[]; onChange: (c: ProductCharacter[]) => void; images?: string[] }) {
+  const addRow = () => onChange([...characters, { label: "", stock: 0, images: [] }]);
+  const removeRow = (i: number) => onChange(characters.filter((_, idx) => idx !== i));
+  const update = (i: number, field: keyof ProductCharacter, val: string | number) =>
+    onChange(characters.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
+  const toggleImage = (i: number, url: string) =>
+    onChange(characters.map((c, idx) => {
+      if (idx !== i) return c;
+      const current = c.images ?? [];
+      const next = current.includes(url) ? current.filter((u) => u !== url) : [...current, url];
+      return { ...c, images: next };
+    }));
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5"><span className="text-sm">🎭</span> Character / Design</Label>
+      <p className="text-xs text-muted-foreground">For products that vary by print/character/design rather than color — each one tracks its own stock. Pick which uploaded images belong to it; selecting it will then switch the gallery to those images.</p>
+      {characters.map((c, i) => (
+        <div key={i} className="space-y-1.5 rounded-lg border border-border p-2">
+          <div className="flex gap-2 items-center">
+            <Input value={c.label} onChange={(e) => update(i, "label", e.target.value)}
+              placeholder="e.g. Doraemon" className="flex-1" />
+            <Input type="number" min="0" value={c.stock}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => update(i, "stock", parseInt(e.target.value) || 0)}
+              placeholder="Stock" className="w-24" />
+            <button type="button" onClick={() => removeRow(i)}
+              className="text-muted-foreground hover:text-destructive transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {images.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {images.map((url, idx) => {
+                const active = (c.images ?? []).includes(url);
+                return (
+                  <button key={url + idx} type="button" title={active ? "Linked to this character/design — click to unlink" : "Click to link to this character/design"}
+                    onClick={() => toggleImage(i, url)}
+                    className={cn(
+                      "h-10 w-10 rounded-md overflow-hidden border-2 transition-colors",
+                      active ? "border-primary ring-2 ring-primary/40" : "border-border opacity-50 hover:opacity-100"
+                    )}>
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={addRow}>
+        <Plus className="h-3.5 w-3.5 mr-1" /> Add character / design
       </Button>
     </div>
   );
@@ -626,7 +749,7 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
               {AI_BACKGROUNDS.map((p) => (
                 <Badge key={p.label} variant="outline"
                   className="cursor-pointer hover:bg-primary/10"
-                  onClick={() => setPrompt(p.value)}>
+                  onClick={() => setPrompt((prev) => appendPrompt(prev, p.value))}>
                   {p.label}
                 </Badge>
               ))}
@@ -640,7 +763,7 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
               {AI_ANGLES.map((p) => (
                 <Badge key={p.label} variant="outline"
                   className="cursor-pointer hover:bg-primary/10"
-                  onClick={() => setPrompt(p.value)}>
+                  onClick={() => setPrompt((prev) => appendPrompt(prev, p.value))}>
                   {p.label}
                 </Badge>
               ))}
@@ -663,8 +786,10 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
 
           {/* Custom prompt + apply */}
           <div className="space-y-2">
-            <Input value={prompt} onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the edit, or pick a preset…" />
+            <p className="text-[11px] text-muted-foreground">Pick a preset to fill in a detailed prompt, then edit it or add your own details. Clicking more presets appends them.</p>
+            <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe the edit, or pick a preset above and tweak it…"
+              rows={5} className="resize-y min-h-[110px] text-sm" />
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" className="flex-1"
                 onClick={() => runAiEdit("add")} disabled={processing}>
@@ -832,6 +957,38 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
   // Transient AI-description helper — not saved on the product, just feeds the prompt.
   const [keywords, setKeywords] = useState("");
   const [describing, setDescribing] = useState(false);
+
+  // One-click "read the photo and fill the form" — same /analyze endpoint the bulk
+  // uploader uses. Only fills fields the admin hasn't already typed, so it never
+  // clobbers manual edits; category is always set to the AI's best guess (editable).
+  const [analyzing, setAnalyzing] = useState(false);
+  const autoFillFromImage = async () => {
+    if (!form.images[0]) { toast.error("Upload a product image first"); return; }
+    setAnalyzing(true);
+    try {
+      const data = await apiFetch("/api/ai/analyze", {
+        method: "POST",
+        body: JSON.stringify({
+          image_base64: form.images[0],
+          categories: categories.map((c) => c.slug),
+          backgrounds: [],
+          angles: [],
+        }),
+      });
+      if (data.name && !form.name.trim()) setField("name", data.name);
+      if (data.description && !form.description.trim()) setField("description", data.description);
+      if (data.price && !form.price) setField("price", Math.round(Number(data.price)) || 0);
+      if (data.category && categories.some((c) => c.slug === data.category)) setField("category", data.category);
+      if (Array.isArray(data.colors) && data.colors.length > 0 && form.colors.length === 0) {
+        setField("colors", data.colors.map((label: string) => ({ label, stock: 0 })));
+      }
+      toast.success("Auto-filled from image ✨");
+    } catch (e: any) {
+      toast.error(e.message || "Auto-fill failed");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
   const generateDescription = async () => {
     if (!form.name.trim()) { toast.error("Add a product name first"); return; }
     setDescribing(true);
@@ -856,6 +1013,19 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
 
   return (
     <form onSubmit={onSubmit} className="space-y-6 pb-8">
+      {/* AI auto-fill — reads the uploaded photo and fills name, category, colors, description & price */}
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-primary" /> Auto-fill with AI</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {form.images[0] ? "Reads your product photo and fills the details below (only empty fields)." : "Upload a product image below, then fill the form in one click."}
+          </p>
+        </div>
+        <Button type="button" size="sm" className="rounded-full flex-shrink-0 bg-gradient-primary text-primary-foreground border-0"
+          onClick={autoFillFromImage} disabled={analyzing || !form.images[0]}>
+          <Sparkles className="h-3.5 w-3.5 mr-1" /> {analyzing ? "Auto-filling…" : "Auto-fill"}
+        </Button>
+      </div>
       <div>
         <Label>SKU / product code</Label>
         <div className="flex gap-2 mt-1.5">
@@ -901,7 +1071,12 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
             onChange={(e) => setField("description", e.target.value)}
             rows={4} maxLength={2000}
             placeholder="Detailed product description, materials, care instructions, etc." className="mt-2" />
-          <p className="text-xs text-muted-foreground mt-1 text-right">{form.description.length}/2000</p>
+          <div className="flex items-start justify-between gap-2 mt-1">
+            <p className="text-[11px] text-muted-foreground">
+              Tip: start a line with "- " for a bullet point, and wrap text in **double asterisks** for bold headings.
+            </p>
+            <p className="text-xs text-muted-foreground text-right shrink-0">{form.description.length}/2000</p>
+          </div>
         </div>
       </div>
       <Separator />
@@ -923,14 +1098,15 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
           <CategoryPicker value={form.category} onChange={(v) => setField("category", v)} categories={categories} />
         </div>
         <div>
-          <Label>Stock {(form.sizes.length > 0 || form.colors.length > 0) && <span className="text-muted-foreground font-normal">(auto)</span>}</Label>
+          <Label>Stock {(form.sizes.length > 0 || form.colors.length > 0 || form.characters.length > 0) && <span className="text-muted-foreground font-normal">(auto)</span>}</Label>
           <Input type="number" min="0"
             value={
               form.sizes.length > 0 ? form.sizes.reduce((s, sz) => s + sz.stock, 0)
               : form.colors.length > 0 ? form.colors.reduce((s, c) => s + c.stock, 0)
+              : form.characters.length > 0 ? form.characters.reduce((s, c) => s + c.stock, 0)
               : form.stock
             }
-            disabled={form.sizes.length > 0 || form.colors.length > 0}
+            disabled={form.sizes.length > 0 || form.colors.length > 0 || form.characters.length > 0}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setField("stock", parseInt(e.target.value) || 0)} className="mt-1.5" />
         </div>
@@ -940,6 +1116,7 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
       <Separator />
       <div className="space-y-4">
         <ColorRows colors={form.colors} onChange={(v) => setField("colors", v)} images={form.images} />
+        <CharacterRows characters={form.characters} onChange={(v) => setField("characters", v)} images={form.images} />
         <ChipInput label="Tags" icon={<Tag className="h-4 w-4" />}
           values={form.tags} onChange={(v) => setField("tags", v)} placeholder="kawaii, gift, pastel…" />
       </div>
@@ -1102,9 +1279,9 @@ function ProductDetailPanel({ p, onEdit, onToggle, onDelete }: {
           {p.description ? (
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1.5">Description</p>
-              <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line line-clamp-6">
-                {p.description}
-              </p>
+              <div className="text-sm leading-relaxed text-foreground/80 max-h-32 overflow-y-auto">
+                {formatDescription(p.description)}
+              </div>
             </div>
           ) : (
             <p className="text-xs text-muted-foreground italic">No description added.</p>
@@ -1141,6 +1318,27 @@ function ProductDetailPanel({ p, onEdit, onToggle, onDelete }: {
                   <span className="text-right">Stock</span>
                 </div>
                 {p.colors.map((c, i) => (
+                  <div key={i} className="grid grid-cols-2 px-3 py-2 border-t border-border text-sm">
+                    <span className="font-medium capitalize">{c.label}</span>
+                    <span className={`text-right font-semibold ${c.stock === 0 ? "text-red-500" : c.stock <= 10 ? "text-amber-600" : "text-green-700"}`}>
+                      {c.stock}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Character/design variants */}
+          {p.characters && p.characters.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1.5">Character / design variants</p>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="grid grid-cols-2 bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                  <span>Character / design</span>
+                  <span className="text-right">Stock</span>
+                </div>
+                {p.characters.map((c, i) => (
                   <div key={i} className="grid grid-cols-2 px-3 py-2 border-t border-border text-sm">
                     <span className="font-medium capitalize">{c.label}</span>
                     <span className={`text-right font-semibold ${c.stock === 0 ? "text-red-500" : c.stock <= 10 ? "text-amber-600" : "text-green-700"}`}>
@@ -1231,6 +1429,8 @@ export default function AdminPage() {
         ? form.sizes.reduce((s, sz) => s + sz.stock, 0)
         : form.colors.length > 0
         ? form.colors.reduce((s, c) => s + c.stock, 0)
+        : form.characters.length > 0
+        ? form.characters.reduce((s, c) => s + c.stock, 0)
         : Number(form.stock),
     });
     if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
@@ -1264,6 +1464,7 @@ export default function AdminPage() {
       category: p.category,
       stock: p.stock,
       colors: p.colors ?? [],
+      characters: p.characters ?? [],
       tags: p.tags ?? [],
       images: p.images?.length ? p.images : (p.image_url ? [p.image_url] : []),
       sizes: p.sizes ?? [],

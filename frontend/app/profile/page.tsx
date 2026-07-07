@@ -192,6 +192,9 @@ function OrderCard({
                   {item.color && (
                     <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border/50">{item.color}</span>
                   )}
+                  {item.character && (
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border/50">{item.character}</span>
+                  )}
                   {item.size && (
                     <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border/50">{item.size}</span>
                   )}

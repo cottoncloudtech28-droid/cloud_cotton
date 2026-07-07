@@ -48,10 +48,19 @@ async function tryAutoPushShiprocket(order, userId) {
   } catch (_) { /* fail silently — admin can manually push */ }
 }
 
-// Parse composite cart ID: "realMongoId::size::color" → { productId, size, color }
+// Parse composite cart ID: "realMongoId::s=size::c=color::ch=character" → { productId, size, color, character }
+// Segments are key-prefixed (not positional) so any subset of size/color/character
+// can be present without the others being misread — e.g. a color-only product's
+// "id::c=Pink" isn't mistaken for a size.
 function parseCartId(raw) {
-  const parts = raw.split("::");
-  return { productId: parts[0], size: parts[1] ?? null, color: parts[2] ?? null };
+  const [productId, ...rest] = raw.split("::");
+  let size = null, color = null, character = null;
+  for (const part of rest) {
+    if (part.startsWith("ch=")) character = part.slice(3);
+    else if (part.startsWith("s=")) size = part.slice(2);
+    else if (part.startsWith("c=")) color = part.slice(2);
+  }
+  return { productId, size, color, character };
 }
 
 // Compute GST breakdown from normalized items + buyer/seller state
@@ -98,7 +107,7 @@ function computeGstBreakdown(normalizedItems, sellerState, buyerState) {
 async function resolveItems(items) {
   const resolved = [];
   for (const item of items) {
-    const { productId, size, color } = parseCartId(item.productId ?? "");
+    const { productId, size, color, character } = parseCartId(item.productId ?? "");
     if (!mongoose.isValidObjectId(productId))
       throw { status: 400, message: `Invalid product ID: ${item.productId}` };
 
@@ -108,21 +117,21 @@ async function resolveItems(items) {
 
     const useSize = !!(product.sizes && product.sizes.length > 0 && size);
     const useColor = !!(product.colors && product.colors.length > 0 && color);
+    const useCharacter = !!(product.characters && product.characters.length > 0 && character);
     const targetSizeIndex = useSize ? product.sizes.findIndex((sz) => sz.label === size) : -1;
     const targetColorIndex = useColor ? product.colors.findIndex((c) => c.label === color) : -1;
+    const targetCharacterIndex = useCharacter ? product.characters.findIndex((c) => c.label === character) : -1;
 
     const sizeStock = useSize ? (targetSizeIndex >= 0 ? product.sizes[targetSizeIndex].stock : 0) : null;
     const colorStock = useColor ? (targetColorIndex >= 0 ? product.colors[targetColorIndex].stock : 0) : null;
+    const characterStock = useCharacter ? (targetCharacterIndex >= 0 ? product.characters[targetCharacterIndex].stock : 0) : null;
 
-    // Most-restrictive-wins: if both a size and a color are selected, the smaller of the two governs.
-    let availableStock;
-    if (sizeStock !== null && colorStock !== null) availableStock = Math.min(sizeStock, colorStock);
-    else if (sizeStock !== null) availableStock = sizeStock;
-    else if (colorStock !== null) availableStock = colorStock;
-    else availableStock = product.stock;
+    // Most-restrictive-wins: when multiple variant axes are selected, the smallest governs.
+    const stocks = [sizeStock, colorStock, characterStock].filter((s) => s !== null);
+    const availableStock = stocks.length > 0 ? Math.min(...stocks) : product.stock;
 
     if (availableStock < item.qty) {
-      const variantParts = [size, color].filter(Boolean);
+      const variantParts = [size, color, character].filter(Boolean);
       const variantLabel = variantParts.length ? ` (${variantParts.join(", ")})` : "";
       throw {
         status: 400,
@@ -130,22 +139,22 @@ async function resolveItems(items) {
       };
     }
 
-    resolved.push({ product, size, color, item, targetSizeIndex, targetColorIndex });
+    resolved.push({ product, size, color, character, item, targetSizeIndex, targetColorIndex, targetCharacterIndex });
   }
   return resolved;
 }
 
-// Adjust a product's size and/or color variant stock (tracked independently — not a combined
-// size×color matrix), recompute the flat total, save, and write one StockLog row per variant
+// Adjust a product's size/color/character variant stock (tracked independently — not a
+// combined matrix), recompute the flat total, save, and write one StockLog row per variant
 // dimension that actually changed. delta > 0 restores stock, delta < 0 deducts it.
-async function adjustVariantStock(product, { size, color }, delta, { reason, orderId = null, note = null, performedBy }) {
+async function adjustVariantStock(product, { size, color, character }, delta, { reason, orderId = null, note = null, performedBy }) {
   const logs = [];
 
   const sizeIdx = size && product.sizes?.length ? product.sizes.findIndex((sz) => sz.label === size) : -1;
   if (sizeIdx >= 0) {
     const before = product.sizes[sizeIdx].stock;
     product.sizes[sizeIdx].stock = Math.max(0, before + delta);
-    logs.push({ size, color: null, stockBefore: before, stockAfter: product.sizes[sizeIdx].stock });
+    logs.push({ size, color: null, character: null, stockBefore: before, stockAfter: product.sizes[sizeIdx].stock });
     product.markModified("sizes");
   }
 
@@ -153,18 +162,28 @@ async function adjustVariantStock(product, { size, color }, delta, { reason, ord
   if (colorIdx >= 0) {
     const before = product.colors[colorIdx].stock;
     product.colors[colorIdx].stock = Math.max(0, before + delta);
-    logs.push({ size: null, color, stockBefore: before, stockAfter: product.colors[colorIdx].stock });
+    logs.push({ size: null, color, character: null, stockBefore: before, stockAfter: product.colors[colorIdx].stock });
     product.markModified("colors");
   }
 
-  if (sizeIdx < 0 && colorIdx < 0) {
+  const characterIdx = character && product.characters?.length ? product.characters.findIndex((c) => c.label === character) : -1;
+  if (characterIdx >= 0) {
+    const before = product.characters[characterIdx].stock;
+    product.characters[characterIdx].stock = Math.max(0, before + delta);
+    logs.push({ size: null, color: null, character, stockBefore: before, stockAfter: product.characters[characterIdx].stock });
+    product.markModified("characters");
+  }
+
+  if (sizeIdx < 0 && colorIdx < 0 && characterIdx < 0) {
     const before = product.stock;
     product.stock = Math.max(0, before + delta);
-    logs.push({ size: null, color: null, stockBefore: before, stockAfter: product.stock });
+    logs.push({ size: null, color: null, character: null, stockBefore: before, stockAfter: product.stock });
   } else if (product.sizes && product.sizes.length > 0) {
     product.stock = product.sizes.reduce((s, sz) => s + sz.stock, 0);
   } else if (product.colors && product.colors.length > 0) {
     product.stock = product.colors.reduce((s, c) => s + c.stock, 0);
+  } else if (product.characters && product.characters.length > 0) {
+    product.stock = product.characters.reduce((s, c) => s + c.stock, 0);
   }
 
   await product.save({ validateBeforeSave: false });
@@ -176,6 +195,7 @@ async function adjustVariantStock(product, { size, color }, delta, { reason, ord
       sku: product.sku ?? null,
       size: log.size,
       color: log.color,
+      character: log.character,
       change: log.stockAfter - log.stockBefore,
       stockBefore: log.stockBefore,
       stockAfter: log.stockAfter,
@@ -188,7 +208,7 @@ async function adjustVariantStock(product, { size, color }, delta, { reason, ord
 }
 
 function normalizeItems(resolved) {
-  return resolved.map(({ product, size, color, item }) => ({
+  return resolved.map(({ product, size, color, character, item }) => ({
     productId: product._id.toString(),
     name: item.name,
     image_url: item.image_url ?? product.image_url ?? null,
@@ -196,6 +216,7 @@ function normalizeItems(resolved) {
     discount_percent: item.discount_percent ?? product.discount_percent ?? 0,
     qty: item.qty,
     color: color ?? item.color ?? null,
+    character: character ?? item.character ?? null,
     size: size ?? item.size ?? null,
     hsn_code: product.hsn_code ?? null,
     gst_rate: product.gst_rate ?? 12,
@@ -203,9 +224,9 @@ function normalizeItems(resolved) {
 }
 
 async function decrementStock(resolved, order, userId) {
-  for (const { product, size, color, item } of resolved) {
+  for (const { product, size, color, character, item } of resolved) {
     try {
-      await adjustVariantStock(product, { size, color }, -item.qty, {
+      await adjustVariantStock(product, { size, color, character }, -item.qty, {
         reason: "order",
         orderId: order.orderId,
         performedBy: userId,
@@ -463,6 +484,7 @@ router.get("/track/:orderId", async (req, res) => {
         qty:       item.qty,
         size:      item.size,
         color:     item.color,
+        character: item.character,
       })),
     });
   } catch (e) {
@@ -494,7 +516,7 @@ router.post("/:id/cancel", verifyToken, async (req, res) => {
         const product = await Product.findById(item.productId);
         if (!product) continue;
 
-        await adjustVariantStock(product, { size: item.size, color: item.color }, item.qty, {
+        await adjustVariantStock(product, { size: item.size, color: item.color, character: item.character }, item.qty, {
           reason: "cancellation",
           orderId: order.orderId,
           note: `Customer cancelled: ${reason || "No reason given"}`,
@@ -546,7 +568,7 @@ router.patch("/:id/status", verifyToken, requireAdmin, async (req, res) => {
           const product = await Product.findById(item.productId);
           if (!product) continue;
 
-          await adjustVariantStock(product, { size: item.size, color: item.color }, item.qty, {
+          await adjustVariantStock(product, { size: item.size, color: item.color, character: item.character }, item.qty, {
             reason: "cancellation",
             orderId: order.orderId,
             note: `Cancelled: ${order.orderId}`,

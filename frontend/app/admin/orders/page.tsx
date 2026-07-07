@@ -305,6 +305,7 @@ function OrderRow({ order, onUpdated }: {
                     <div className="flex flex-wrap gap-1.5 mt-0.5">
                       {item.size && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{item.size}</span>}
                       {item.color && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{item.color}</span>}
+                      {item.character && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{item.character}</span>}
                     </div>
                   </div>
                   <div className="text-right shrink-0">

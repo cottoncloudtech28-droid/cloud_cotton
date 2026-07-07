@@ -9,6 +9,7 @@ const orderItemSchema = new mongoose.Schema(
     discount_percent: { type: Number, default: 0 },
     qty: { type: Number, required: true, min: 1 },
     color: { type: String, default: null },
+    character: { type: String, default: null },
     size:  { type: String, default: null },
     hsn_code: { type: String, default: null },
     gst_rate: { type: Number, default: 12 },

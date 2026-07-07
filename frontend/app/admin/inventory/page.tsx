@@ -500,6 +500,20 @@ export default function InventoryPage() {
                                   ))}
                                 </div>
                               )}
+                              {p.characters && p.characters.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {p.characters.map((c) => (
+                                    <span key={c.label}
+                                      className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                        c.stock === 0 ? "bg-red-100 text-red-700"
+                                        : c.stock <= rp ? "bg-amber-100 text-amber-700"
+                                        : "bg-muted text-muted-foreground"
+                                      }`}>
+                                      {c.label}: {c.stock}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
                               <p className={`text-xl font-bold ${p.stock === 0 ? "text-red-500" : "text-amber-600"}`}>

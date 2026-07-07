@@ -30,6 +30,9 @@ export default function ProductCard({ p }: { p: Product }) {
   const colors = p.colors ?? [];
   const hasChoices = colors.length > 1;
   const [selected, setSelected] = useState<string>(hasChoices ? "" : colors[0]?.label ?? "");
+  const characters = p.characters ?? [];
+  const hasCharacterChoices = characters.length > 1;
+  const [selectedCharacter, setSelectedCharacter] = useState<string>(hasCharacterChoices ? "" : characters[0]?.label ?? "");
   const [inWishlist, setInWishlist] = useState(false);
   const images = p.images?.length ? p.images : p.image_url ? [p.image_url] : [];
   const [imgIndex, setImgIndex] = useState(0);
@@ -66,6 +69,15 @@ export default function ProductCard({ p }: { p: Product }) {
     if (idx !== -1) setImgIndex(idx);
   }, [selected]);
 
+  // Switch to the character/design's linked image, if it has one
+  useEffect(() => {
+    if (!selectedCharacter) return;
+    const characterImages = characters.find((c) => c.label === selectedCharacter)?.images;
+    if (!characterImages?.length) return;
+    const idx = images.indexOf(characterImages[0]);
+    if (idx !== -1) setImgIndex(idx);
+  }, [selectedCharacter]);
+
   const handleAdd = () => {
     if (!user) {
       toast.error("Please sign in to add items to cart");
@@ -73,9 +85,21 @@ export default function ProductCard({ p }: { p: Product }) {
       return;
     }
     if (hasChoices && !selected) { toast.error("Please choose a color first"); return; }
+    if (hasCharacterChoices && !selectedCharacter) { toast.error("Please choose a character/design first"); return; }
     const selectedColorObj = colors.find((c) => c.label === selected);
     if (selectedColorObj && selectedColorObj.stock === 0) { toast.error("This color is out of stock"); return; }
-    const variant = selected ? { ...p, id: `${p.id}::${selected}`, name: `${p.name} – ${selected}` } : p;
+    const selectedCharacterObj = characters.find((c) => c.label === selectedCharacter);
+    if (selectedCharacterObj && selectedCharacterObj.stock === 0) { toast.error("This character/design is out of stock"); return; }
+
+    // Key-prefixed composite ID segments (not positional) so the backend can tell
+    // color/character apart regardless of which subset is present.
+    const idParts: string[] = [];
+    if (selected) idParts.push(`c=${selected}`);
+    if (selectedCharacter) idParts.push(`ch=${selectedCharacter}`);
+    const nameSuffix = [selected, selectedCharacter].filter(Boolean).join(", ");
+    const variant = idParts.length
+      ? { ...p, id: `${p.id}::${idParts.join("::")}`, name: `${p.name} – ${nameSuffix}` }
+      : p;
     add(variant);
     toast.success(`Added to cart`);
   };
@@ -200,6 +224,22 @@ export default function ProductCard({ p }: { p: Product }) {
             </SelectTrigger>
             <SelectContent>
               {colors.map((c) => (
+                <SelectItem key={c.label} value={c.label} disabled={c.stock === 0}>
+                  {c.label}{c.stock === 0 ? " (Out of stock)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Character/design picker — isolated, never triggers navigation */}
+        {hasCharacterChoices && (
+          <Select value={selectedCharacter} onValueChange={setSelectedCharacter}>
+            <SelectTrigger className="w-full rounded-full mt-1">
+              <SelectValue placeholder="Choose a character/design" />
+            </SelectTrigger>
+            <SelectContent>
+              {characters.map((c) => (
                 <SelectItem key={c.label} value={c.label} disabled={c.stock === 0}>
                   {c.label}{c.stock === 0 ? " (Out of stock)" : ""}
                 </SelectItem>

@@ -9,6 +9,14 @@ export interface ProductColor {
   images?: string[];
 }
 
+// Independent variant axis alongside color — e.g. cartoon character prints or
+// design patterns, for products that vary by artwork/design rather than color.
+export interface ProductCharacter {
+  label: string;
+  stock: number;
+  images?: string[];
+}
+
 export type SpecFieldType = "boolean" | "text" | "number" | "select";
 
 // A specification field definition attached to a category.
@@ -44,6 +52,7 @@ export interface Product {
   stock: number;
   is_active?: boolean;
   colors?: ProductColor[] | null;
+  characters?: ProductCharacter[] | null;
   tags?: string[];
   sizes?: ProductSize[];
   sku?: string;
@@ -73,6 +82,7 @@ export interface OrderItem {
   discount_percent: number;
   qty: number;
   color: string | null;
+  character: string | null;
   size: string | null;
   hsn_code?: string | null;
   gst_rate?: number;
@@ -111,6 +121,7 @@ export interface StockLog {
   sku: string | null;
   size: string | null;
   color: string | null;
+  character: string | null;
   change: number;
   stockBefore: number;
   stockAfter: number;
@@ -244,5 +255,5 @@ export interface PublicOrderTrack {
   createdAt: string;
   updatedAt: string;
   address: { city: string; state: string; pincode: string };
-  items: { name: string; image_url: string | null; qty: number; size: string | null; color: string | null }[];
+  items: { name: string; image_url: string | null; qty: number; size: string | null; color: string | null; character: string | null }[];
 }

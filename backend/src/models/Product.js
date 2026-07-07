@@ -14,6 +14,17 @@ const colorSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Independent variant axis alongside color — e.g. cartoon character prints or
+// design patterns, for products that don't vary by color but by artwork/design.
+const characterSchema = new mongoose.Schema(
+  {
+    label:  { type: String, required: true, trim: true, maxlength: 50 },
+    stock:  { type: Number, default: 0, min: 0 },
+    images: { type: [String], default: [] }, // subset of the product's images shown when this character/design is selected
+  },
+  { _id: false }
+);
+
 // A resolved specification value on a product. Label/type are snapshotted from the
 // category's spec_fields at save time so the product detail page is self-contained.
 const specSchema = new mongoose.Schema(
@@ -40,6 +51,7 @@ const productSchema = new mongoose.Schema(
     stock:             { type: Number, default: 0, min: 0 },
     is_active:         { type: Boolean, default: true },
     colors:            { type: [colorSchema], default: [] },
+    characters:        { type: [characterSchema], default: [] },
     tags:              { type: [String], default: [] },
     sizes:             { type: [sizeSchema], default: [] },
     sku:               { type: String, unique: true, sparse: true },
@@ -79,11 +91,13 @@ productSchema.pre("save", function (next) {
   if (this.images && this.images.length > 0) {
     this.image_url = this.images[0];
   }
-  // Sync total stock from sizes (or colors, when there are no sizes)
+  // Sync total stock from sizes (or colors, or characters, in that fallback order)
   if (this.sizes && this.sizes.length > 0) {
     this.stock = this.sizes.reduce((s, sz) => s + (sz.stock || 0), 0);
   } else if (this.colors && this.colors.length > 0) {
     this.stock = this.colors.reduce((s, c) => s + (c.stock || 0), 0);
+  } else if (this.characters && this.characters.length > 0) {
+    this.stock = this.characters.reduce((s, c) => s + (c.stock || 0), 0);
   }
   next();
 });
