@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/shop/Navbar";
 import Footer from "@/components/shop/Footer";
 import ProductCard from "@/components/shop/ProductCard";
@@ -292,9 +293,9 @@ export default function ProductDetailClient() {
       >
         <div className="container flex items-center gap-3 py-2.5">
           {/* Thumbnail */}
-          <div className="h-11 w-11 rounded-lg overflow-hidden bg-muted border border-border flex-shrink-0">
+          <div className="relative h-11 w-11 rounded-lg overflow-hidden bg-muted border border-border flex-shrink-0">
             {allImages[0] ? (
-              <img src={allImages[0]} alt={product.name} className="w-full h-full object-cover" />
+              <Image src={allImages[0]} alt={product.name} fill sizes="44px" className="object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-muted"><ImageOff className="h-6 w-6 text-muted-foreground/25" /></div>
             )}
@@ -386,8 +387,8 @@ export default function ProductDetailClient() {
               onClick={() => allImages[activeImg] && setLightboxOpen(true)}
             >
               {allImages[activeImg] ? (
-                <img key={activeImg} src={allImages[activeImg]} alt={product.name}
-                  className="w-full h-full object-cover" />
+                <Image key={activeImg} src={allImages[activeImg]} alt={product.name} fill priority
+                  sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
               ) : (
                 <div className="flex items-center justify-center h-full bg-muted"><ImageOff className="h-16 w-16 text-muted-foreground/20" /></div>
               )}
@@ -403,10 +404,10 @@ export default function ProductDetailClient() {
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {allImages.map((url, i) => (
                   <button key={i} onClick={() => setActiveImg(i)}
-                    className={`flex-shrink-0 h-16 w-16 rounded-lg overflow-hidden border-2 transition-colors ${
+                    className={`relative flex-shrink-0 h-16 w-16 rounded-lg overflow-hidden border-2 transition-colors ${
                       i === activeImg ? "border-primary" : "border-transparent hover:border-border"
                     }`}>
-                    <img src={url} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
+                    <Image src={url} alt={`View ${i + 1}`} fill sizes="64px" className="object-cover" />
                   </button>
                 ))}
               </div>
