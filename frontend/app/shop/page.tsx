@@ -16,7 +16,7 @@ import {
 import { ChevronLeft, ChevronRight, PackageOpen } from "lucide-react";
 import { getProducts, getCategories, getProductFacets } from "@/lib/api";
 import type { Product, Category } from "@/lib/types";
-import ProductFilters, { type FilterValues, type ProductFacets, EMPTY_FILTERS } from "@/components/shop/ProductFilters";
+import ProductFilters, { type FilterValues, type ProductFacets } from "@/components/shop/ProductFilters";
 
 const SORT_OPTIONS = [
   { value: "newest",     label: "Newest first" },
