@@ -71,6 +71,11 @@ export async function getProducts(params?: {
   sort?: string;
   page?: number;
   limit?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  color?: string;
+  size?: string;
+  inStock?: boolean;
 }): Promise<{ products: Product[]; total: number; page: number; limit: number }> {
   const qs = new URLSearchParams();
   if (params?.cat && params.cat !== "all") qs.set("cat", params.cat);
@@ -79,8 +84,24 @@ export async function getProducts(params?: {
   if (params?.sort) qs.set("sort", params.sort);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.minPrice != null) qs.set("minPrice", String(params.minPrice));
+  if (params?.maxPrice != null) qs.set("maxPrice", String(params.maxPrice));
+  if (params?.color) qs.set("color", params.color);
+  if (params?.size) qs.set("size", params.size);
+  if (params?.inStock) qs.set("inStock", "true");
   const query = qs.toString();
   return apiFetch(`/api/products${query ? `?${query}` : ""}`);
+}
+
+export async function getProductFacets(params?: {
+  cat?: string;
+  q?: string;
+}): Promise<{ priceMin: number; priceMax: number; colors: string[]; sizes: string[] }> {
+  const qs = new URLSearchParams();
+  if (params?.cat && params.cat !== "all") qs.set("cat", params.cat);
+  if (params?.q) qs.set("q", params.q);
+  const query = qs.toString();
+  return apiFetch(`/api/products/facets${query ? `?${query}` : ""}`);
 }
 
 // ── Categories ───────────────────────────────────────────────────────────────

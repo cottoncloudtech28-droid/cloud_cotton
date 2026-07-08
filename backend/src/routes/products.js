@@ -165,7 +165,7 @@ router.get("/suggest", async (req, res) => {
 // GET /api/products  — public, with sorting + pagination
 router.get("/", async (req, res) => {
   try {
-    const { cat, q, tag, sort, page, limit } = req.query;
+    const { cat, q, tag, sort, page, limit, minPrice, maxPrice, color, size, inStock } = req.query;
     const filter = { is_active: true };
     if (cat && cat !== "all") filter.category = cat;
     if (tag) filter.tags = { $in: [tag] };
@@ -178,6 +178,22 @@ router.get("/", async (req, res) => {
         { category:          { $regex: escaped, $options: "i" } },
         { tags:              { $in: [new RegExp(escaped, "i")] } },
       ];
+    }
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+    if (color) {
+      const colors = color.split(",").map((c) => c.trim()).filter(Boolean);
+      if (colors.length) filter["colors.label"] = { $in: colors };
+    }
+    if (size) {
+      const sizes = size.split(",").map((s) => s.trim()).filter(Boolean);
+      if (sizes.length) filter["sizes.label"] = { $in: sizes };
+    }
+    if (inStock === "true" || inStock === "1") {
+      filter.stock = { $gt: 0 };
     }
 
     const sortMap = {
@@ -198,6 +214,55 @@ router.get("/", async (req, res) => {
     ]);
 
     res.json({ products: products.map(mapDoc), total, page: pageNum, limit: limitNum });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// GET /api/products/facets  — public: available filter options (price range, colors, sizes, tags)
+// for the current category/search scope, independent of price/color/size/stock filters
+// already applied, so the filter panel never hides its own options.
+router.get("/facets", async (req, res) => {
+  try {
+    const { cat, q } = req.query;
+    const filter = { is_active: true };
+    if (cat && cat !== "all") filter.category = cat;
+    if (q) {
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.$or = [
+        { name:              { $regex: escaped, $options: "i" } },
+        { short_description: { $regex: escaped, $options: "i" } },
+        { description:       { $regex: escaped, $options: "i" } },
+        { category:          { $regex: escaped, $options: "i" } },
+        { tags:              { $in: [new RegExp(escaped, "i")] } },
+      ];
+    }
+
+    const [priceAgg, colorsAgg, sizesAgg] = await Promise.all([
+      Product.aggregate([
+        { $match: filter },
+        { $group: { _id: null, min: { $min: "$price" }, max: { $max: "$price" } } },
+      ]),
+      Product.aggregate([
+        { $match: filter },
+        { $unwind: "$colors" },
+        { $group: { _id: "$colors.label" } },
+        { $sort: { _id: 1 } },
+      ]),
+      Product.aggregate([
+        { $match: filter },
+        { $unwind: "$sizes" },
+        { $group: { _id: "$sizes.label" } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    res.json({
+      priceMin: priceAgg[0]?.min ?? 0,
+      priceMax: priceAgg[0]?.max ?? 0,
+      colors: colorsAgg.map((c) => c._id).filter(Boolean),
+      sizes: sizesAgg.map((s) => s._id).filter(Boolean),
+    });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

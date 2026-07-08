@@ -14,8 +14,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, PackageOpen } from "lucide-react";
-import { getProducts, getCategories } from "@/lib/api";
+import { getProducts, getCategories, getProductFacets } from "@/lib/api";
 import type { Product, Category } from "@/lib/types";
+import ProductFilters, { type FilterValues, type ProductFacets, EMPTY_FILTERS } from "@/components/shop/ProductFilters";
 
 const SORT_OPTIONS = [
   { value: "newest",     label: "Newest first" },
@@ -34,17 +35,35 @@ function ShopContent() {
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [facets, setFacets] = useState<ProductFacets>({ priceMin: 0, priceMax: 0, colors: [], sizes: [] });
 
   const q        = searchParams.get("q") ?? "";
   const activeTag = searchParams.get("tag") ?? "";
   const sort     = searchParams.get("sort") ?? "newest";
   const page     = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const minPrice = searchParams.get("minPrice");
+  const maxPrice = searchParams.get("maxPrice");
+  const colorParam = searchParams.get("color") ?? "";
+  const sizeParam   = searchParams.get("size") ?? "";
+  const inStock     = searchParams.get("inStock") === "true";
+
+  const filterValue: FilterValues = {
+    minPrice: minPrice ? Number(minPrice) : null,
+    maxPrice: maxPrice ? Number(maxPrice) : null,
+    colors: colorParam ? colorParam.split(",") : [],
+    sizes: sizeParam ? sizeParam.split(",") : [],
+    inStock,
+  };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    getProductFacets({ q: q || undefined }).then(setFacets).catch(() => {});
+  }, [q]);
 
   useEffect(() => {
     setLoading(true);
@@ -54,6 +73,11 @@ function ShopContent() {
       sort,
       page,
       limit: PAGE_SIZE,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      color: colorParam || undefined,
+      size: sizeParam || undefined,
+      inStock: inStock || undefined,
     })
       .then((data) => { setProducts(data.products ?? []); setTotal(data.total ?? 0); })
       .catch(() => { setProducts([]); setTotal(0); })
@@ -65,6 +89,17 @@ function ShopContent() {
     if (value) params.set(key, value);
     else params.delete(key);
     if (key !== "page") params.delete("page");
+    router.replace(`/shop?${params.toString()}`);
+  };
+
+  const applyFilters = (v: FilterValues) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (v.minPrice != null) params.set("minPrice", String(v.minPrice)); else params.delete("minPrice");
+    if (v.maxPrice != null) params.set("maxPrice", String(v.maxPrice)); else params.delete("maxPrice");
+    if (v.colors.length) params.set("color", v.colors.join(",")); else params.delete("color");
+    if (v.sizes.length) params.set("size", v.sizes.join(",")); else params.delete("size");
+    if (v.inStock) params.set("inStock", "true"); else params.delete("inStock");
+    params.delete("page");
     router.replace(`/shop?${params.toString()}`);
   };
 
@@ -97,11 +132,14 @@ function ShopContent() {
           </Select>
         </div>
 
-        {/* Search */}
-        <SmartSearch
-          className="w-full sm:max-w-md"
-          placeholder="Search cuties, tags, keywords…"
-        />
+        {/* Search + filters */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <SmartSearch
+            className="w-full sm:max-w-md"
+            placeholder="Search cuties, tags, keywords…"
+          />
+          <ProductFilters facets={facets} value={filterValue} onApply={applyFilters} />
+        </div>
 
         {/* Category links */}
         <div className="space-y-2">
