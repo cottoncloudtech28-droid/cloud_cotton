@@ -250,8 +250,7 @@ export default function Home() {
               className="flex gap-4 md:gap-5 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1"
               variants={gridContainer}
               initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, amount: 0.3 }}
+              animate="show"
             >
               {categoriesLoading ? (
                 Array.from({ length: 9 }).map((_, i) => (
