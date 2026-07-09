@@ -76,6 +76,8 @@ export default function CartPage() {
 
   const addressRef = useRef<HTMLDivElement>(null);
   const quickPincodeRedirected = useRef(false);
+  const verifyingRef = useRef(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   const FREE_THRESHOLD = 1499;
 
@@ -283,8 +285,11 @@ export default function CartPage() {
 
       if (paymentMethod === "cod") {
         const order = await placeOrder({ items: orderItems, address: activeAddr, total: grandTotal, shipping_charge: resolvedShipping });
-        clear();
-        router.push(`/order/${order.id}`);
+        // Cart is cleared on the confirmation page itself, once the order has
+        // actually loaded there — never here, so a slow/interrupted navigation
+        // can't strand the user on an empty-cart view.
+        setFinalizing(true);
+        router.push(`/order/${order.id}?fresh=1`);
       } else {
         // Razorpay flow: create order → open checkout → verify on success
         const rzpOrderData = await createRazorpayOrder(grandTotal);
@@ -308,6 +313,11 @@ export default function CartPage() {
             razorpay_order_id: string;
             razorpay_signature: string;
           }) => {
+            // Razorpay can invoke this handler more than once for the same
+            // checkout (e.g. duplicate callback); ignore repeats.
+            if (verifyingRef.current) return;
+            verifyingRef.current = true;
+            setFinalizing(true);
             try {
               const order = await verifyRazorpayPayment({
                 razorpay_order_id: response.razorpay_order_id,
@@ -318,22 +328,37 @@ export default function CartPage() {
                 total: grandTotal,
                 shipping_charge: resolvedShipping,
               });
-              clear();
-              router.push(`/order/${order.id}`);
+              router.push(`/order/${order.id}?fresh=1`);
             } catch (e: any) {
+              verifyingRef.current = false;
+              setFinalizing(false);
               setPlacing(false);
-              router.push(`/order/failed?reason=${encodeURIComponent(e.message || "Payment verification failed. Please contact support.")}`);
+              const params = new URLSearchParams();
+              if (e?.isNetworkError) {
+                params.set("network", "1");
+                params.set(
+                  "reason",
+                  "We couldn't confirm your payment because of a network issue. If any amount was deducted, it will reflect in My Orders shortly or be refunded automatically."
+                );
+              } else {
+                params.set("reason", e.message || "Payment verification failed. Please contact support.");
+              }
+              router.push(`/order/failed?${params.toString()}`);
             }
           },
           modal: {
             ondismiss: () => {
+              // If verification is already in flight (or done), don't clobber that state.
+              if (verifyingRef.current) return;
               setPlacing(false);
+              toast("Payment cancelled");
             },
           },
         };
 
         const rzp = new window.Razorpay(options);
         rzp.on("payment.failed", (response: any) => {
+          if (verifyingRef.current) return;
           setPlacing(false);
           router.push(`/order/failed?reason=${encodeURIComponent(response.error?.description || "Payment could not be processed. Please try again.")}`);
         });
@@ -341,8 +366,12 @@ export default function CartPage() {
         // placing(false) is handled in handler/ondismiss/failed callbacks
       }
     } catch (e: any) {
-      setError(e.message || "Something went wrong");
+      const message = e?.isNetworkError
+        ? "Network error. Please check your connection and try again."
+        : (e.message || "Something went wrong");
+      setError(message);
       setPlacing(false);
+      setFinalizing(false);
     }
   };
 
@@ -397,6 +426,15 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {finalizing && (
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 text-center px-6">
+            <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="font-semibold">Confirming your order…</p>
+            <p className="text-sm text-muted-foreground">Please don't close or refresh this page.</p>
+          </div>
+        </div>
+      )}
       <Navbar />
       <main className="flex-1 container py-6 px-4 sm:px-6">
         {/* ── Top quick-pay bar ── */}

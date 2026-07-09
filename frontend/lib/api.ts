@@ -21,10 +21,21 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
     ...(options.headers as Record<string, string>),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  } catch {
+    // fetch throws (offline, DNS/timeout, CORS) before any response is received —
+    // distinct from the server responding with an error status.
+    const netErr = new Error("Network error. Please check your connection and try again.");
+    (netErr as any).isNetworkError = true;
+    throw netErr;
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || "Request failed");
+    const httpErr = new Error(err.message || "Request failed");
+    (httpErr as any).status = res.status;
+    throw httpErr;
   }
   return res.json();
 }

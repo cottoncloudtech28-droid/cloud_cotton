@@ -335,6 +335,14 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
   if (expectedSignature !== razorpay_signature)
     return res.status(400).json({ message: "Payment verification failed. Invalid signature." });
 
+  // Idempotency: Razorpay's handler (or a client retry/duplicate callback) can invoke
+  // this endpoint more than once for the same payment. Return the already-created
+  // order instead of creating a duplicate / double-decrementing stock.
+  const existingOrder = await Order.findOne({ razorpay_order_id });
+  if (existingOrder) {
+    return res.status(200).json(mapOrder(existingOrder));
+  }
+
   let resolved;
   try {
     resolved = await resolveItems(items);

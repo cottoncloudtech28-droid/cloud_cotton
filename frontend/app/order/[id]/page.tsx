@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/shop/Navbar";
 import Footer from "@/components/shop/Footer";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getOrderInvoice } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart";
 import type { Order } from "@/lib/types";
 import {
   CheckCircle2, Package, MapPin, Truck, FileText, ShoppingBag,
@@ -26,59 +27,65 @@ const STEP_INDEX: Record<string, number> = {
   pending: 0, confirmed: 1, shipped: 2, delivered: 3, cancelled: -1,
 };
 
-export default function OrderConfirmationPage() {
+function OrderConfirmationContent() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
+  const { clear } = useCart();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const clearedRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/auth"); return; }
     getOrderInvoice(id)
-      .then(({ order: o }) => setOrder(o))
+      .then(({ order: o }) => {
+        setOrder(o);
+        // Only clear the cart once the order has actually been confirmed by the
+        // server, and only for the checkout flow that just created it (marked by
+        // ?fresh=1) — not when a user revisits this page later from order history.
+        if (searchParams.get("fresh") === "1" && !clearedRef.current) {
+          clearedRef.current = true;
+          clear();
+          router.replace(`/order/${id}`);
+        }
+      })
       .catch((e) => setError(e.message || "Order not found"))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user, authLoading, router]);
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 container py-12 space-y-5" style={{ maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
-          <Skeleton className="h-56 rounded-3xl" />
-          <Skeleton className="h-28 rounded-3xl" />
-          <Skeleton className="h-48 rounded-3xl" />
-          <div className="grid grid-cols-2 gap-4">
-            <Skeleton className="h-36 rounded-3xl" />
-            <Skeleton className="h-36 rounded-3xl" />
-          </div>
-        </main>
-        <Footer />
-      </div>
+      <main className="flex-1 container py-12 space-y-5" style={{ maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+        <Skeleton className="h-56 rounded-3xl" />
+        <Skeleton className="h-28 rounded-3xl" />
+        <Skeleton className="h-48 rounded-3xl" />
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-36 rounded-3xl" />
+          <Skeleton className="h-36 rounded-3xl" />
+        </div>
+      </main>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 flex items-center justify-center py-20">
-          <div className="text-center space-y-4 max-w-sm mx-auto px-4">
-            <div className="mx-auto h-16 w-16 rounded-full bg-red-100 grid place-items-center">
-              <XCircle className="h-8 w-8 text-red-500" />
-            </div>
-            <p className="font-semibold text-lg">{error || "Order not found"}</p>
-            <p className="text-sm text-muted-foreground">We couldn't load this order. It may not exist or you may not have access.</p>
-            <Button variant="outline" className="rounded-full" onClick={() => router.push("/profile")}>
-              View my orders
-            </Button>
+      <main className="flex-1 flex items-center justify-center py-20">
+        <div className="text-center space-y-4 max-w-sm mx-auto px-4">
+          <div className="mx-auto h-16 w-16 rounded-full bg-red-100 grid place-items-center">
+            <XCircle className="h-8 w-8 text-red-500" />
           </div>
-        </main>
-        <Footer />
-      </div>
+          <p className="font-semibold text-lg">{error || "Order not found"}</p>
+          <p className="text-sm text-muted-foreground">We couldn't load this order. It may not exist or you may not have access.</p>
+          <Button variant="outline" className="rounded-full" onClick={() => router.push("/profile")}>
+            View my orders
+          </Button>
+        </div>
+      </main>
     );
   }
 
@@ -86,8 +93,6 @@ export default function OrderConfirmationPage() {
   const currentStep = STEP_INDEX[order.status] ?? 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/20">
-      <Navbar />
       <main className="flex-1 container py-6 sm:py-10 space-y-5" style={{ maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
 
         {/* ── Hero card ── */}
@@ -281,6 +286,26 @@ export default function OrderConfirmationPage() {
           A confirmation will be sent to your registered email address.
         </p>
       </main>
+  );
+}
+
+export default function OrderConfirmationPage() {
+  return (
+    <div className="min-h-screen flex flex-col bg-muted/20">
+      <Navbar />
+      <Suspense fallback={
+        <main className="flex-1 container py-12 space-y-5" style={{ maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+          <Skeleton className="h-56 rounded-3xl" />
+          <Skeleton className="h-28 rounded-3xl" />
+          <Skeleton className="h-48 rounded-3xl" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-36 rounded-3xl" />
+            <Skeleton className="h-36 rounded-3xl" />
+          </div>
+        </main>
+      }>
+        <OrderConfirmationContent />
+      </Suspense>
       <Footer />
     </div>
   );
