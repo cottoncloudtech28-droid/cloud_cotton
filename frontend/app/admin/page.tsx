@@ -56,14 +56,6 @@ const AI_BACKGROUNDS = [
     value: "Place the product on a warm marble café counter, softly blurred hanging potted plants and a blurred café interior with warm pendant lighting and out-of-focus patrons in the background, natural daylight spilling in from a nearby window, lifestyle editorial coffee-shop aesthetic, the product stays in sharp focus and centered in the foreground",
   },
   {
-    label: "School entryway bench",
-    value: "Place the product on a light wood entryway bench beside a sunlit window, softly blurred backpacks in muted colors lined up nearby and neatly folded clothing beside them, a leafy courtyard visible softly out of focus through the window, warm natural daylight, tidy back-to-school lifestyle aesthetic, the product stays sharp, centered and well-lit",
-  },
-  {
-    label: "Minimal studio",
-    value: "Place the product at the center of a clean seamless studio backdrop in a soft neutral beige-to-white gradient, smooth even softbox lighting from both sides with a gentle diffused shadow directly beneath the product, no props and no clutter, crisp premium e-commerce catalog aesthetic, the product perfectly centered, sharply in focus and evenly lit as the sole hero of the frame",
-  },
-  {
     label: "Marble luxury shelf",
     value: "Place the product on a polished white Carrara marble surface with soft grey veining, an elegant blurred backdrop of a champagne-gold wall and a single softly out-of-focus fresh orchid stem to one side, refined directional lighting with a subtle reflection under the product, upscale boutique luxury aesthetic, the product stays sharp, centered and clearly the premium focal point",
   },
@@ -80,10 +72,6 @@ const AI_BACKGROUNDS = [
     value: "Place the product on smooth pale sand near a calm turquoise shoreline, softly blurred rolling waves, a few scattered seashells and beach grass out of focus behind it, bright airy sunlight with a fresh breezy feel, relaxed coastal summer aesthetic, soft natural shadow on the sand, the product stays sharp, centered and the clear hero of the scene",
   },
   {
-    label: "Festive Diwali",
-    value: "Place the product on a rich silk fabric surface surrounded by softly blurred glowing diyas, marigold flowers and warm fairy lights out of focus behind it, gentle golden bokeh and a warm celebratory glow, elegant Indian festive Diwali aesthetic, the product stays sharp, centered and clearly the focal point against the softly blurred festive background",
-  },
-  {
     label: "Cozy Christmas",
     value: "Place the product on a rustic wooden surface beside a softly blurred decorated Christmas tree with warm twinkling lights, pine sprigs, a red ribbon and out-of-focus wrapped gifts behind it, warm cozy golden bokeh, festive holiday lifestyle aesthetic, the product stays sharp, centered and the clear hero against the softly blurred holiday background",
   },
@@ -94,6 +82,26 @@ const AI_BACKGROUNDS = [
   {
     label: "Boho macramé",
     value: "Place the product on a woven jute surface against a softly blurred cream macramé wall hanging, trailing green plants and warm terracotta pottery out of focus to the sides, warm earthy natural daylight, relaxed bohemian lifestyle aesthetic, soft natural shadow beneath the product, the product stays sharp, centered and the clear focal point",
+  },
+  {
+    label: "School stationery bokeh",
+    value: "Place the product against a minimalist, premium school-inspired background with soft neutral and pastel colors — off-white, warm beige, light sage green, muted sky blue and soft gray — only subtle educational elements like a neatly stacked notebook, a pencil, a small backpack or simple geometric shapes kept distant and softly blurred, realistic shallow depth of field with smooth bokeh, soft diffused natural lighting, matte textures, modern Scandinavian-inspired aesthetic, uncluttered premium commercial composition, a spacious clean central area around the product, ultra-realistic, 8K, no people, no text, no logos, no watermark, the product stays sharp, centered and the clear focal point",
+  },
+  {
+    label: "School luxury catalog",
+    value: "Place the product against a minimalist, premium school-inspired background with soft neutral and pastel colors — off-white, warm beige, light sage green, muted sky blue and soft gray — only subtle educational elements like a neatly stacked notebook, a pencil, a small backpack or simple geometric shapes kept distant and softly blurred, realistic shallow depth of field with smooth bokeh, soft diffused natural lighting, matte textures, modern Scandinavian-inspired aesthetic, uncluttered premium commercial composition, a spacious clean central area around the product, ultra-realistic, 8K, no people, no text, no logos, no watermark, the product stays sharp, centered and the clear focal point, luxury e-commerce product photography, seamless gradient backdrop, soft shadows, subtle depth, elegant negative space, muted color palette, refined minimalism, high-end brand aesthetic",
+  },
+  {
+    label: "Modern gym interior",
+    value: "Place the product in a high-end modern gym interior with sleek workout equipment, dumbbells, barbells, benches, mirrors, rubber flooring and industrial concrete textures softly blurred behind it with realistic shallow depth of field and bokeh, subtle LED lighting, dramatic yet balanced cool gray, black and metallic tones accented with subtle blue or warm amber highlights, luxurious, energetic and professional feel, ultra-realistic, 8K, studio-quality soft cinematic lighting, a clean well-lit central area around the product, no people, no text, no logos, the product stays sharp, centered and the clear focal point",
+  },
+  {
+    label: "Moody luxury gym",
+    value: "Place the product in a high-end modern gym interior with sleek workout equipment, dumbbells, barbells, benches, mirrors, rubber flooring and industrial concrete textures softly blurred behind it with realistic shallow depth of field and bokeh, subtle LED lighting, dramatic yet balanced cool gray, black and metallic tones accented with subtle blue or warm amber highlights, luxurious, energetic and professional feel, ultra-realistic, 8K, studio-quality soft cinematic lighting, a clean well-lit central area around the product, no people, no text, no logos, the product stays sharp, centered and the clear focal point, moody atmosphere, black matte walls, soft volumetric light, premium fitness club ambiance, cinematic bokeh, luxury commercial product photography style",
+  },
+  {
+    label: "Bright fitness studio",
+    value: "Place the product in a high-end modern gym interior with sleek workout equipment, dumbbells, barbells, benches, mirrors, rubber flooring and industrial concrete textures softly blurred behind it with realistic shallow depth of field and bokeh, subtle LED lighting, dramatic yet balanced cool gray, black and metallic tones accented with subtle blue or warm amber highlights, luxurious, energetic and professional feel, ultra-realistic, 8K, studio-quality soft cinematic lighting, a clean well-lit central area around the product, no people, no text, no logos, the product stays sharp, centered and the clear focal point, bright modern fitness studio with natural daylight, white and gray interiors, minimal aesthetic, soft background blur, clean commercial advertising style",
   },
 ];
 const AI_ANGLES = [
