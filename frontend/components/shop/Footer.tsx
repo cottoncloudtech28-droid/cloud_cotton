@@ -19,11 +19,18 @@ export default function Footer() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-center gap-2">
               <Mail className="h-4 w-4 shrink-0" />
-              <a href="mailto:hello@cottoncloud.co" className="hover:text-primary transition-colors">hello@cottoncloud.co</a>
+              <Link href="/contact" className="hover:text-primary transition-colors">hello@cottoncloud.co</Link>
             </li>
             <li className="flex items-center gap-2">
               <Instagram className="h-4 w-4 shrink-0" />
-              <span>@cottoncloudcompany</span>
+              <a
+                href="https://www.instagram.com/cottoncloudcompany/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-primary transition-colors"
+              >
+                @cottoncloudcompany
+              </a>
             </li>
           </ul>
         </div>

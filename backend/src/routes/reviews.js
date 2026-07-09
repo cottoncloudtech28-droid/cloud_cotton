@@ -118,6 +118,32 @@ router.get("/admin", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// ── Admin: create a review directly (e.g. a curated/testimonial review) ───────
+// POST /api/reviews/admin  { product_id, rating, title?, body?, guest_name?, verified_purchase?, status? }
+router.post("/admin", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { product_id, rating, title, body, guest_name, verified_purchase, status } = req.body;
+    if (!product_id || !rating) return res.status(400).json({ message: "product_id and rating are required" });
+
+    const review = await Review.create({
+      product: product_id,
+      user: null,
+      guest_name: guest_name?.trim() || "Cotton Cloud Team",
+      guest_email: null,
+      rating: Math.min(5, Math.max(1, parseInt(rating))),
+      title: title?.trim() || null,
+      body: body?.trim() || "",
+      verified_purchase: !!verified_purchase,
+      status: ["pending", "approved", "rejected"].includes(status) ? status : "approved",
+      admin_note: "Added directly by admin",
+    });
+    await review.populate("product", "name image_url");
+    res.status(201).json(mapReview(review));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ── Admin: get single review ──────────────────────────────────────────────────
 router.get("/admin/:id", verifyToken, requireAdmin, async (req, res) => {
   try {

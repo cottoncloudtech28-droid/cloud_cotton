@@ -3,13 +3,16 @@
 import Footer from "@/components/shop/Footer";
 import Navbar from "@/components/shop/Navbar";
 import ProductCard from "@/components/shop/ProductCard";
+import WriteReviewSheet from "@/components/shop/WriteReviewSheet";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { Category, Product } from "@/lib/types";
-import { Cloud, ShoppingBag, Sparkles } from "lucide-react";
+import { Cloud, ShoppingBag, Sparkles, Star } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 
 const hero = "/hero.jpg";
 
@@ -17,6 +20,8 @@ const FALLBACK_REVIEWS = [
   { id: "f1", name: "Aanya S.", location: "Mumbai", avatar: "🌸", rating: 5, text: "The stationery set I ordered was absolutely adorable! Great packaging and super fast delivery. Will definitely be ordering again!" },
   { id: "f2", name: "Rhea M.",  location: "Bangalore", avatar: "🎀", rating: 5, text: "Bought return gifts for my daughter's birthday party — every single kid was obsessed. The quality exceeded my expectations!" },
   { id: "f3", name: "Priya K.", location: "Delhi",     avatar: "🌈", rating: 5, text: "Cotton Cloud has the cutest things ever! The kawaii lamp is now my desk's star. Highly recommend to anyone who loves cute decor." },
+  { id: "f4", name: "Ishita V.", location: "Pune",     avatar: "🍭", rating: 5, text: "The bento box is even cuter in person and keeps my lunch warm for hours. Obsessed with this shop!" },
+  { id: "f5", name: "Meher K.", location: "Chennai",   avatar: "🦋", rating: 5, text: "Ordered a lamp for my study table and it's the coziest thing ever. Packaging felt so premium too." },
 ];
 
 const AVATARS = ["🌸", "🎀", "🌈", "🍭", "✨", "🦋", "🌷", "🎐"];
@@ -51,15 +56,9 @@ export default function Home() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [reviews, setReviews] = useState<typeof FALLBACK_REVIEWS>(FALLBACK_REVIEWS);
   const [reviewsLoading, setReviewsLoading] = useState(true);
-  const [activeReview, setActiveReview] = useState(0);
-  const [reviewDirection, setReviewDirection] = useState(1);
-  const touchStartX = useRef<number | null>(null);
+  const [marqueePaused, setMarqueePaused] = useState(false);
+  const [writeReviewOpen, setWriteReviewOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
-
-  const goToReview = (i: number) => {
-    setReviewDirection(i > activeReview ? 1 : -1);
-    setActiveReview(i);
-  };
 
   // Fisher-Yates shuffle (creates a new array)
   const shuffle = <T,>(arr: T[]): T[] => {
@@ -109,9 +108,9 @@ export default function Home() {
       .catch(() => {})
       .finally(() => setCategoriesLoading(false));
 
-    apiFetch("/api/reviews?limit=6")
+    apiFetch("/api/reviews?limit=10")
       .then((data) => {
-        const fetched = (data?.reviews ?? []).slice(0, 3);
+        const fetched = (data?.reviews ?? []).slice(0, 8);
         if (fetched.length > 0) {
           setReviews(
             fetched.map((r: any, i: number) => ({
@@ -220,24 +219,6 @@ export default function Home() {
                   transition: { duration: 4, repeat: Infinity, ease: "easeInOut" },
                 })}
               />
-              <motion.span
-                className="absolute -top-3 -left-3 md:-top-4 md:-left-4 text-2xl md:text-3xl select-none"
-                {...(!prefersReducedMotion && {
-                  animate: { y: [0, -8, 0], rotate: [0, 10, 0] },
-                  transition: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-                })}
-              >
-                ✨
-              </motion.span>
-              <motion.span
-                className="absolute -bottom-2 -right-2 md:-bottom-3 md:-right-3 text-xl md:text-2xl select-none"
-                {...(!prefersReducedMotion && {
-                  animate: { y: [0, 8, 0], rotate: [0, -10, 0] },
-                  transition: { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 },
-                })}
-              >
-                🌸
-              </motion.span>
             </motion.div>
           </div>
         </section>
@@ -439,24 +420,27 @@ export default function Home() {
             <h2 className="text-2xl md:text-3xl font-bold">What people are saying 💬</h2>
           </motion.div>
 
-          {/* ── Desktop: 3-column grid ── */}
-          <motion.div
-            className="hidden md:grid md:grid-cols-3 gap-5"
-            variants={gridContainer}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.2 }}
-          >
-            {reviewsLoading
-              ? Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-44 rounded-3xl" />
-                ))
-              : reviews.map((t) => (
-                  <motion.div
-                    key={t.id}
-                    variants={gridItem}
-                    whileHover={{ y: -4 }}
-                    className="relative rounded-3xl bg-card border border-border/60 p-6 flex flex-col gap-3"
+          {/* ── Auto-scrolling marquee, right → left, looping ── */}
+          {reviewsLoading ? (
+            <div className="flex gap-4 md:gap-5 overflow-hidden">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-44 w-72 shrink-0 rounded-3xl" />
+              ))}
+            </div>
+          ) : (
+            <div
+              className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]"
+              onMouseEnter={() => setMarqueePaused(true)}
+              onMouseLeave={() => setMarqueePaused(false)}
+            >
+              <div
+                className={cn("flex w-max gap-4 md:gap-5", !prefersReducedMotion && "animate-marquee")}
+                style={marqueePaused ? { animationPlayState: "paused" } : undefined}
+              >
+                {[...reviews, ...reviews].map((t, i) => (
+                  <div
+                    key={`${t.id}-${i}`}
+                    className="w-72 md:w-80 shrink-0 rounded-3xl bg-card border border-border/60 p-6 flex flex-col gap-3"
                   >
                     <div className="flex gap-0.5 text-amber-400 text-sm">{"★".repeat(t.rating)}</div>
                     <p className="text-sm text-foreground/80 leading-relaxed flex-1">"{t.text}"</p>
@@ -469,99 +453,27 @@ export default function Home() {
                         {t.location && <p className="text-xs text-muted-foreground mt-0.5">{t.location}</p>}
                       </div>
                     </div>
-                  </motion.div>
-                ))
-            }
-          </motion.div>
-
-          {/* ── Mobile: Swipe carousel ── */}
-          <div className="md:hidden">
-            {reviewsLoading ? (
-              <Skeleton className="h-52 rounded-2xl" />
-            ) : (
-              <>
-                {/* Carousel track */}
-                <div
-                  className="overflow-hidden rounded-2xl"
-                  onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
-                  onTouchEnd={(e) => {
-                    if (touchStartX.current === null) return;
-                    const dx = e.changedTouches[0].clientX - touchStartX.current;
-                    if (dx < -40) { setReviewDirection(1); setActiveReview((p) => Math.min(p + 1, reviews.length - 1)); }
-                    if (dx > 40)  { setReviewDirection(-1); setActiveReview((p) => Math.max(p - 1, 0)); }
-                    touchStartX.current = null;
-                  }}
-                >
-                  <AnimatePresence mode="wait" custom={reviewDirection} initial={false}>
-                    <motion.div
-                      key={activeReview}
-                      custom={reviewDirection}
-                      initial={{ opacity: 0, x: reviewDirection > 0 ? 48 : -48 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: reviewDirection > 0 ? -48 : 48 }}
-                      transition={{ duration: 0.28, ease: "easeOut" }}
-                      className="rounded-2xl bg-card border border-border/60 p-5 flex flex-col gap-3"
-                    >
-                      <div className="flex gap-0.5 text-amber-400 text-base">{"★".repeat(reviews[activeReview].rating)}</div>
-                      <p className="text-sm text-foreground/80 leading-relaxed flex-1">"{reviews[activeReview].text}"</p>
-                      <div className="flex items-center gap-3 pt-1 border-t border-border/40">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 border border-border/40 grid place-items-center text-xl flex-shrink-0">
-                          {reviews[activeReview].avatar}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-foreground leading-none">{reviews[activeReview].name}</p>
-                          {reviews[activeReview].location && <p className="text-xs text-muted-foreground mt-0.5">{reviews[activeReview].location}</p>}
-                        </div>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-
-                {/* Controls row */}
-                <div className="flex items-center justify-between mt-4 px-1">
-                  {/* Prev button */}
-                  <button
-                    onClick={() => { setReviewDirection(-1); setActiveReview((p) => Math.max(p - 1, 0)); }}
-                    disabled={activeReview === 0}
-                    aria-label="Previous review"
-                    className="h-9 w-9 rounded-full flex items-center justify-center border border-border/60 bg-card text-foreground disabled:opacity-30 transition-colors hover:bg-accent active:scale-95"
-                  >
-                    ‹
-                  </button>
-
-                  {/* Dot indicators */}
-                  <div className="flex gap-2">
-                    {reviews.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => goToReview(i)}
-                        aria-label={`Go to review ${i + 1}`}
-                        className={`rounded-full transition-all duration-200 ${
-                          i === activeReview
-                            ? "w-5 h-2.5 bg-primary"
-                            : "w-2.5 h-2.5 bg-border hover:bg-muted-foreground"
-                        }`}
-                      />
-                    ))}
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  {/* Next button */}
-                  <button
-                    onClick={() => { setReviewDirection(1); setActiveReview((p) => Math.min(p + 1, reviews.length - 1)); }}
-                    disabled={activeReview === reviews.length - 1}
-                    aria-label="Next review"
-                    className="h-9 w-9 rounded-full flex items-center justify-center border border-border/60 bg-card text-foreground disabled:opacity-30 transition-colors hover:bg-accent active:scale-95"
-                  >
-                    ›
-                  </button>
-                </div>
-              </>
-            )}
+          {/* ── Leave a review CTA ── */}
+          <div className="flex justify-center mt-7 md:mt-9">
+            <Button
+              variant="outline"
+              onClick={() => setWriteReviewOpen(true)}
+              className="rounded-full gap-2 border-border hover:border-primary/50 hover:text-primary"
+            >
+              <Star className="h-4 w-4" /> Leave a review
+            </Button>
           </div>
         </section>
 
       </main>
       <Footer />
+      <WriteReviewSheet open={writeReviewOpen} onOpenChange={setWriteReviewOpen} />
     </div>
   );
 }

@@ -17,12 +17,12 @@ import {
 import { toast } from "sonner";
 import {
   Star, CheckCircle2, XCircle, Clock, Trash2, RefreshCw, Search,
-  ChevronDown, MessageSquare, ShieldCheck, User,
+  ChevronDown, MessageSquare, ShieldCheck, User, Plus, PackageSearch,
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, searchSuggestions } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -126,6 +126,20 @@ export default function AdminReviewsPage() {
   const [editRating, setEditRating] = useState(5);
   const [saving, setSaving] = useState(false);
 
+  // Add-review sheet (admin creating a review directly, e.g. a curated testimonial)
+  const [addOpen, setAddOpen] = useState(false);
+  const [productQuery, setProductQuery] = useState("");
+  const [productResults, setProductResults] = useState<{ id: string; name: string; image_url: string | null }[]>([]);
+  const [productSearching, setProductSearching] = useState(false);
+  const [newProduct, setNewProduct] = useState<{ id: string; name: string; image_url: string | null } | null>(null);
+  const [newRating, setNewRating] = useState(5);
+  const [newTitle, setNewTitle] = useState("");
+  const [newBody, setNewBody] = useState("");
+  const [newGuestName, setNewGuestName] = useState("");
+  const [newVerified, setNewVerified] = useState(false);
+  const [newStatus, setNewStatus] = useState<ReviewStatus>("approved");
+  const [creating, setCreating] = useState(false);
+
   // Bulk select
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -214,6 +228,60 @@ export default function AdminReviewsPage() {
     }
   };
 
+  // ── Add-review sheet ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!productQuery.trim()) { setProductResults([]); return; }
+    setProductSearching(true);
+    const t = setTimeout(() => {
+      searchSuggestions(productQuery, 8)
+        .then((results) => setProductResults(results.map((p) => ({ id: p.id, name: p.name, image_url: p.image_url }))))
+        .catch(() => {})
+        .finally(() => setProductSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [productQuery]);
+
+  const resetAddForm = () => {
+    setProductQuery("");
+    setProductResults([]);
+    setNewProduct(null);
+    setNewRating(5);
+    setNewTitle("");
+    setNewBody("");
+    setNewGuestName("");
+    setNewVerified(false);
+    setNewStatus("approved");
+  };
+
+  const openAdd = () => { resetAddForm(); setAddOpen(true); };
+
+  const createReview = async () => {
+    if (!newProduct) { toast.error("Pick a product first"); return; }
+    setCreating(true);
+    try {
+      await apiFetch("/api/reviews/admin", {
+        method: "POST",
+        body: JSON.stringify({
+          product_id: newProduct.id,
+          rating: newRating,
+          title: newTitle,
+          body: newBody,
+          guest_name: newGuestName,
+          verified_purchase: newVerified,
+          status: newStatus,
+        }),
+      });
+      toast.success("Review added");
+      setAddOpen(false);
+      resetAddForm();
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Could not add review");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   // ── Bulk actions ────────────────────────────────────────────────────────────
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -286,10 +354,15 @@ export default function AdminReviewsPage() {
                   {listLoading ? "Loading…" : `${total} review${total !== 1 ? "s" : ""} total`}
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={load} disabled={listLoading}>
-                <RefreshCw className={cn("h-4 w-4 mr-2", listLoading && "animate-spin")} />
-                Refresh
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={load} disabled={listLoading}>
+                  <RefreshCw className={cn("h-4 w-4 mr-2", listLoading && "animate-spin")} />
+                  Refresh
+                </Button>
+                <Button size="sm" onClick={openAdd} className="bg-gradient-primary text-primary-foreground border-0">
+                  <Plus className="h-4 w-4 mr-1.5" /> Add review
+                </Button>
+              </div>
             </div>
 
             {/* Filter tabs */}
@@ -571,6 +644,129 @@ export default function AdminReviewsPage() {
               </Button>
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Add review sheet ────────────────────────────────────────── */}
+      <Sheet open={addOpen} onOpenChange={(o) => { if (!o) setAddOpen(false); }}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+          <SheetHeader className="border-b pb-4">
+            <SheetTitle>Add Review</SheetTitle>
+            <SheetDescription>Create a review directly — e.g. a curated testimonial or one collected offline.</SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto py-4 space-y-5">
+            <div className="space-y-1">
+              <Label>Product *</Label>
+              {newProduct ? (
+                <div className="flex items-center gap-2.5 border border-border rounded-lg p-2.5">
+                  <div className="h-10 w-10 rounded-md bg-muted overflow-hidden border border-border shrink-0">
+                    {newProduct.image_url
+                      ? <img src={newProduct.image_url} alt="" className="h-full w-full object-cover" />
+                      : <div className="h-full w-full flex items-center justify-center text-muted-foreground/30 text-xs">?</div>}
+                  </div>
+                  <p className="text-sm font-medium flex-1 truncate">{newProduct.name}</p>
+                  <Button size="sm" variant="ghost" onClick={() => setNewProduct(null)}>Change</Button>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={productQuery}
+                      onChange={(e) => setProductQuery(e.target.value)}
+                      placeholder="Search products by name…"
+                      className="pl-9"
+                    />
+                  </div>
+                  {productSearching && <p className="text-xs text-muted-foreground">Searching…</p>}
+                  {productResults.length > 0 && (
+                    <div className="border border-border rounded-lg divide-y divide-border max-h-48 overflow-y-auto">
+                      {productResults.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => { setNewProduct(p); setProductQuery(""); setProductResults([]); }}
+                          className="w-full flex items-center gap-2.5 p-2 hover:bg-muted/60 transition-colors text-left"
+                        >
+                          <div className="h-8 w-8 rounded-md bg-muted overflow-hidden border border-border shrink-0">
+                            {p.image_url
+                              ? <img src={p.image_url} alt="" className="h-full w-full object-cover" />
+                              : <div className="h-full w-full flex items-center justify-center text-muted-foreground/30 text-xs">?</div>}
+                          </div>
+                          <span className="text-sm truncate">{p.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!productSearching && productQuery.trim() && productResults.length === 0 && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <PackageSearch className="h-3.5 w-3.5" /> No products found
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <Label>Rating</Label>
+              <StarPicker value={newRating} onChange={setNewRating} />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Reviewer name <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input value={newGuestName} onChange={(e) => setNewGuestName(e.target.value)}
+                placeholder="Cotton Cloud Team" maxLength={80} />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Title <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} maxLength={120} />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Body</Label>
+              <Textarea value={newBody} onChange={(e) => setNewBody(e.target.value)}
+                rows={5} maxLength={2000} placeholder="What did they love about it?" />
+              <p className="text-xs text-muted-foreground text-right">{newBody.length}/2000</p>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Verified purchase</p>
+                <p className="text-xs text-muted-foreground">Show the "Verified" badge on this review</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={newVerified}
+                onChange={(e) => setNewVerified(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Status</Label>
+              <div className="flex gap-2">
+                {(["approved", "pending"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setNewStatus(s)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors",
+                      newStatus === s ? STATUS_CFG[s].cls + " shadow-sm" : "bg-background text-muted-foreground border-border hover:bg-muted"
+                    )}
+                  >
+                    {STATUS_CFG[s].icon} {STATUS_CFG[s].label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Approved reviews show up on the product page immediately.</p>
+            </div>
+
+            <Button className="w-full" onClick={createReview} disabled={creating || !newProduct}>
+              {creating ? "Adding…" : "Add review"}
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
     </SidebarProvider>

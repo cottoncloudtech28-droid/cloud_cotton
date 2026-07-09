@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/shop/Navbar";
@@ -15,6 +15,7 @@ import { Upload, Wand2, Trash2, Sparkles, RotateCcw } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
+import { DescriptionToolbar } from "@/components/admin/DescriptionEditor";
 import { apiFetch, uploadFile, getCategories } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
@@ -22,6 +23,7 @@ import type { Category } from "@/lib/types";
 type Row = {
   id: string; file: File; originalDataUrl: string; currentDataUrl: string;
   editing: boolean; describing: boolean; analyzing: boolean; name: string; description: string;
+  descKeywords: string;
   price: string; category: string; stock: string; colorsText: string; charactersText: string;
   bgPrompt: string; anglePrompt: string; provider: "openai" | "gemini";
 };
@@ -80,6 +82,49 @@ const dataUrlToBlob = (dataUrl: string) => {
   return new Blob([arr], { type: mime });
 };
 
+// ── Full description field (keywords → AI generate, Bold/Bullet toolbar) ──────
+// Its own component so each row gets an independent textarea ref for the toolbar.
+function RowDescriptionField({ row, onChange, onGenerate }: {
+  row: Row;
+  onChange: (patch: Partial<Row>) => void;
+  onGenerate: () => void;
+}) {
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  return (
+    <div className="sm:col-span-2">
+      <div className="flex items-center justify-between gap-2">
+        <Label>Full description</Label>
+        <Button type="button" size="sm" variant="ghost" className="h-7 rounded-full"
+          onClick={onGenerate} disabled={row.describing}>
+          <Sparkles className="h-3 w-3 mr-1" /> {row.describing ? "Writing…" : "Generate with AI"}
+        </Button>
+      </div>
+      <Input value={row.descKeywords} onChange={(e) => onChange({ descKeywords: e.target.value })}
+        placeholder="e.g. leak-proof, gift-ready, pastel, BPA-free" className="mt-1.5" />
+      <p className="text-xs text-muted-foreground mt-1">
+        Add product keywords, features, or highlights to help AI generate the perfect description.
+      </p>
+      <div className="mt-2 mb-1.5">
+        <DescriptionToolbar
+          textareaRef={descriptionRef}
+          value={row.description}
+          onChange={(v) => onChange({ description: v })}
+        />
+      </div>
+      <Textarea ref={descriptionRef} value={row.description}
+        onChange={(e) => onChange({ description: e.target.value })}
+        rows={4} maxLength={2000}
+        placeholder="Detailed product description, materials, care instructions, etc." />
+      <div className="flex items-start justify-between gap-2 mt-1">
+        <p className="text-[11px] text-muted-foreground">
+          Select text and click Bold/Bullet above, or start a line with "- " for a bullet point and wrap text in **double asterisks** for bold headings.
+        </p>
+        <p className="text-xs text-muted-foreground text-right shrink-0">{row.description.length}/2000</p>
+      </div>
+    </div>
+  );
+}
+
 export default function BulkUploadPage() {
   const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
@@ -103,7 +148,7 @@ export default function BulkUploadPage() {
       if (!f.type.startsWith("image/")) continue;
       const dataUrl = await fileToDataUrl(f);
       const baseName = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", price: "", category: defaultCategory, stock: "10", colorsText: "", charactersText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
+      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", descKeywords: "", price: "", category: defaultCategory, stock: "10", colorsText: "", charactersText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
     }
     setRows((r) => [...r, ...next]);
   };
@@ -138,7 +183,12 @@ export default function BulkUploadPage() {
     try {
       const data = await apiFetch("/api/ai/describe", {
         method: "POST",
-        body: JSON.stringify({ name: row.name, category: row.category, colors: row.colorsText.split(",").map((s) => s.trim()).filter(Boolean) }),
+        body: JSON.stringify({
+          name: row.name,
+          category: row.category,
+          colors: row.colorsText.split(",").map((s) => s.trim()).filter(Boolean),
+          keywords: row.descKeywords,
+        }),
       });
       update(row.id, { description: data.description || "", describing: false });
     } catch (e: any) {
@@ -314,15 +364,11 @@ export default function BulkUploadPage() {
                           <Input placeholder="pink, lilac, mint" value={r.colorsText} onChange={(e) => update(r.id, { colorsText: e.target.value })} /></div>
                         <div><Label>Character / design (comma-separated)</Label>
                           <Input placeholder="Doraemon, Hello Kitty" value={r.charactersText} onChange={(e) => update(r.id, { charactersText: e.target.value })} /></div>
-                        <div className="sm:col-span-2">
-                          <div className="flex items-center justify-between">
-                            <Label>Description</Label>
-                            <Button size="sm" variant="ghost" className="h-7 rounded-full" onClick={() => describe(r)} disabled={r.describing}>
-                              <Sparkles className="h-3 w-3 mr-1" />{r.describing ? "Writing…" : "AI write"}
-                            </Button>
-                          </div>
-                          <Textarea rows={2} value={r.description} onChange={(e) => update(r.id, { description: e.target.value })} />
-                        </div>
+                        <RowDescriptionField
+                          row={r}
+                          onChange={(patch) => update(r.id, patch)}
+                          onGenerate={() => describe(r)}
+                        />
                       </div>
                       <div className="rounded-2xl bg-muted/40 p-3 space-y-3">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
