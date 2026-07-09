@@ -112,6 +112,12 @@ export interface GstSettings {
   signature_url?: string;
 }
 
+export interface NotificationSettings {
+  order_confirmation_enabled: boolean;
+  admin_alert_enabled: boolean;
+  admin_email: string;
+}
+
 export type StockLogReason = "order" | "manual_adjust" | "bulk_update" | "restock" | "correction" | "cancellation" | "return";
 
 export interface StockLog {

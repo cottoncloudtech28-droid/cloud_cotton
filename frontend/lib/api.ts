@@ -1,7 +1,7 @@
 import type {
   Product, Order, OrderItem, Address, SavedAddress, Category, StockLog,
   Supplier, PurchaseOrder, RestockRecommendation, PublicOrderTrack, ShiprocketTracking,
-  GstSettings,
+  GstSettings, NotificationSettings,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -464,6 +464,18 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
 
 export async function updatePaymentSettings(data: PaymentSettings): Promise<PaymentSettings> {
   return apiFetch("/api/settings/payment", { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function getNotificationSettings(): Promise<NotificationSettings> {
+  return apiFetch("/api/settings/notifications");
+}
+
+export async function updateNotificationSettings(data: NotificationSettings): Promise<NotificationSettings> {
+  return apiFetch("/api/settings/notifications", { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function sendTestNotificationEmail(email: string): Promise<{ ok: boolean }> {
+  return apiFetch("/api/settings/notifications/test", { method: "POST", body: JSON.stringify({ email }) });
 }
 
 export async function getOrderInvoice(orderId: string): Promise<{ order: Order; gstSettings: GstSettings }> {

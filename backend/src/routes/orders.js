@@ -8,6 +8,7 @@ const User = require("../models/User");
 const StockLog = require("../models/StockLog");
 const { verifyToken, requireAdmin } = require("../middleware/auth");
 const sr = require("../services/shiprocket");
+const { sendOrderConfirmationEmail, sendAdminOrderNotification } = require("../lib/mailer");
 
 let _razorpay = null;
 function getRazorpay() {
@@ -31,6 +32,17 @@ const mapOrder = (doc) => {
   }
   return obj;
 };
+
+// Non-blocking order emails; called after order creation
+async function sendOrderEmails(order, userId) {
+  try {
+    const user = await User.findById(userId).select("email").lean();
+    await Promise.allSettled([
+      sendOrderConfirmationEmail(order, user?.email),
+      sendAdminOrderNotification(order, user?.email),
+    ]);
+  } catch (_) { /* fail silently — email is a courtesy, not order-critical */ }
+}
 
 // Non-blocking Shiprocket auto-push; called after order creation
 async function tryAutoPushShiprocket(order, userId) {
@@ -276,6 +288,7 @@ router.post("/", verifyToken, async (req, res) => {
 
   await decrementStock(resolved, order, req.user.userId);
   tryAutoPushShiprocket(order, req.user.userId); // fire-and-forget
+  sendOrderEmails(order, req.user.userId); // fire-and-forget
   res.status(201).json(mapOrder(order));
 });
 
@@ -356,6 +369,7 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
 
   await decrementStock(resolved, order, req.user.userId);
   tryAutoPushShiprocket(order, req.user.userId); // fire-and-forget
+  sendOrderEmails(order, req.user.userId); // fire-and-forget
   res.status(201).json(mapOrder(order));
 });
 

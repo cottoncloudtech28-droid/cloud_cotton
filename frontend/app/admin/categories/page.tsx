@@ -11,12 +11,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Pencil, Check, X, Upload, Plus, Trash2 } from "lucide-react";
+import { Pencil, X, Upload, Plus, Trash2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
@@ -32,6 +36,8 @@ const SPEC_TYPES: { value: SpecFieldType; label: string }[] = [
 
 const slugifyKey = (s: string) =>
   s.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+
+const toSlug = (v: string) => v.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
 // ── Category spec-field definitions editor ─────────────────────────────────────
 function SpecFieldsEditor({ fields, onChange }: { fields: SpecField[]; onChange: (f: SpecField[]) => void }) {
@@ -95,40 +101,11 @@ function SpecFieldsEditor({ fields, onChange }: { fields: SpecField[]; onChange:
   );
 }
 
-// ── Inline edit row ───────────────────────────────────────────────────────────
-function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: Category) => void; onDeleted: (slug: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+// ── Category row (summary card) ─────────────────────────────────────────────────
+function CategoryRow({ cat, onDeleted, onEdit }: {
+  cat: Category; onDeleted: (slug: string) => void; onEdit: (cat: Category) => void;
+}) {
   const [deleting, setDeleting] = useState(false);
-  const [draft, setDraft] = useState({
-    name: cat.name, description: cat.description,
-    emoji: cat.emoji, banner_url: cat.banner_url ?? "", sort_order: cat.sort_order,
-    spec_fields: cat.spec_fields ?? [],
-  });
-
-  const cancel = () => {
-    setDraft({ name: cat.name, description: cat.description, emoji: cat.emoji, banner_url: cat.banner_url ?? "", sort_order: cat.sort_order, spec_fields: cat.spec_fields ?? [] });
-    setEditing(false);
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      const updated = await updateCategory(cat.slug, {
-        name: draft.name, description: draft.description,
-        emoji: draft.emoji, banner_url: draft.banner_url || null, sort_order: draft.sort_order,
-        spec_fields: draft.spec_fields,
-      });
-      onSaved(updated);
-      setEditing(false);
-      toast.success(`"${updated.name}" saved`);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const remove = async () => {
     setDeleting(true);
@@ -143,11 +120,95 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
     }
   };
 
+  return (
+    <Card className="p-4 flex items-center gap-4">
+      {cat.banner_url ? (
+        <img src={cat.banner_url} alt={cat.name}
+          className="h-14 w-24 rounded-lg object-cover border border-border shrink-0" />
+      ) : (
+        <div className="h-14 w-24 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 text-2xl">
+          {cat.emoji}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold">{cat.emoji} {cat.name}</p>
+        <p className="text-xs text-muted-foreground font-mono">{cat.slug}</p>
+        {cat.description && (
+          <p className="text-sm text-muted-foreground mt-0.5 truncate">{cat.description}</p>
+        )}
+        {(cat.spec_fields?.length ?? 0) > 0 && (
+          <p className="text-xs text-primary mt-0.5">{cat.spec_fields!.length} spec field{cat.spec_fields!.length !== 1 ? "s" : ""}</p>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">order {cat.sort_order}</span>
+      <Button variant="ghost" size="icon" onClick={() => onEdit(cat)}>
+        <Pencil className="h-4 w-4" />
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="ghost" size="icon" disabled={deleting}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{cat.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the category. Categories that still have products assigned to
+              them can't be deleted — reassign or remove those products first.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={remove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
+  );
+}
+
+// ── Add / edit category form (lives inside the drawer) ───────────────────────────
+type CategoryFormState = {
+  slug: string; name: string; description: string; emoji: string;
+  sort_order: number; banner_url: string; spec_fields: SpecField[];
+};
+
+const emptyCategoryForm: CategoryFormState = {
+  slug: "", name: "", description: "", emoji: "🌸", sort_order: 10, banner_url: "", spec_fields: [],
+};
+
+function CategoryForm({ initial, onSaved, onCancel }: {
+  initial: Category | null;
+  onSaved: (cat: Category, mode: "create" | "edit") => void;
+  onCancel: () => void;
+}) {
+  const isEdit = !!initial;
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  // Slug auto-fills from the name until the user edits it directly; locked entirely when editing.
+  const [slugTouched, setSlugTouched] = useState(isEdit);
+  const [form, setForm] = useState<CategoryFormState>(() => initial ? {
+    slug: initial.slug, name: initial.name, description: initial.description,
+    emoji: initial.emoji, sort_order: initial.sort_order, banner_url: initial.banner_url ?? "",
+    spec_fields: initial.spec_fields ?? [],
+  } : emptyCategoryForm);
+
+  const handleSlug = (v: string) => {
+    setSlugTouched(true);
+    setForm((f) => ({ ...f, slug: toSlug(v) }));
+  };
+
+  const handleName = (v: string) =>
+    setForm((f) => ({ ...f, name: v, slug: slugTouched ? f.slug : toSlug(v) }));
+
   const uploadBanner = async (file: File) => {
     setUploading(true);
     try {
       const { url } = await uploadFile(file);
-      setDraft((d) => ({ ...d, banner_url: url }));
+      setForm((f) => ({ ...f, banner_url: url }));
       toast.success("Banner uploaded");
     } catch (e: any) {
       toast.error(e.message);
@@ -156,98 +217,71 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
     }
   };
 
-  if (!editing) {
-    return (
-      <Card className="p-4 flex items-center gap-4">
-        {cat.banner_url ? (
-          <img src={cat.banner_url} alt={cat.name}
-            className="h-14 w-24 rounded-lg object-cover border border-border shrink-0" />
-        ) : (
-          <div className="h-14 w-24 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 text-2xl">
-            {cat.emoji}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold">{cat.emoji} {cat.name}</p>
-          <p className="text-xs text-muted-foreground font-mono">{cat.slug}</p>
-          {cat.description && (
-            <p className="text-sm text-muted-foreground mt-0.5 truncate">{cat.description}</p>
-          )}
-          {(cat.spec_fields?.length ?? 0) > 0 && (
-            <p className="text-xs text-primary mt-0.5">{cat.spec_fields!.length} spec field{cat.spec_fields!.length !== 1 ? "s" : ""}</p>
-          )}
-        </div>
-        <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">order {cat.sort_order}</span>
-        <Button variant="ghost" size="icon" onClick={() => setEditing(true)}>
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" disabled={deleting}>
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete "{cat.name}"?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This permanently removes the category. Categories that still have products assigned to
-                them can't be deleted — reassign or remove those products first.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={remove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </Card>
-    );
-  }
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.slug || !form.name) { toast.error("Slug and name are required"); return; }
+    setSaving(true);
+    try {
+      const cat = isEdit
+        ? await updateCategory(initial!.slug, {
+            name: form.name, description: form.description, emoji: form.emoji,
+            banner_url: form.banner_url || null, sort_order: form.sort_order, spec_fields: form.spec_fields,
+          })
+        : await apiFetch("/api/categories", {
+            method: "POST",
+            body: JSON.stringify({ ...form, banner_url: form.banner_url || null }),
+          });
+      onSaved(cat, isEdit ? "edit" : "create");
+      toast.success(`"${cat.name}" ${isEdit ? "saved" : "created"}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <Card className="p-5 space-y-4 border-2 border-primary">
-      <div className="flex items-center justify-between">
-        <p className="font-semibold text-sm text-muted-foreground font-mono">{cat.slug}</p>
-        <div className="flex gap-1">
-          <Button size="icon" variant="ghost" onClick={cancel} disabled={saving}><X className="h-4 w-4" /></Button>
-          <Button size="icon" onClick={save} disabled={saving || uploading}><Check className="h-4 w-4" /></Button>
-        </div>
-      </div>
+    <form onSubmit={submit} className="space-y-6 pb-8">
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <Label>Name</Label>
-          <Input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          <Label>Name *</Label>
+          <Input value={form.name} onChange={(e) => handleName(e.target.value)}
+            placeholder="My Category" required autoFocus />
+        </div>
+        <div>
+          <Label>Slug <span className="text-muted-foreground font-normal text-xs">
+            {isEdit ? "(URL key — can't be changed)" : "(URL key, auto-filled from name)"}
+          </span></Label>
+          <Input value={form.slug} onChange={(e) => handleSlug(e.target.value)}
+            placeholder="my-category" required disabled={isEdit} readOnly={isEdit}
+            className={isEdit ? "font-mono text-muted-foreground bg-muted cursor-not-allowed" : "font-mono"} />
         </div>
         <div className="flex gap-3">
           <div>
             <Label>Emoji</Label>
-            <Input value={draft.emoji} onChange={(e) => setDraft((d) => ({ ...d, emoji: e.target.value }))} maxLength={8} className="w-20" />
+            <Input value={form.emoji} onChange={(e) => setForm((f) => ({ ...f, emoji: e.target.value }))}
+              maxLength={8} className="w-20" />
           </div>
           <div>
             <Label>Sort order</Label>
-            <Input type="number" min="0" value={draft.sort_order}
+            <Input type="number" min="0" value={form.sort_order}
               onFocus={(e) => e.target.select()}
-              onChange={(e) => setDraft((d) => ({ ...d, sort_order: parseInt(e.target.value) || 0 }))} className="w-24" />
+              onChange={(e) => setForm((f) => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} className="w-24" />
           </div>
         </div>
         <div className="sm:col-span-2">
           <Label>Description</Label>
-          <Textarea value={draft.description}
-            onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+          <Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             rows={2} maxLength={500} placeholder="Shown on the category page" />
         </div>
       </div>
 
-      {/* Banner */}
       <div className="space-y-2">
         <Label className="flex items-center gap-1.5">Banner image</Label>
-        {draft.banner_url && (
+        {form.banner_url && (
           <div className="relative w-full h-28 rounded-lg overflow-hidden border border-border bg-muted">
-            <img src={draft.banner_url} alt="banner" className="w-full h-full object-contain" />
-            <button type="button" onClick={() => setDraft((d) => ({ ...d, banner_url: "" }))}
+            <img src={form.banner_url} alt="banner" className="w-full h-full object-contain" />
+            <button type="button" onClick={() => setForm((f) => ({ ...f, banner_url: "" }))}
               className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center">
               <X className="h-3.5 w-3.5" />
             </button>
@@ -256,101 +290,30 @@ function CategoryRow({ cat, onSaved, onDeleted }: { cat: Category; onSaved: (c: 
         <label className="flex items-center gap-2 cursor-pointer border border-dashed border-border rounded-lg p-3 hover:bg-muted transition-colors">
           <Upload className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
-            {uploading ? "Uploading…" : draft.banner_url ? "Replace banner" : "Upload banner"}
+            {uploading ? "Uploading…" : form.banner_url ? "Replace banner" : "Upload banner"}
           </span>
           <input type="file" accept="image/*" className="hidden"
             onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])} />
         </label>
-        {!draft.banner_url && (
-          <Input value={draft.banner_url}
-            onChange={(e) => setDraft((d) => ({ ...d, banner_url: e.target.value }))}
+        {!form.banner_url && (
+          <Input value={form.banner_url}
+            onChange={(e) => setForm((f) => ({ ...f, banner_url: e.target.value }))}
             placeholder="or paste a URL" className="text-xs" />
         )}
       </div>
 
       <Separator />
-      <SpecFieldsEditor fields={draft.spec_fields}
-        onChange={(spec_fields) => setDraft((d) => ({ ...d, spec_fields }))} />
-    </Card>
-  );
-}
+      <SpecFieldsEditor fields={form.spec_fields}
+        onChange={(spec_fields) => setForm((f) => ({ ...f, spec_fields }))} />
 
-// ── New category form ─────────────────────────────────────────────────────────
-function NewCategoryForm({ onCreated }: { onCreated: (c: Category) => void }) {
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<{ slug: string; name: string; description: string; emoji: string; sort_order: number; spec_fields: SpecField[] }>({ slug: "", name: "", description: "", emoji: "🌸", sort_order: 10, spec_fields: [] });
-
-  const handleSlug = (v: string) =>
-    setForm((f) => ({ ...f, slug: v.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") }));
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.slug || !form.name) { toast.error("Slug and name are required"); return; }
-    setSaving(true);
-    try {
-      const cat = await apiFetch("/api/categories", { method: "POST", body: JSON.stringify(form) });
-      onCreated(cat);
-      setForm({ slug: "", name: "", description: "", emoji: "🌸", sort_order: 10, spec_fields: [] });
-      setOpen(false);
-      toast.success(`"${cat.name}" created`);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!open) {
-    return (
-      <Button variant="outline" onClick={() => setOpen(true)} className="w-full border-dashed h-12">
-        <Plus className="h-4 w-4 mr-2" /> Add new category
-      </Button>
-    );
-  }
-
-  return (
-    <Card className="p-5 space-y-4 border-2 border-dashed">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">New category</h3>
-        <Button variant="ghost" size="icon" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
+      <Separator />
+      <div className="flex gap-3 flex-wrap pt-2">
+        <Button type="submit" size="lg" className="flex-1" disabled={saving || uploading}>
+          {isEdit ? "Save changes" : "Create category"}
+        </Button>
+        <Button type="button" variant="outline" size="lg" onClick={onCancel}>Cancel</Button>
       </div>
-      <form onSubmit={save} className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <Label>Slug <span className="text-muted-foreground font-normal text-xs">(URL key)</span></Label>
-          <Input value={form.slug} onChange={(e) => handleSlug(e.target.value)} placeholder="my-category" required />
-        </div>
-        <div>
-          <Label>Name *</Label>
-          <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="My Category" required />
-        </div>
-        <div className="flex gap-3">
-          <div>
-            <Label>Emoji</Label>
-            <Input value={form.emoji} onChange={(e) => setForm((f) => ({ ...f, emoji: e.target.value }))} maxLength={8} className="w-20" />
-          </div>
-          <div>
-            <Label>Sort order</Label>
-            <Input type="number" value={form.sort_order}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => setForm((f) => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} className="w-24" />
-          </div>
-        </div>
-        <div className="sm:col-span-2">
-          <Label>Description</Label>
-          <Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            rows={2} placeholder="Category description…" maxLength={500} />
-        </div>
-        <div className="sm:col-span-2">
-          <SpecFieldsEditor fields={form.spec_fields}
-            onChange={(spec_fields) => setForm((f) => ({ ...f, spec_fields }))} />
-        </div>
-        <div className="sm:col-span-2 flex gap-2">
-          <Button type="submit" disabled={saving}>Create</Button>
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-        </div>
-      </form>
-    </Card>
+    </form>
   );
 }
 
@@ -360,6 +323,8 @@ export default function AdminCategoriesPage() {
   const router = useRouter();
   const [cats, setCats] = useState<Category[]>([]);
   const [fetching, setFetching] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingCat, setEditingCat] = useState<Category | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -374,11 +339,15 @@ export default function AdminCategoriesPage() {
       .finally(() => setFetching(false));
   }, [isAdmin]);
 
-  const handleSaved = (updated: Category) =>
-    setCats((prev) => prev.map((c) => (c.slug === updated.slug ? updated : c)));
+  const openCreate = () => { setEditingCat(null); setDrawerOpen(true); };
+  const openEdit = (cat: Category) => { setEditingCat(cat); setDrawerOpen(true); };
 
-  const handleCreated = (created: Category) =>
-    setCats((prev) => [...prev, created].sort((a, b) => a.sort_order - b.sort_order));
+  const handleSaved = (cat: Category, mode: "create" | "edit") => {
+    setCats((prev) => mode === "edit"
+      ? prev.map((c) => (c.slug === cat.slug ? cat : c))
+      : [...prev, cat].sort((a, b) => a.sort_order - b.sort_order));
+    setDrawerOpen(false);
+  };
 
   const handleDeleted = (slug: string) =>
     setCats((prev) => prev.filter((c) => c.slug !== slug));
@@ -410,28 +379,55 @@ export default function AdminCategoriesPage() {
             <span className="ml-2 text-sm text-muted-foreground">Admin / Categories</span>
           </div>
           <main className="container py-8 space-y-6">
-            <div>
-              <h1 className="text-4xl font-bold">Categories</h1>
-              <p className="text-muted-foreground mt-1">
-                Edit names, descriptions, banners and sort order. Click the pencil icon to expand.
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-4xl font-bold">Categories</h1>
+                <p className="text-muted-foreground mt-1">
+                  Edit names, descriptions, banners and sort order. Click the pencil icon to edit.
+                </p>
+              </div>
+              <Button onClick={openCreate} className="shrink-0">
+                <Plus className="h-4 w-4 mr-1.5" /> Add category
+              </Button>
             </div>
             <Separator />
             {fetching ? (
               <div className="space-y-3">
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
               </div>
+            ) : cats.length === 0 ? (
+              <Card className="p-10 text-center text-muted-foreground">
+                No categories yet — click "Add category" above to create your first one.
+              </Card>
             ) : (
               <div className="space-y-3">
                 {cats.map((cat) => (
-                  <CategoryRow key={cat.slug} cat={cat} onSaved={handleSaved} onDeleted={handleDeleted} />
+                  <CategoryRow key={cat.slug} cat={cat} onDeleted={handleDeleted} onEdit={openEdit} />
                 ))}
-                <NewCategoryForm onCreated={handleCreated} />
               </div>
             )}
           </main>
         </div>
       </div>
+
+      {/* ── Add / edit category drawer ────────────────────────────── */}
+      <Sheet open={drawerOpen} onOpenChange={(open) => { if (!open) setDrawerOpen(false); }}>
+        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
+          <SheetHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
+            <SheetTitle className="text-xl">
+              {editingCat ? "Edit category" : "Add new category"}
+            </SheetTitle>
+            <SheetDescription>
+              {editingCat
+                ? "Update the category details below and save."
+                : "Create a new category for organizing products."}
+            </SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="flex-1 px-6 pt-6">
+            <CategoryForm initial={editingCat} onSaved={handleSaved} onCancel={() => setDrawerOpen(false)} />
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </SidebarProvider>
   );
 }

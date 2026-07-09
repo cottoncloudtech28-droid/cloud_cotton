@@ -1,22 +1,12 @@
 const router = require("express").Router();
-const nodemailer = require("nodemailer");
 const { z } = require("zod");
+const { getTransporter } = require("../lib/mailer");
 
 const schema = z.object({
   name:    z.string().trim().min(1).max(100),
   email:   z.string().trim().email().max(255),
   message: z.string().trim().min(5).max(2000),
 });
-
-function getTransporter() {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-  });
-}
 
 router.post("/", async (req, res) => {
   const parsed = schema.safeParse(req.body);
