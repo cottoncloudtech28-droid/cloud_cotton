@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/shop/Navbar";
@@ -20,11 +20,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Pencil, X, Upload, Plus, Trash2 } from "lucide-react";
+import { Pencil, X, Upload, Plus, Trash2, GripVertical } from "lucide-react";
+import { Reorder, useDragControls } from "framer-motion";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { getCategories, updateCategory, deleteCategory, uploadFile, apiFetch } from "@/lib/api";
+import { getCategories, updateCategory, deleteCategory, reorderCategories, uploadFile, apiFetch } from "@/lib/api";
 import type { Category, SpecField, SpecFieldType } from "@/lib/types";
 
 const SPEC_TYPES: { value: SpecFieldType; label: string }[] = [
@@ -325,6 +326,8 @@ export default function AdminCategoriesPage() {
   const [fetching, setFetching] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
+  const catsRef = useRef<Category[]>([]);
+  catsRef.current = cats;
 
   useEffect(() => {
     if (loading) return;
@@ -351,6 +354,16 @@ export default function AdminCategoriesPage() {
 
   const handleDeleted = (slug: string) =>
     setCats((prev) => prev.filter((c) => c.slug !== slug));
+
+  const persistOrder = async () => {
+    const order = catsRef.current.map((c, i) => ({ slug: c.slug, sort_order: i }));
+    try {
+      const updated = await reorderCategories(order);
+      setCats(updated);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
 
   if (loading) return <AdminPageSkeleton />;
 
@@ -391,6 +404,29 @@ export default function AdminCategoriesPage() {
               </Button>
             </div>
             <Separator />
+            {!fetching && cats.length > 0 && (
+              <div className="rounded-xl border border-border bg-card py-4">
+                <p className="text-xs font-semibold text-muted-foreground px-4 mb-3">
+                  Homepage preview — drag a circle to reorder
+                </p>
+                <Reorder.Group axis="x" values={cats} onReorder={setCats}
+                  className="flex gap-4 md:gap-5 overflow-x-auto scrollbar-none pb-1 px-4">
+                  {cats.map((c) => (
+                    <Reorder.Item key={c.slug} value={c} onDragEnd={persistOrder}
+                      className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[64px] md:w-[88px] cursor-grab active:cursor-grabbing touch-none">
+                      <div className="h-14 w-14 md:h-20 md:w-20 rounded-full border border-border/60 overflow-hidden bg-muted flex items-center justify-center pointer-events-none">
+                        {c.banner_url ? (
+                          <img src={c.banner_url} alt={c.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-2xl md:text-3xl">{c.emoji}</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] md:text-xs font-semibold text-center leading-tight text-foreground pointer-events-none">{c.name}</p>
+                    </Reorder.Item>
+                  ))}
+                </Reorder.Group>
+              </div>
+            )}
             {fetching ? (
               <div className="space-y-3">
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}

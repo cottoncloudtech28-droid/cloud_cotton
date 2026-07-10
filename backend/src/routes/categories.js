@@ -23,6 +23,25 @@ const mapCat = (doc) => {
   return obj;
 };
 
+// PATCH /api/categories/reorder  — admin: bulk-update sort_order after drag-and-drop
+router.patch("/reorder", verifyToken, requireAdmin, async (req, res) => {
+  const { order } = req.body; // [{ slug, sort_order }, ...]
+  if (!Array.isArray(order) || order.length === 0) {
+    return res.status(400).json({ message: "order must be a non-empty array of { slug, sort_order }" });
+  }
+  try {
+    await Category.bulkWrite(
+      order.map(({ slug, sort_order }) => ({
+        updateOne: { filter: { slug }, update: { sort_order } },
+      }))
+    );
+    const cats = await Category.find().sort("sort_order");
+    res.json(cats.map(mapCat));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // GET /api/categories  — public
 router.get("/", async (req, res) => {
   try {

@@ -132,6 +132,10 @@ export async function deleteCategory(slug: string): Promise<{ success: boolean }
   return apiFetch(`/api/categories/${slug}`, { method: "DELETE" });
 }
 
+export async function reorderCategories(order: { slug: string; sort_order: number }[]): Promise<Category[]> {
+  return apiFetch("/api/categories/reorder", { method: "PATCH", body: JSON.stringify({ order }) });
+}
+
 // ── Orders ───────────────────────────────────────────────────────────────────
 export async function getOrders(): Promise<Order[]> {
   return apiFetch("/api/orders");
