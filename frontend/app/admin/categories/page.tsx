@@ -20,8 +20,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Pencil, X, Upload, Plus, Trash2, GripVertical } from "lucide-react";
-import { Reorder, useDragControls } from "framer-motion";
+import { Pencil, X, Upload, Plus, Trash2 } from "lucide-react";
+import { Reorder } from "framer-motion";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
