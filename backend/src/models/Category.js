@@ -21,6 +21,7 @@ const categorySchema = new mongoose.Schema(
     banner_url:  { type: String, default: null },
     emoji:       { type: String, default: "🌸", maxlength: 8 },
     sort_order:  { type: Number, default: 0 },
+    is_active:   { type: Boolean, default: true }, // false = hidden from the storefront, still manageable in admin
     spec_fields: { type: [specFieldSchema], default: [] }, // category-specific specification definitions
   },
   { timestamps: true }

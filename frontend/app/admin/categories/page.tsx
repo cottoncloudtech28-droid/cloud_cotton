@@ -19,13 +19,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Pencil, X, Upload, Plus, Trash2 } from "lucide-react";
+import { Pencil, X, Upload, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import { Reorder } from "framer-motion";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { getCategories, updateCategory, deleteCategory, reorderCategories, uploadFile, apiFetch } from "@/lib/api";
+import { getCategories, updateCategory, deleteCategory, reorderCategories, setCategoryVisibility, uploadFile, apiFetch } from "@/lib/api";
 import type { Category, SpecField, SpecFieldType } from "@/lib/types";
 
 const SPEC_TYPES: { value: SpecFieldType; label: string }[] = [
@@ -103,10 +104,12 @@ function SpecFieldsEditor({ fields, onChange }: { fields: SpecField[]; onChange:
 }
 
 // ── Category row (summary card) ─────────────────────────────────────────────────
-function CategoryRow({ cat, onDeleted, onEdit }: {
+function CategoryRow({ cat, onDeleted, onEdit, onToggled }: {
   cat: Category; onDeleted: (slug: string) => void; onEdit: (cat: Category) => void;
+  onToggled: (cat: Category) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   const remove = async () => {
     setDeleting(true);
@@ -121,8 +124,21 @@ function CategoryRow({ cat, onDeleted, onEdit }: {
     }
   };
 
+  const toggleVisible = async () => {
+    setToggling(true);
+    try {
+      const updated = await setCategoryVisibility(cat.slug, !cat.is_active);
+      onToggled(updated);
+      toast.success(`"${cat.name}" ${updated.is_active ? "is now visible" : "is now hidden"}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setToggling(false);
+    }
+  };
+
   return (
-    <Card className="p-4 flex items-center gap-4">
+    <Card className={`p-4 flex items-center gap-4 ${cat.is_active === false ? "opacity-60" : ""}`}>
       {cat.banner_url ? (
         <img src={cat.banner_url} alt={cat.name}
           className="h-14 w-24 rounded-lg object-cover border border-border shrink-0" />
@@ -132,7 +148,14 @@ function CategoryRow({ cat, onDeleted, onEdit }: {
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold">{cat.emoji} {cat.name}</p>
+        <p className="font-semibold flex items-center gap-2">
+          {cat.emoji} {cat.name}
+          {cat.is_active === false && (
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground border border-border rounded-full px-2 py-0.5">
+              Hidden
+            </span>
+          )}
+        </p>
         <p className="text-xs text-muted-foreground font-mono">{cat.slug}</p>
         {cat.description && (
           <p className="text-sm text-muted-foreground mt-0.5 truncate">{cat.description}</p>
@@ -142,6 +165,10 @@ function CategoryRow({ cat, onDeleted, onEdit }: {
         )}
       </div>
       <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">order {cat.sort_order}</span>
+      <Button variant="ghost" size="icon" disabled={toggling} onClick={toggleVisible}
+        title={cat.is_active === false ? "Show on site" : "Hide from site"}>
+        {cat.is_active === false ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </Button>
       <Button variant="ghost" size="icon" onClick={() => onEdit(cat)}>
         <Pencil className="h-4 w-4" />
       </Button>
@@ -174,11 +201,11 @@ function CategoryRow({ cat, onDeleted, onEdit }: {
 // ── Add / edit category form (lives inside the drawer) ───────────────────────────
 type CategoryFormState = {
   slug: string; name: string; description: string; emoji: string;
-  sort_order: number; banner_url: string; spec_fields: SpecField[];
+  sort_order: number; banner_url: string; is_active: boolean; spec_fields: SpecField[];
 };
 
 const emptyCategoryForm: CategoryFormState = {
-  slug: "", name: "", description: "", emoji: "🌸", sort_order: 10, banner_url: "", spec_fields: [],
+  slug: "", name: "", description: "", emoji: "🌸", sort_order: 10, banner_url: "", is_active: true, spec_fields: [],
 };
 
 function CategoryForm({ initial, onSaved, onCancel }: {
@@ -194,7 +221,7 @@ function CategoryForm({ initial, onSaved, onCancel }: {
   const [form, setForm] = useState<CategoryFormState>(() => initial ? {
     slug: initial.slug, name: initial.name, description: initial.description,
     emoji: initial.emoji, sort_order: initial.sort_order, banner_url: initial.banner_url ?? "",
-    spec_fields: initial.spec_fields ?? [],
+    is_active: initial.is_active !== false, spec_fields: initial.spec_fields ?? [],
   } : emptyCategoryForm);
 
   const handleSlug = (v: string) => {
@@ -226,7 +253,8 @@ function CategoryForm({ initial, onSaved, onCancel }: {
       const cat = isEdit
         ? await updateCategory(initial!.slug, {
             name: form.name, description: form.description, emoji: form.emoji,
-            banner_url: form.banner_url || null, sort_order: form.sort_order, spec_fields: form.spec_fields,
+            banner_url: form.banner_url || null, sort_order: form.sort_order,
+            is_active: form.is_active, spec_fields: form.spec_fields,
           })
         : await apiFetch("/api/categories", {
             method: "POST",
@@ -274,6 +302,15 @@ function CategoryForm({ initial, onSaved, onCancel }: {
           <Label>Description</Label>
           <Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             rows={2} maxLength={500} placeholder="Shown on the category page" />
+        </div>
+        <div className="sm:col-span-2 flex items-center justify-between rounded-lg border border-border p-3">
+          <div>
+            <Label className="mb-0">Visible on site</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Hidden categories stay editable here but won't show on the homepage or shop.
+            </p>
+          </div>
+          <Switch checked={form.is_active} onCheckedChange={(is_active) => setForm((f) => ({ ...f, is_active }))} />
         </div>
       </div>
 
@@ -354,6 +391,9 @@ export default function AdminCategoriesPage() {
 
   const handleDeleted = (slug: string) =>
     setCats((prev) => prev.filter((c) => c.slug !== slug));
+
+  const handleToggled = (cat: Category) =>
+    setCats((prev) => prev.map((c) => (c.slug === cat.slug ? cat : c)));
 
   const persistOrder = async () => {
     const order = catsRef.current.map((c, i) => ({ slug: c.slug, sort_order: i }));
@@ -438,7 +478,7 @@ export default function AdminCategoriesPage() {
             ) : (
               <div className="space-y-3">
                 {cats.map((cat) => (
-                  <CategoryRow key={cat.slug} cat={cat} onDeleted={handleDeleted} onEdit={openEdit} />
+                  <CategoryRow key={cat.slug} cat={cat} onDeleted={handleDeleted} onEdit={openEdit} onToggled={handleToggled} />
                 ))}
               </div>
             )}

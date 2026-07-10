@@ -136,6 +136,10 @@ export async function reorderCategories(order: { slug: string; sort_order: numbe
   return apiFetch("/api/categories/reorder", { method: "PATCH", body: JSON.stringify({ order }) });
 }
 
+export async function setCategoryVisibility(slug: string, is_active: boolean): Promise<Category> {
+  return apiFetch(`/api/categories/${slug}/visibility`, { method: "PATCH", body: JSON.stringify({ is_active }) });
+}
+
 // ── Orders ───────────────────────────────────────────────────────────────────
 export async function getOrders(): Promise<Order[]> {
   return apiFetch("/api/orders");

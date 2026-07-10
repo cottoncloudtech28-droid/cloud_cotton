@@ -1,7 +1,20 @@
 const router = require("express").Router();
+const jwt = require("jsonwebtoken");
 const Category = require("../models/Category");
 const Product = require("../models/Product");
-const { verifyToken, requireAdmin } = require("../middleware/auth");
+const { verifyToken, requireAdmin, JWT_SECRET } = require("../middleware/auth");
+
+// Best-effort check for an admin bearer token — used to let admins preview hidden
+// categories through the same public endpoint the storefront uses.
+const isAdminRequest = (req) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) return false;
+  try {
+    return jwt.verify(header.slice(7), JWT_SECRET)?.role === "admin";
+  } catch {
+    return false;
+  }
+};
 
 const DEFAULTS = [
   { slug: "stationery",    name: "Stationery",          emoji: "🌸", sort_order: 1,  description: "Beautiful pens, notebooks, washi tapes, and desk accessories." },
@@ -42,13 +55,14 @@ router.patch("/reorder", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-// GET /api/categories  — public
+// GET /api/categories  — public (hidden categories are omitted unless the caller is an admin)
 router.get("/", async (req, res) => {
   try {
     let cats = await Category.find().sort("sort_order");
     if (cats.length === 0) {
       cats = await Category.insertMany(DEFAULTS);
     }
+    if (!isAdminRequest(req)) cats = cats.filter((c) => c.is_active !== false);
     res.json(cats.map(mapCat));
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -96,11 +110,12 @@ const sanitizeSpecFields = (fields) => {
 
 // PUT /api/categories/:slug  — admin: update category info
 router.put("/:slug", verifyToken, requireAdmin, async (req, res) => {
-  const { name, description, banner_url, emoji, sort_order, spec_fields } = req.body;
+  const { name, description, banner_url, emoji, sort_order, spec_fields, is_active } = req.body;
   try {
     const update = { name, description, banner_url: banner_url || null, emoji, sort_order };
     const cleanSpecs = sanitizeSpecFields(spec_fields);
     if (cleanSpecs !== undefined) update.spec_fields = cleanSpecs;
+    if (typeof is_active === "boolean") update.is_active = is_active;
     const cat = await Category.findOneAndUpdate(
       { slug: req.params.slug },
       update,
@@ -112,13 +127,33 @@ router.put("/:slug", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// PATCH /api/categories/:slug/visibility  — admin: quick show/hide toggle from the category list
+router.patch("/:slug/visibility", verifyToken, requireAdmin, async (req, res) => {
+  const { is_active } = req.body;
+  if (typeof is_active !== "boolean") {
+    return res.status(400).json({ message: "is_active must be a boolean" });
+  }
+  try {
+    const cat = await Category.findOneAndUpdate(
+      { slug: req.params.slug },
+      { is_active },
+      { new: true }
+    );
+    if (!cat) return res.status(404).json({ message: "Category not found" });
+    res.json(mapCat(cat));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // POST /api/categories  — admin: create new category
 router.post("/", verifyToken, requireAdmin, async (req, res) => {
-  const { slug, name, description, banner_url, emoji, sort_order, spec_fields } = req.body;
+  const { slug, name, description, banner_url, emoji, sort_order, spec_fields, is_active } = req.body;
   if (!slug || !name) return res.status(400).json({ message: "slug and name are required" });
   try {
     const cat = await Category.create({
       slug, name, description, banner_url, emoji, sort_order,
+      is_active: typeof is_active === "boolean" ? is_active : true,
       spec_fields: sanitizeSpecFields(spec_fields) || [],
     });
     res.status(201).json(mapCat(cat));

@@ -71,6 +71,7 @@ export interface Category {
   banner_url: string | null;
   emoji: string;
   sort_order: number;
+  is_active: boolean;
   spec_fields?: SpecField[];
 }
 
