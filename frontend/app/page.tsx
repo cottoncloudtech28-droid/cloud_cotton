@@ -165,7 +165,7 @@ export default function Home() {
 
         {/* ── HERO ── */}
         <section className="relative overflow-hidden">
-          <div className="container grid md:grid-cols-2 gap-6 md:gap-8 items-center py-8 md:py-20">
+          <div className="container grid md:grid-cols-2 gap-6 md:gap-8 items-center pt-8 md:pt-20 pb-6 md:pb-8">
             <motion.div
               className="space-y-5 text-center md:text-left"
               variants={heroContainer}
@@ -224,111 +224,125 @@ export default function Home() {
         </section>
 
 
-        {/* ── CATEGORY SCROLL ── */}
-        <section className="bg-card border-y border-border py-4 md:py-5">
-          <div className="container">
+        {/* ── CATEGORY SHOWCASE ── */}
+        <section className="relative overflow-hidden pt-2 md:pt-4 pb-8 md:pb-12">
+          {/* decorative floating blobs */}
+          <div className="absolute -top-10 -left-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-10 -right-10 h-48 w-48 rounded-full bg-accent/20 blur-3xl pointer-events-none" />
+
+          <div className="container relative">
             <motion.div
-              className="flex gap-4 md:gap-5 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1"
+              className="text-center mb-6 md:mb-8"
+              variants={sectionHeading}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.6 }}
+            >
+              <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Pick your vibe</p>
+              <h2 className="text-2xl md:text-3xl font-bold">Shop by Category <span className="inline-block">🍡</span></h2>
+            </motion.div>
+
+            <motion.div
+              className="flex gap-5 md:gap-8 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-8 pt-8 md:pt-10 md:pb-10 -mx-1 px-1"
               variants={gridContainer}
               initial="hidden"
               animate="show"
             >
               {categoriesLoading ? (
                 Array.from({ length: 9 }).map((_, i) => (
-                  <div key={i} className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[64px] md:w-[88px]">
-                    <Skeleton className="h-14 w-14 md:h-20 md:w-20 rounded-full" />
-                    <Skeleton className="h-2.5 w-10 rounded" />
+                  <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2 w-[88px] md:w-[112px]">
+                    <Skeleton className="h-20 w-20 md:h-28 md:w-28 rounded-[45%_55%_60%_40%/55%_35%_65%_45%]" />
+                    <Skeleton className="h-4 w-16 rounded-full" />
                   </div>
                 ))
               ) : (
                 <>
-              {categories.map((c) => (
-                <motion.div key={c.slug} variants={gridItem} className="flex-shrink-0" whileHover={{ y: -4 }}>
-                  <Link
-                    href={`/shop/${c.slug}`}
-                    className="group flex flex-col items-center gap-1.5 w-[64px] md:w-[88px]"
+                  {categories.map((c, i) => {
+                    const palette = [
+                      "from-pink-200 via-pink-100 to-rose-50",
+                      "from-violet-200 via-purple-100 to-indigo-50",
+                      "from-amber-200 via-orange-100 to-yellow-50",
+                      "from-sky-200 via-cyan-100 to-blue-50",
+                      "from-emerald-200 via-green-100 to-lime-50",
+                      "from-fuchsia-200 via-pink-100 to-purple-50",
+                    ];
+                    const blobShape = i % 2 === 0
+                      ? "rounded-[42%_58%_65%_35%/55%_35%_65%_45%]"
+                      : "rounded-[60%_40%_35%_65%/45%_60%_40%_55%]";
+                    const tilt = i % 3 === 0 ? "rotate-[-5deg]" : i % 3 === 1 ? "rotate-[5deg]" : "rotate-[-2deg]";
+
+                    return (
+                      <motion.div
+                        key={c.slug}
+                        variants={gridItem}
+                        className="flex-shrink-0 snap-center"
+                        whileHover={{ y: -6, scale: 1.06, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                      >
+                        <Link
+                          href={`/shop/${c.slug}`}
+                          className="group flex flex-col items-center gap-2 w-[88px] md:w-[112px]"
+                        >
+                          <div
+                            className={cn(
+                              "relative h-20 w-20 md:h-28 md:w-28 bg-gradient-to-br overflow-hidden flex items-center justify-center transition-bounce",
+                              "shadow-[0_10px_28px_-10px_rgba(120,70,150,0.35)] group-hover:shadow-[0_16px_36px_-10px_rgba(120,70,150,0.45)]",
+                              palette[i % palette.length],
+                              blobShape,
+                              tilt,
+                              "group-hover:rotate-0"
+                            )}
+                          >
+                            {c.banner_url ? (
+                              <img
+                                src={c.banner_url}
+                                alt={c.name}
+                                className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-bounce"
+                              />
+                            ) : (
+                              <span className="text-4xl md:text-5xl drop-shadow-sm">{c.emoji}</span>
+                            )}
+                            <motion.span
+                              className="absolute -top-1 -right-1 text-sm md:text-base select-none"
+                              {...(!prefersReducedMotion && {
+                                animate: { rotate: [0, 20, -20, 0], scale: [1, 1.2, 1] },
+                                transition: { duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 },
+                              })}
+                            >
+                              ✨
+                            </motion.span>
+                          </div>
+                          <span className="rounded-full bg-card border border-border/60 px-3 py-1 text-[10px] md:text-xs font-bold text-center leading-tight text-foreground shadow-sm group-hover:border-primary/50 group-hover:text-primary transition-bounce">
+                            {c.name}
+                          </span>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                  <motion.div
+                    variants={gridItem}
+                    className="flex-shrink-0 snap-center"
+                    whileHover={{ y: -6, scale: 1.06, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 15 }}
                   >
-                    <div className="h-14 w-14 md:h-20 md:w-20 rounded-full border border-border/60 group-hover:scale-110 group-hover:border-primary/30 transition-bounce overflow-hidden bg-muted flex items-center justify-center">
-                      {c.banner_url ? (
-                        <img
-                          src={c.banner_url}
-                          alt={c.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-2xl md:text-3xl">{c.emoji}</span>
-                      )}
-                    </div>
-                    <p className="text-[10px] md:text-xs font-semibold text-center leading-tight text-foreground">{c.name}</p>
-                  </Link>
-                </motion.div>
-              ))}
-              <motion.div variants={gridItem} className="flex-shrink-0" whileHover={{ y: -4 }}>
-                <Link
-                  href="/shop"
-                  className="group flex flex-col items-center gap-1.5 w-[64px] md:w-[88px]"
-                >
-                  <div className="h-14 w-14 md:h-20 md:w-20 grid place-items-center rounded-full bg-gradient-primary text-primary-foreground group-hover:scale-110 transition-bounce">
-                    <ShoppingBag className="h-6 w-6 md:h-7 md:w-7" />
-                  </div>
-                  <p className="text-[10px] md:text-xs font-semibold text-center text-primary">View all</p>
-                </Link>
-              </motion.div>
+                    <Link
+                      href="/shop"
+                      className="group flex flex-col items-center gap-2 w-[104px] md:w-[132px]"
+                    >
+                      <div className="h-24 w-24 md:h-32 md:w-32 grid place-items-center bg-gradient-primary text-primary-foreground rounded-[55%_45%_40%_60%/50%_60%_40%_50%] rotate-[3deg] group-hover:rotate-0 shadow-[0_10px_28px_-8px_rgba(120,70,150,0.5)] transition-bounce">
+                        <ShoppingBag className="h-7 w-7 md:h-9 md:w-9" />
+                      </div>
+                      <span className="rounded-full bg-gradient-primary text-primary-foreground px-3 py-1 text-[10px] md:text-xs font-bold text-center shadow-sm transition-bounce">
+                        View all
+                      </span>
+                    </Link>
+                  </motion.div>
                 </>
               )}
             </motion.div>
           </div>
         </section>
 
-        {/* ── PROMO BANNERS ── */}
-        <motion.section
-          className="container py-5 md:py-8"
-          variants={gridContainer}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-4">
-
-            <motion.div variants={gridItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
-              <Link
-                href="/shop?sort=newest"
-                className="group relative overflow-hidden rounded-2xl md:rounded-3xl min-h-[130px] md:min-h-[200px] flex items-end p-4 md:p-7 border border-border/60 shadow-sm hover:shadow-lg transition-shadow"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-pink-100 via-purple-50 to-pink-50" />
-                <div className="absolute right-2 top-0 bottom-0 flex items-center text-[56px] md:text-[88px] opacity-20 group-hover:opacity-35 group-hover:scale-110 transition-bounce select-none">
-                  🌸
-                </div>
-                <div className="relative z-10">
-                  <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Just arrived</p>
-                  <h3 className="text-base md:text-2xl font-extrabold text-foreground mb-1.5 md:mb-3">New Arrivals ✨</h3>
-                  <span className="text-xs md:text-sm font-bold text-primary underline underline-offset-2">
-                    Explore →
-                  </span>
-                </div>
-              </Link>
-            </motion.div>
-
-            <motion.div variants={gridItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
-              <Link
-                href="/shop?sort=popular"
-                className="group relative overflow-hidden rounded-2xl md:rounded-3xl min-h-[130px] md:min-h-[200px] flex items-end p-4 md:p-7 border border-border/60 shadow-sm hover:shadow-lg transition-shadow"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50" />
-                <div className="absolute right-2 top-0 bottom-0 flex items-center text-[56px] md:text-[88px] opacity-20 group-hover:opacity-35 group-hover:scale-110 transition-bounce select-none">
-                  🏆
-                </div>
-                <div className="relative z-10">
-                  <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Customer favorites</p>
-                  <h3 className="text-base md:text-2xl font-extrabold text-foreground mb-1.5 md:mb-3">Best Sellers 🌟</h3>
-                  <span className="text-xs md:text-sm font-bold text-primary underline underline-offset-2">
-                    Shop now →
-                  </span>
-                </div>
-              </Link>
-            </motion.div>
-          </div>
-        </motion.section>
 
         {/* ── NEW ARRIVALS ── */}
         <section id="new-arrivals" className="container pb-6 md:pb-8 scroll-mt-20">
