@@ -96,6 +96,53 @@ Return ONLY the JSON object, no markdown, no extra text.`;
   }
 });
 
+// POST /api/ai/generate-image — text-to-image generation (no source photo).
+// Used for things like category thumbnails, where there's nothing to edit yet.
+// Accepts { name, description, emoji } to build a branded prompt, or a raw { prompt } override.
+// Returns { image_base64 (data URL) }
+router.post("/generate-image", verifyToken, requireAdmin, async (req, res) => {
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(501).json({ message: "Set OPENAI_API_KEY in backend/.env to enable AI image generation" });
+  }
+  const { name, description, emoji, prompt: rawPrompt } = req.body;
+
+  const prompt = rawPrompt?.trim() || [
+    `A cute kawaii/pastel-aesthetic thumbnail icon representing the product category "${name}"`,
+    emoji ? `(theme emoji: ${emoji})` : "",
+    description ? `. Category is about: ${description}` : "",
+    ". Single centered subject, soft pastel colors, clean solid light background, subtle shadow,",
+    "flat friendly illustration style matching a kawaii online shop called Cotton Cloud Company.",
+    "Composition works well cropped into a circle. No text, no words, no letters, no logos, no watermarks.",
+  ].filter(Boolean).join(" ");
+
+  if (!name && !rawPrompt) {
+    return res.status(400).json({ message: "name or prompt is required" });
+  }
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt,
+        size: "1024x1024",
+        quality: "high",
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || "OpenAI image generation failed");
+    const out = data.data?.[0]?.b64_json;
+    if (!out) throw new Error("OpenAI returned no image");
+    res.json({ image_base64: `data:image/png;base64,${out}` });
+  } catch (e) {
+    res.status(502).json({ message: e.message });
+  }
+});
+
 // ── Provider implementations ──────────────────────────────────────────────────
 
 // OpenAI gpt-image-1 — instruction-based edit via the Images Edits endpoint.

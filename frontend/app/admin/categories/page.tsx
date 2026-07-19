@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Pencil, X, Upload, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Pencil, X, Upload, Plus, Trash2, Eye, EyeOff, Sparkles } from "lucide-react";
 import { Reorder } from "framer-motion";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -40,6 +40,15 @@ const slugifyKey = (s: string) =>
   s.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
 const toSlug = (v: string) => v.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+
+const dataUrlToBlob = (dataUrl: string): Blob => {
+  const [meta, b64] = dataUrl.split(",");
+  const mime = meta.match(/data:(.*?);/)?.[1] ?? "image/png";
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+};
 
 // ── Category spec-field definitions editor ─────────────────────────────────────
 function SpecFieldsEditor({ fields, onChange }: { fields: SpecField[]; onChange: (f: SpecField[]) => void }) {
@@ -216,6 +225,7 @@ function CategoryForm({ initial, onSaved, onCancel }: {
   const isEdit = !!initial;
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   // Slug auto-fills from the name until the user edits it directly; locked entirely when editing.
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [form, setForm] = useState<CategoryFormState>(() => initial ? {
@@ -242,6 +252,26 @@ function CategoryForm({ initial, onSaved, onCancel }: {
       toast.error(e.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const generateBanner = async () => {
+    if (!form.name.trim()) { toast.error("Enter a category name first"); return; }
+    setGenerating(true);
+    try {
+      const data = await apiFetch("/api/ai/generate-image", {
+        method: "POST",
+        body: JSON.stringify({ name: form.name, description: form.description, emoji: form.emoji }),
+      });
+      if (!data?.image_base64) throw new Error("No image returned");
+      const blob = dataUrlToBlob(data.image_base64);
+      const { url } = await uploadFile(blob, `category-${form.slug || "thumb"}-${Date.now()}.png`);
+      setForm((f) => ({ ...f, banner_url: url }));
+      toast.success("Thumbnail generated ✨");
+    } catch (e: any) {
+      toast.error(e.message || "Generation failed");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -325,14 +355,24 @@ function CategoryForm({ initial, onSaved, onCancel }: {
             </button>
           </div>
         )}
-        <label className="flex items-center gap-2 cursor-pointer border border-dashed border-border rounded-lg p-3 hover:bg-muted transition-colors">
-          <Upload className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {uploading ? "Uploading…" : form.banner_url ? "Replace banner" : "Upload banner"}
-          </span>
-          <input type="file" accept="image/*" className="hidden"
-            onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])} />
-        </label>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <label className="flex flex-1 items-center gap-2 cursor-pointer border border-dashed border-border rounded-lg p-3 hover:bg-muted transition-colors">
+            <Upload className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {uploading ? "Uploading…" : form.banner_url ? "Replace banner" : "Upload banner"}
+            </span>
+            <input type="file" accept="image/*" className="hidden"
+              onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])} />
+          </label>
+          <Button type="button" variant="outline" onClick={generateBanner}
+            disabled={generating || uploading} className="sm:w-auto h-auto py-3 border-dashed">
+            <Sparkles className={`h-4 w-4 mr-1.5 ${generating ? "animate-pulse" : ""}`} />
+            {generating ? "Generating…" : "Generate with AI"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-0.5">
+          AI creates a thumbnail from the category name, emoji &amp; description.
+        </p>
         {!form.banner_url && (
           <Input value={form.banner_url}
             onChange={(e) => setForm((f) => ({ ...f, banner_url: e.target.value }))}
@@ -346,7 +386,7 @@ function CategoryForm({ initial, onSaved, onCancel }: {
 
       <Separator />
       <div className="flex gap-3 flex-wrap pt-2">
-        <Button type="submit" size="lg" className="flex-1" disabled={saving || uploading}>
+        <Button type="submit" size="lg" className="flex-1" disabled={saving || uploading || generating}>
           {isEdit ? "Save changes" : "Create category"}
         </Button>
         <Button type="button" variant="outline" size="lg" onClick={onCancel}>Cancel</Button>

@@ -1104,13 +1104,13 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Price (₹) *</Label>
-          <Input type="number" step="0.01" min="0" value={form.price}
+          <Input type="number" step="0.01" min="0" value={form.price || ""}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setField("price", parseFloat(e.target.value) || 0)} required className="mt-1.5" />
         </div>
         <div>
           <Label>Discount %</Label>
-          <Input type="number" min="0" max="100" value={form.discount_percent}
+          <Input type="number" min="0" max="100" value={form.discount_percent || ""}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setField("discount_percent", parseInt(e.target.value) || 0)} className="mt-1.5" />
         </div>
@@ -1125,7 +1125,7 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
               form.sizes.length > 0 ? form.sizes.reduce((s, sz) => s + sz.stock, 0)
               : form.colors.length > 0 ? form.colors.reduce((s, c) => s + c.stock, 0)
               : form.characters.length > 0 ? form.characters.reduce((s, c) => s + c.stock, 0)
-              : form.stock
+              : form.stock || ""
             }
             disabled={form.sizes.length > 0 || form.colors.length > 0 || form.characters.length > 0}
             onFocus={(e) => e.target.select()}
