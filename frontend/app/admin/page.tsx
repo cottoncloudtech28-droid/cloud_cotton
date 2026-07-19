@@ -577,10 +577,17 @@ function MultiImageUploader({ images, onChange, productName = "" }: { images: st
 
   // AI editing state
   const [aiIndex, setAiIndex] = useState<number | null>(null);
-  const [provider, setProvider] = useState<"openai" | "gemini">("openai");
+  const [provider, setProvider] = useState<"openai" | "gemini">(() => {
+    if (typeof window === "undefined") return "openai";
+    return (localStorage.getItem("ai_image_engine") as "openai" | "gemini") || "openai";
+  });
   const [prompt, setPrompt] = useState("");
   const [processing, setProcessing] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("ai_image_engine", provider);
+  }, [provider]);
 
   const upload = async (files: FileList) => {
     setUploading(true);
@@ -960,12 +967,15 @@ function SpecificationsSection({ specFields, values, onChange }: {
 type DescribeStatus = "idle" | "loading" | "done" | "error";
 type DescribeProvider = "openai" | "gemini";
 
-function AiDescribeDialog({ open, onOpenChange, name, category, colors, keywords, onKeywordsChange, onUse }: {
+function AiDescribeDialog({ open, onOpenChange, name, category, colors, keywords, onKeywordsChange, onUse, onDraftChange }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   name: string; category: string; colors: string[]; keywords: string;
   onKeywordsChange: (v: string) => void;
   onUse: (text: string) => void;
+  // Applied to the form live as the draft is generated/edited, so nothing is lost
+  // if the dialog gets closed (X, outside click, Escape) instead of "Use this".
+  onDraftChange: (text: string) => void;
 }) {
   const [provider, setProvider] = useState<DescribeProvider>("openai");
   const [status, setStatus] = useState<DescribeStatus>("idle");
@@ -988,6 +998,7 @@ function AiDescribeDialog({ open, onOpenChange, name, category, colors, keywords
       if (!data?.description) throw new Error("No description returned");
       setText(data.description);
       setStatus("done");
+      onDraftChange(data.description);
     } catch (e: any) {
       setError(e.message || "Generation failed");
       setStatus("error");
@@ -1007,7 +1018,7 @@ function AiDescribeDialog({ open, onOpenChange, name, category, colors, keywords
             <Sparkles className="h-4 w-4 text-primary" /> Generate description
           </DialogTitle>
           <DialogDescription>
-            Pick an engine and generate a draft with an intro plus key points. Tweak it, then use it — nothing is saved to the product until you do.
+            Pick an engine and generate a draft with an intro plus key points. It fills the description field as you go — tweak it here or close this and keep editing there.
           </DialogDescription>
         </DialogHeader>
 
@@ -1043,7 +1054,7 @@ function AiDescribeDialog({ open, onOpenChange, name, category, colors, keywords
           </div>
         ) : status === "done" ? (
           <div className="space-y-2">
-            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} className="text-sm" />
+            <Textarea value={text} onChange={(e) => { setText(e.target.value); onDraftChange(e.target.value); }} rows={8} className="text-sm" />
             <div className="flex gap-2">
               <Button type="button" size="sm" variant="outline" onClick={generate}>
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Regenerate
@@ -1289,6 +1300,7 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
       keywords={keywords}
       onKeywordsChange={setKeywords}
       onUse={(text) => { setField("description", text); toast.success("Description applied ✨"); }}
+      onDraftChange={(text) => setField("description", text)}
     />
     </>
   );

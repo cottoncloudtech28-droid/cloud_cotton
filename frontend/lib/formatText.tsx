@@ -27,7 +27,12 @@ export function formatDescription(text: string | null | undefined): React.ReactN
     if (!paragraphLines.length) return;
     blocks.push(
       <p key={`p-${blocks.length}`} className="mb-2 first:mt-0 last:mb-0">
-        {renderInline(paragraphLines.join(" "))}
+        {paragraphLines.map((line, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <br />}
+            {renderInline(line)}
+          </React.Fragment>
+        ))}
       </p>
     );
     paragraphLines = [];
