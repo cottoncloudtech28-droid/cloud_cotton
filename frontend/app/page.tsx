@@ -80,19 +80,17 @@ export default function Home() {
         const newest: Product[] = (newestData?.products || newestData || []).slice(0, 12);
         const popular: Product[] = (popularData?.products || popularData || []).slice(0, 12);
 
-        // Shuffle both sets
-        const shuffledNewest = shuffle(newest);
-        const shuffledPopular = shuffle(popular);
+        // New Arrivals must actually show the newest products, so keep them in
+        // createdAt order (no shuffle) — a just-added product always lands at the
+        // front instead of having a ~2/3 chance of being shuffled out.
+        const arrivals = newest.slice(0, 8);
 
-        // Pick 8 for new arrivals
-        const arrivals = shuffledNewest.slice(0, 8);
-
-        // For best sellers, remove any products already in arrivals, then pick 8
+        // Best sellers stay shuffled for variety; drop anything already in arrivals.
         const arrivalIds = new Set(arrivals.map((p) => p.id));
-        const filteredPopular = shuffledPopular.filter((p) => !arrivalIds.has(p.id));
+        const filteredPopular = shuffle(popular).filter((p) => !arrivalIds.has(p.id));
 
-        // If not enough unique popular products, fill from remaining newest
-        const remainingNewest = shuffledNewest.filter(
+        // If not enough unique popular products, fill from remaining newest.
+        const remainingNewest = newest.filter(
           (p) => !arrivalIds.has(p.id) && !filteredPopular.some((fp) => fp.id === p.id)
         );
         const sellers = [...filteredPopular, ...remainingNewest].slice(0, 8);

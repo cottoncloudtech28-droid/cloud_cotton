@@ -277,7 +277,7 @@ function SizeRows({ sizes, onChange }: { sizes: ProductSize[]; onChange: (s: Pro
         <div key={i} className="flex gap-2 items-center">
           <Input value={sz.label} onChange={(e) => update(i, "label", e.target.value)}
             placeholder="e.g. 500ml / S / A4" className="flex-1" />
-          <Input type="number" min="0" value={sz.stock}
+          <Input type="number" min="0" value={sz.stock || ""}
             onFocus={(e) => e.target.select()}
             onChange={(e) => update(i, "stock", parseInt(e.target.value) || 0)}
             placeholder="Stock" className="w-24" />
@@ -316,7 +316,7 @@ function ColorRows({ colors, onChange, images = [] }: { colors: ProductColor[]; 
           <div className="flex gap-2 items-center">
             <Input value={c.label} onChange={(e) => update(i, "label", e.target.value)}
               placeholder="e.g. sakura pink" className="flex-1" />
-            <Input type="number" min="0" value={c.stock}
+            <Input type="number" min="0" value={c.stock || ""}
               onFocus={(e) => e.target.select()}
               onChange={(e) => update(i, "stock", parseInt(e.target.value) || 0)}
               placeholder="Stock" className="w-24" />
@@ -373,7 +373,7 @@ function CharacterRows({ characters, onChange, images = [] }: { characters: Prod
           <div className="flex gap-2 items-center">
             <Input value={c.label} onChange={(e) => update(i, "label", e.target.value)}
               placeholder="e.g. Doraemon" className="flex-1" />
-            <Input type="number" min="0" value={c.stock}
+            <Input type="number" min="0" value={c.stock || ""}
               onFocus={(e) => e.target.select()}
               onChange={(e) => update(i, "stock", parseInt(e.target.value) || 0)}
               placeholder="Stock" className="w-24" />
@@ -1130,6 +1130,11 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
             disabled={form.sizes.length > 0 || form.colors.length > 0 || form.characters.length > 0}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setField("stock", parseInt(e.target.value) || 0)} className="mt-1.5" />
+          {(form.sizes.length > 0 || form.colors.length > 0 || form.characters.length > 0) && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Total is summed from the {form.sizes.length > 0 ? "size" : form.colors.length > 0 ? "color" : "character/design"} variants below — edit stock there.
+            </p>
+          )}
         </div>
       </div>
       <Separator />
