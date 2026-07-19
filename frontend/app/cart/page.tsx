@@ -18,6 +18,7 @@ import ProductCard from "@/components/shop/ProductCard";
 import { getProducts } from "@/lib/api";
 import { Trash2, ShoppingBag, MapPin, Package, Plus, Star, CreditCard, Truck, ChevronDown, ChevronUp, ImageOff } from "lucide-react";
 import { toast } from "sonner";
+import { pixelInitiateCheckout } from "@/lib/metaPixel";
 
 declare global {
   interface Window {
@@ -276,6 +277,11 @@ export default function CartPage() {
     if (!activeAddr || !addrValid) return;
     setError("");
     setPlacing(true);
+    pixelInitiateCheckout({
+      value: grandTotal,
+      itemCount: items.reduce((s, { qty }) => s + qty, 0),
+      ids: items.map(({ product: p }) => p.id),
+    });
 
     try {
       const orderItems = items.map(({ product: p, qty }) => ({

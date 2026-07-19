@@ -32,6 +32,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiFetch, addToWishlist, removeFromWishlist, getWishlistIds } from "@/lib/api";
 import type { Product, ProductSize, ProductColor, ProductCharacter } from "@/lib/types";
 import { formatDescription } from "@/lib/formatText";
+import { pixelViewContent, pixelAddToCart } from "@/lib/metaPixel";
 import { toast } from "sonner";
 
 // Low-stock indicators (main status, per-size, per-color) only show when stock is below this.
@@ -100,6 +101,12 @@ export default function ProductDetailClient() {
       .then(async (p: Product) => {
         if (cancelled) return;
         setProduct(p);
+        pixelViewContent({
+          id: p.id,
+          name: p.name,
+          price: +(p.price * (1 - p.discount_percent / 100)).toFixed(2),
+          category: p.category,
+        });
         // Auto-select if only one option
         const colors = p.colors ?? [];
         if (colors.length === 1) setSelectedColor(colors[0].label);
@@ -258,6 +265,13 @@ export default function ProductDetailClient() {
     }
     const variant = buildVariant();
     for (let i = 0; i < qty; i++) add(variant);
+    pixelAddToCart({
+      id: variant.id,
+      name: variant.name,
+      price: finalPrice,
+      quantity: qty,
+      category: product.category,
+    });
     toast.success(`${qty > 1 ? `${qty}× ` : ""}${variant.name} added to cart`);
   };
 

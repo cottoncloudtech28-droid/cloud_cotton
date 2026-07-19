@@ -11,6 +11,7 @@ import { getOrderInvoice } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import type { Order } from "@/lib/types";
+import { pixelPurchase } from "@/lib/metaPixel";
 import {
   CheckCircle2, Package, MapPin, Truck, FileText, ShoppingBag,
   ImageOff, CreditCard, Banknote, XCircle,
@@ -50,6 +51,11 @@ function OrderConfirmationContent() {
         if (searchParams.get("fresh") === "1" && !clearedRef.current) {
           clearedRef.current = true;
           clear();
+          pixelPurchase({
+            orderId: o.orderId,
+            value: o.total,
+            ids: o.items.map((it) => it.productId),
+          });
           router.replace(`/order/${id}`);
         }
       })
