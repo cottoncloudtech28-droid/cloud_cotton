@@ -38,7 +38,6 @@ export default function Footer() {
           <p className="font-semibold mb-3">Information</p>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link href="/about" className="hover:text-primary">About us</Link></li>
-            <li><Link href="/contact" className="hover:text-primary">Contact us</Link></li>
             <li><Link href="/shipping" className="hover:text-primary">Delivery &amp; Shipping</Link></li>
             <li><Link href="/track-order" className="hover:text-primary">Track your order</Link></li>
           </ul>

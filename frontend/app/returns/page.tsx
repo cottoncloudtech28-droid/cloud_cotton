@@ -16,19 +16,53 @@ export default function ReturnsPage() {
           Returns &amp; Refunds
         </h1>
 
+        <p className="mt-6 text-foreground/80 leading-relaxed">
+          We want every order to reach you picture-perfect. If something isn't right, here's how
+          returns, replacements and refunds work — please read carefully so we can sort it out for
+          you quickly. 💕
+        </p>
+
         <div className="mt-8 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed space-y-3">
           <p className="text-base font-semibold text-foreground">
-            Returns and refunds are currently not available.
+            A return or refund will not be valid for the reasons below:
           </p>
-          <p className="text-sm">
-            We are working on our returns and refund policy. Please reach out to us directly if you received a damaged or incorrect item — we will make it right.
+          <ul className="list-disc pl-5 space-y-2 text-sm">
+            <li>
+              You don't have an unboxing video recorded continuously from the very start to the
+              end of opening the parcel.
+            </li>
+            <li>
+              You don't email us your complete unboxing video for any claim within 2 days of the
+              product being delivered.
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-6 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed space-y-3">
+          <p className="text-base font-semibold text-foreground">
+            Replacements &amp; refunds
           </p>
+          <ul className="list-disc pl-5 space-y-2 text-sm">
+            <li>
+              If a product arrives defective (Dead on Arrival) or damaged, we'll replace it with a
+              brand-new one. The item must be shipped back to Cotton Cloud Company with all original
+              packaging and accessories, and with no damage to any serial numbers.
+            </li>
+            <li>
+              Once we receive the returned product, we dispatch your replacement the same day. We
+              strongly recommend making a full unboxing video, and please inform us immediately when
+              you receive any defective or damaged goods.
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-6 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed">
           <p className="text-sm">
-            Contact us at{" "}
+            To raise a claim, email us at{" "}
             <a href="mailto:hello@cottoncloud.co" className="text-primary font-medium underline underline-offset-2">
               hello@cottoncloud.co
             </a>{" "}
-            with your order number and a photo of the issue.
+            with your order number and your full unboxing video within 2 days of delivery.
           </p>
         </div>
 

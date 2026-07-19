@@ -145,7 +145,7 @@ export default function Home() {
         >
           ✨
         </motion.span>{" "}
-        Free shipping on orders over ₹1,499 &nbsp;·&nbsp; New arrivals every week{" "}
+        Free shipping on orders above ₹1,499 &nbsp;·&nbsp; New arrivals every week{" "}
         <motion.span
           className="inline-block"
           {...(!prefersReducedMotion && {
@@ -153,7 +153,7 @@ export default function Home() {
             transition: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
           })}
         >
-          🌸
+          💖
         </motion.span>
       </motion.div>
 
@@ -163,7 +163,7 @@ export default function Home() {
 
         {/* ── HERO ── */}
         <section className="relative overflow-hidden">
-          <div className="container grid md:grid-cols-2 gap-6 md:gap-8 items-center pt-8 md:pt-20 pb-6 md:pb-8">
+          <div className="container grid md:grid-cols-[1fr_1.2fr] gap-6 md:gap-8 items-center pt-8 md:pt-20 pb-6 md:pb-8">
             <motion.div
               className="space-y-5 text-center md:text-left"
               variants={heroContainer}
@@ -203,19 +203,14 @@ export default function Home() {
             </motion.div>
 
             <motion.div
-              className="relative mt-4 md:mt-0"
-              initial={{ opacity: 0, scale: 0.92, rotate: -3 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ duration: 0.8, delay: 0.25, ease: "easeOut" }}
+              className="relative mt-4 md:mt-0 md:-mr-4 lg:-mr-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
             >
-              <div className="absolute -inset-4 bg-gradient-primary opacity-20 blur-3xl rounded-full" />
-              <motion.img
+              <img
                 src={hero} alt="Kawaii stationery flat lay" width={1536} height={896}
                 className="relative rounded-[2rem] shadow-cute w-full h-auto"
-                {...(!prefersReducedMotion && {
-                  animate: { y: [0, -10, 0] },
-                  transition: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-                })}
               />
             </motion.div>
           </div>
@@ -237,7 +232,7 @@ export default function Home() {
               viewport={{ once: true, amount: 0.6 }}
             >
               <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Pick your vibe</p>
-              <h2 className="text-2xl md:text-3xl font-bold">Shop by Category <span className="inline-block">🍡</span></h2>
+              <h2 className="text-2xl md:text-3xl font-bold">Shop by Category <span className="inline-block">💖</span></h2>
             </motion.div>
 
             <motion.div
@@ -300,17 +295,8 @@ export default function Home() {
                             ) : (
                               <span className="text-4xl md:text-5xl drop-shadow-sm">{c.emoji}</span>
                             )}
-                            <motion.span
-                              className="absolute -top-1 -right-1 text-sm md:text-base select-none"
-                              {...(!prefersReducedMotion && {
-                                animate: { rotate: [0, 20, -20, 0], scale: [1, 1.2, 1] },
-                                transition: { duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 },
-                              })}
-                            >
-                              ✨
-                            </motion.span>
                           </div>
-                          <span className="rounded-full bg-card border border-border/60 px-3 py-1 text-[10px] md:text-xs font-bold text-center leading-tight text-foreground shadow-sm group-hover:border-primary/50 group-hover:text-primary transition-bounce">
+                          <span className="rounded-2xl bg-gradient-primary text-primary-foreground px-3 py-1.5 text-[11px] md:text-sm font-extrabold uppercase tracking-wide text-center leading-tight shadow-md ring-1 ring-white/30 group-hover:shadow-lg group-hover:-translate-y-0.5 transition-bounce">
                             {c.name}
                           </span>
                         </Link>

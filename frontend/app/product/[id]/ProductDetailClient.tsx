@@ -640,7 +640,7 @@ export default function ProductDetailClient() {
             {/* Trust badges */}
             <div className="grid grid-cols-2 gap-3 pt-1">
               {[
-                { icon: Truck, label: "Free shipping", sub: "orders over ₹1,499" },
+                { icon: Truck, label: "Free shipping", sub: "orders above ₹1,499" },
                 { icon: Shield, label: "Secure checkout", sub: "100% safe" },
               ].map(({ icon: I, label, sub }) => (
                 <div key={label} className="flex flex-col items-center text-center p-3 rounded-lg bg-muted gap-1.5 border border-border">
