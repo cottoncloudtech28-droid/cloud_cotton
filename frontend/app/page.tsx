@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Category, Product } from "@/lib/types";
 import { Cloud, ShoppingBag, Sparkles, Star } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
@@ -208,8 +209,10 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             >
-              <img
+              <Image
                 src={hero} alt="Kawaii stationery flat lay" width={1536} height={896}
+                priority
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="relative rounded-[2rem] shadow-cute w-full h-auto"
               />
             </motion.div>
@@ -287,10 +290,12 @@ export default function Home() {
                             )}
                           >
                             {c.banner_url ? (
-                              <img
+                              <Image
                                 src={c.banner_url}
                                 alt={c.name}
-                                className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-bounce"
+                                fill
+                                sizes="(max-width: 768px) 80px, 112px"
+                                className="object-cover scale-110 group-hover:scale-125 transition-bounce"
                               />
                             ) : (
                               <span className="text-4xl md:text-5xl drop-shadow-sm">{c.emoji}</span>

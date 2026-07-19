@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import Navbar from "@/components/shop/Navbar";
 import Footer from "@/components/shop/Footer";
@@ -147,8 +148,9 @@ function CategoryContent() {
         {/* ── Banner ─────────────────────────────────────────────────────── */}
         {category.banner_url ? (
           <div className="relative h-72 md:h-96 overflow-hidden">
-            <img src={category.banner_url} alt={category.name}
-              className="w-full h-full object-cover" />
+            <Image src={category.banner_url} alt={category.name} fill priority
+              sizes="100vw"
+              className="object-cover" />
             <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white text-center px-4">
               <span className="text-5xl mb-2">{category.emoji}</span>
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold">{category.name}</h1>
