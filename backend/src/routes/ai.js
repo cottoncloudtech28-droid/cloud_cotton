@@ -1,34 +1,74 @@
 const router = require("express").Router();
 const { verifyToken, requireAdmin } = require("../middleware/auth");
 
-// POST /api/ai/describe
-router.post("/describe", verifyToken, requireAdmin, async (req, res) => {
-  if (!process.env.OPENAI_API_KEY) {
-    return res.status(501).json({ message: "Set OPENAI_API_KEY in backend/.env to enable AI descriptions" });
-  }
-  const { name, category, colors, keywords } = req.body;
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+// Shared prompt builder — asks for a short catchy intro plus bullet key points using the
+// "- " / "**bold**" convention the admin's description editor and formatDescription() render.
+function buildDescribePrompt(name, category, colors, keywords) {
+  return `Write a product description for a Cotton Cloud Company kawaii shop item. Product: "${name}", category: "${category}", colors: ${JSON.stringify(colors || [])}.${keywords?.trim() ? ` Keywords/features to highlight: ${keywords.trim()}.` : ""}
+Make it playful, aesthetic, and appealing to young women.
+Format the output as plain text in exactly this shape:
+- A short catchy intro, 1-2 sentences.
+- A blank line.
+- 3 to 5 bullet key points, each on its own line starting with "- ", highlighting a feature or benefit. Wrap the most important word or phrase in each bullet with **double asterisks**.
+Do not use markdown headings, numbered lists, or any other formatting. Keep the whole thing under 120 words. Return only the description text, nothing else.`;
+}
+
+async function describeWithOpenAI(prompt) {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || "OpenAI description failed");
+  const description = data.choices?.[0]?.message?.content?.trim();
+  if (!description) throw new Error("OpenAI returned an empty description");
+  return description;
+}
+
+async function describeWithGemini(prompt) {
+  // "-latest" alias always resolves to Google's current stable flash text model,
+  // so it keeps working as dated model names (e.g. gemini-2.5-flash) get retired.
+  const model = "gemini-flash-latest";
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "user",
-            content: `Write a cute 1-2 sentence product description for a Cotton Cloud Company kawaii shop item. Product: "${name}", category: "${category}", colors: ${JSON.stringify(colors || [])}.${keywords?.trim() ? ` Keywords/features to highlight: ${keywords.trim()}.` : ""} Make it playful, aesthetic, and appealing to young women. Under 100 words.`,
-          },
-        ],
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || "Gemini description failed");
+  const description = data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("").trim();
+  if (!description) throw new Error("Gemini returned an empty description");
+  return description;
+}
+
+// POST /api/ai/describe — body: { name, category, colors, keywords, provider: "openai" | "gemini" }
+router.post("/describe", verifyToken, requireAdmin, async (req, res) => {
+  const { name, category, colors, keywords, provider = "openai" } = req.body;
+
+  const useGemini = provider === "gemini";
+  const hasKey = useGemini ? process.env.GEMINI_API_KEY : process.env.OPENAI_API_KEY;
+  if (!hasKey) {
+    return res.status(501).json({
+      message: `Set ${useGemini ? "GEMINI_API_KEY" : "OPENAI_API_KEY"} in backend/.env to enable AI descriptions with ${useGemini ? "Gemini" : "OpenAI"}`,
     });
-    const data = await response.json();
-    const description = data.choices?.[0]?.message?.content?.trim() || "";
+  }
+
+  const prompt = buildDescribePrompt(name, category, colors, keywords);
+  try {
+    const description = useGemini ? await describeWithGemini(prompt) : await describeWithOpenAI(prompt);
     res.json({ description });
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    res.status(502).json({ message: e.message });
   }
 });
 
@@ -96,15 +136,61 @@ Return ONLY the JSON object, no markdown, no extra text.`;
   }
 });
 
+// OpenAI gpt-image-1 — text-to-image via the Images Generations endpoint.
+async function generateWithOpenAI(prompt) {
+  const response = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({ model: "gpt-image-1", prompt, size: "1024x1024", quality: "high" }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || "OpenAI image generation failed");
+  const out = data.data?.[0]?.b64_json;
+  if (!out) throw new Error("OpenAI returned no image");
+  return `data:image/png;base64,${out}`;
+}
+
+// Google Gemini "Nano Banana" — text-to-image via generateContent (text-only part).
+async function generateWithGemini(prompt) {
+  const model = "gemini-2.5-flash-image";
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || "Gemini image generation failed");
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const inline = parts.map((p) => p.inlineData || p.inline_data).find((d) => d?.data);
+  if (!inline?.data) throw new Error("Gemini returned no image");
+  return `data:${inline.mimeType || inline.mime_type || "image/png"};base64,${inline.data}`;
+}
+
 // POST /api/ai/generate-image — text-to-image generation (no source photo).
 // Used for things like category thumbnails, where there's nothing to edit yet.
-// Accepts { name, description, emoji } to build a branded prompt, or a raw { prompt } override.
+// Accepts { name, description, emoji } to build a branded prompt, or a raw { prompt } override,
+// plus { provider: "openai" | "gemini" } to pick the engine.
 // Returns { image_base64 (data URL) }
 router.post("/generate-image", verifyToken, requireAdmin, async (req, res) => {
-  if (!process.env.OPENAI_API_KEY) {
-    return res.status(501).json({ message: "Set OPENAI_API_KEY in backend/.env to enable AI image generation" });
+  const { name, description, emoji, prompt: rawPrompt, provider = "openai" } = req.body;
+
+  const useGemini = provider === "gemini";
+  const hasKey = useGemini ? process.env.GEMINI_API_KEY : process.env.OPENAI_API_KEY;
+  if (!hasKey) {
+    return res.status(501).json({
+      message: `Set ${useGemini ? "GEMINI_API_KEY" : "OPENAI_API_KEY"} in backend/.env to enable AI image generation with ${useGemini ? "Gemini" : "OpenAI"}`,
+    });
   }
-  const { name, description, emoji, prompt: rawPrompt } = req.body;
+
+  if (!name && !rawPrompt?.trim()) {
+    return res.status(400).json({ message: "name or prompt is required" });
+  }
 
   const prompt = rawPrompt?.trim() || [
     `A cute kawaii/pastel-aesthetic thumbnail icon representing the product category "${name}"`,
@@ -115,29 +201,11 @@ router.post("/generate-image", verifyToken, requireAdmin, async (req, res) => {
     "Composition works well cropped into a circle. No text, no words, no letters, no logos, no watermarks.",
   ].filter(Boolean).join(" ");
 
-  if (!name && !rawPrompt) {
-    return res.status(400).json({ message: "name or prompt is required" });
-  }
-
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-image-1",
-        prompt,
-        size: "1024x1024",
-        quality: "high",
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "OpenAI image generation failed");
-    const out = data.data?.[0]?.b64_json;
-    if (!out) throw new Error("OpenAI returned no image");
-    res.json({ image_base64: `data:image/png;base64,${out}` });
+    const dataUrl = useGemini
+      ? await generateWithGemini(prompt)
+      : await generateWithOpenAI(prompt);
+    res.json({ image_base64: dataUrl });
   } catch (e) {
     res.status(502).json({ message: e.message });
   }

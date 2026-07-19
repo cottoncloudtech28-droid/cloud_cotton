@@ -28,6 +28,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getCategories, updateCategory, deleteCategory, reorderCategories, setCategoryVisibility, uploadFile, apiFetch } from "@/lib/api";
 import type { Category, SpecField, SpecFieldType } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const SPEC_TYPES: { value: SpecFieldType; label: string }[] = [
   { value: "boolean", label: "Yes / No toggle" },
@@ -49,6 +50,25 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   return new Blob([arr], { type: mime });
 };
+
+// Quick style presets for the AI category-thumbnail generator. Clicking one fills the
+// editable prompt with a category-aware sentence in that style.
+const THUMB_STYLES: { label: string; style: string }[] = [
+  { label: "Kawaii flat icon", style: "flat friendly kawaii illustration with bold clean shapes and soft pastel colors" },
+  { label: "Cute 3D render", style: "cute glossy 3D render, rounded shapes, soft studio lighting, pastel palette" },
+  { label: "Pastel sticker", style: "die-cut sticker style with a soft white outline, playful pastel colors" },
+  { label: "Realistic product", style: "realistic product photo on a clean pastel background with a soft shadow" },
+];
+
+const buildThumbPrompt = (name: string, emoji: string, description: string, style: string) =>
+  [
+    `A cute thumbnail icon representing the "${name || "product"}" category`,
+    emoji ? ` (theme ${emoji})` : "",
+    description ? `, ${description}` : "",
+    `. ${style}.`,
+    " Single centered subject, clean solid light background, subtle shadow, works well cropped into a circle.",
+    " No text, words, letters, logos or watermarks.",
+  ].join("");
 
 // ── Category spec-field definitions editor ─────────────────────────────────────
 function SpecFieldsEditor({ fields, onChange }: { fields: SpecField[]; onChange: (f: SpecField[]) => void }) {
@@ -226,6 +246,8 @@ function CategoryForm({ initial, onSaved, onCancel }: {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [aiProvider, setAiProvider] = useState<"openai" | "gemini">("openai");
+  const [aiPrompt, setAiPrompt] = useState("");
   // Slug auto-fills from the name until the user edits it directly; locked entirely when editing.
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [form, setForm] = useState<CategoryFormState>(() => initial ? {
@@ -261,7 +283,13 @@ function CategoryForm({ initial, onSaved, onCancel }: {
     try {
       const data = await apiFetch("/api/ai/generate-image", {
         method: "POST",
-        body: JSON.stringify({ name: form.name, description: form.description, emoji: form.emoji }),
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          emoji: form.emoji,
+          prompt: aiPrompt.trim() || undefined,
+          provider: aiProvider,
+        }),
       });
       if (!data?.image_base64) throw new Error("No image returned");
       const blob = dataUrlToBlob(data.image_base64);
@@ -355,24 +383,53 @@ function CategoryForm({ initial, onSaved, onCancel }: {
             </button>
           </div>
         )}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <label className="flex flex-1 items-center gap-2 cursor-pointer border border-dashed border-border rounded-lg p-3 hover:bg-muted transition-colors">
-            <Upload className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              {uploading ? "Uploading…" : form.banner_url ? "Replace banner" : "Upload banner"}
+        <label className="flex items-center gap-2 cursor-pointer border border-dashed border-border rounded-lg p-3 hover:bg-muted transition-colors">
+          <Upload className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">
+            {uploading ? "Uploading…" : form.banner_url ? "Replace banner" : "Upload banner"}
+          </span>
+          <input type="file" accept="image/*" className="hidden"
+            onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])} />
+        </label>
+
+        {/* AI thumbnail generator — pick an engine, optionally a style, then generate */}
+        <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-sm font-medium flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4 text-primary" /> Generate with AI
             </span>
-            <input type="file" accept="image/*" className="hidden"
-              onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])} />
-          </label>
-          <Button type="button" variant="outline" onClick={generateBanner}
-            disabled={generating || uploading} className="sm:w-auto h-auto py-3 border-dashed">
+            <div className="flex items-center gap-1 rounded-full border border-border bg-background p-0.5 text-xs">
+              {(["openai", "gemini"] as const).map((p) => (
+                <button key={p} type="button" onClick={() => setAiProvider(p)}
+                  className={cn(
+                    "px-3 py-1 rounded-full font-medium transition-colors",
+                    aiProvider === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}>
+                  {p === "openai" ? "OpenAI" : "Gemini"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {THUMB_STYLES.map((s) => (
+              <button key={s.label} type="button"
+                onClick={() => setAiPrompt(buildThumbPrompt(form.name, form.emoji, form.description, s.style))}
+                className="rounded-full border border-border bg-background px-2.5 py-1 text-xs hover:border-primary hover:text-primary transition-colors">
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          <Textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={3}
+            placeholder="Pick a style above or describe the thumbnail — leave blank to auto-build from the category name, emoji & description."
+            className="text-xs" />
+
+          <Button type="button" onClick={generateBanner} disabled={generating || uploading} className="w-full">
             <Sparkles className={`h-4 w-4 mr-1.5 ${generating ? "animate-pulse" : ""}`} />
-            {generating ? "Generating…" : "Generate with AI"}
+            {generating ? "Generating…" : `Generate with ${aiProvider === "openai" ? "OpenAI" : "Gemini"}`}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground -mt-0.5">
-          AI creates a thumbnail from the category name, emoji &amp; description.
-        </p>
         {!form.banner_url && (
           <Input value={form.banner_url}
             onChange={(e) => setForm((f) => ({ ...f, banner_url: e.target.value }))}

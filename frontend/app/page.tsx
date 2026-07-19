@@ -296,7 +296,7 @@ export default function Home() {
                               <span className="text-4xl md:text-5xl drop-shadow-sm">{c.emoji}</span>
                             )}
                           </div>
-                          <span className="rounded-2xl bg-gradient-primary text-primary-foreground px-3 py-1.5 text-[11px] md:text-sm font-extrabold uppercase tracking-wide text-center leading-tight shadow-md ring-1 ring-white/30 group-hover:shadow-lg group-hover:-translate-y-0.5 transition-bounce">
+                          <span className="w-full min-h-[2.4rem] md:min-h-[2.6rem] flex items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground px-2 py-1 text-[10px] md:text-xs font-bold uppercase tracking-normal text-center leading-tight shadow-sm ring-1 ring-white/20 group-hover:shadow-md group-hover:-translate-y-0.5 transition-bounce">
                             {c.name}
                           </span>
                         </Link>

@@ -23,6 +23,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatDescription } from "@/lib/formatText";
 import {
@@ -948,6 +955,112 @@ function SpecificationsSection({ specFields, values, onChange }: {
   );
 }
 
+// ── AI description dialog — admin picks OpenAI or Gemini first, then generates just
+// that one, tweaks it, and only applies it to the product when they click "Use this" ──
+type DescribeStatus = "idle" | "loading" | "done" | "error";
+type DescribeProvider = "openai" | "gemini";
+
+function AiDescribeDialog({ open, onOpenChange, name, category, colors, keywords, onKeywordsChange, onUse }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  name: string; category: string; colors: string[]; keywords: string;
+  onKeywordsChange: (v: string) => void;
+  onUse: (text: string) => void;
+}) {
+  const [provider, setProvider] = useState<DescribeProvider>("openai");
+  const [status, setStatus] = useState<DescribeStatus>("idle");
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+
+  // Fresh slate each time the dialog opens — don't show a stale draft from last time.
+  useEffect(() => {
+    if (open) { setStatus("idle"); setText(""); setError(""); }
+  }, [open]);
+
+  const generate = async () => {
+    setStatus("loading");
+    setError("");
+    try {
+      const data = await apiFetch("/api/ai/describe", {
+        method: "POST",
+        body: JSON.stringify({ name, category, colors, keywords, provider }),
+      });
+      if (!data?.description) throw new Error("No description returned");
+      setText(data.description);
+      setStatus("done");
+    } catch (e: any) {
+      setError(e.message || "Generation failed");
+      setStatus("error");
+    }
+  };
+
+  const use = () => {
+    onUse(text);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-primary" /> Generate description
+          </DialogTitle>
+          <DialogDescription>
+            Pick an engine and generate a draft with an intro plus key points. Tweak it, then use it — nothing is saved to the product until you do.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div>
+          <Label className="text-xs">Keywords / features to highlight</Label>
+          <Input value={keywords} onChange={(e) => onKeywordsChange(e.target.value)}
+            placeholder="e.g. leak-proof, gift-ready, pastel, BPA-free" className="mt-1" />
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-xs mb-0">Engine</Label>
+          <div className="flex items-center gap-1 rounded-full border border-border bg-muted/30 p-0.5 text-xs">
+            {(["openai", "gemini"] as const).map((p) => (
+              <button key={p} type="button" onClick={() => setProvider(p)}
+                className={cn(
+                  "px-3 py-1 rounded-full font-medium transition-colors",
+                  provider === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}>
+                {p === "openai" ? "OpenAI" : "Gemini"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {status === "loading" ? (
+          <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+            <Sparkles className="h-4 w-4 mr-1.5 animate-pulse" /> Writing…
+          </div>
+        ) : status === "error" ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-8 text-center px-2">
+            <p className="text-xs text-destructive">{error}</p>
+            <Button type="button" size="sm" variant="outline" onClick={generate}>Try again</Button>
+          </div>
+        ) : status === "done" ? (
+          <div className="space-y-2">
+            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} className="text-sm" />
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={generate}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Regenerate
+              </Button>
+              <Button type="button" size="sm" className="flex-1" onClick={use}>Use this</Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" onClick={generate}>
+            <Sparkles className="h-4 w-4 mr-1.5" /> Generate with {provider === "openai" ? "OpenAI" : "Gemini"}
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Product form inside the drawer ────────────────────────────────────────────
 function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories }: {
   form: FormState;
@@ -969,7 +1082,7 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
 
   // Transient AI-description helper — not saved on the product, just feeds the prompt.
   const [keywords, setKeywords] = useState("");
-  const [describing, setDescribing] = useState(false);
+  const [describeOpen, setDescribeOpen] = useState(false);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   // One-click "read the photo and fill the form" — same /analyze endpoint the bulk
@@ -1003,29 +1116,13 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
       setAnalyzing(false);
     }
   };
-  const generateDescription = async () => {
+  const openDescribeDialog = () => {
     if (!form.name.trim()) { toast.error("Add a product name first"); return; }
-    setDescribing(true);
-    try {
-      const data = await apiFetch("/api/ai/describe", {
-        method: "POST",
-        body: JSON.stringify({
-          name: form.name,
-          category: form.category,
-          colors: form.colors.map((c) => c.label),
-          keywords,
-        }),
-      });
-      setField("description", data.description || "");
-      toast.success("Description generated ✨");
-    } catch (e: any) {
-      toast.error(e.message || "Description generation failed");
-    } finally {
-      setDescribing(false);
-    }
+    setDescribeOpen(true);
   };
 
   return (
+    <>
     <form onSubmit={onSubmit} className="space-y-6 pb-8">
       {/* AI auto-fill — reads the uploaded photo and fills name, category, colors, description & price */}
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
@@ -1072,8 +1169,8 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
           <div className="flex items-center justify-between gap-2">
             <Label>Full description</Label>
             <Button type="button" size="sm" variant="ghost" className="h-7 rounded-full"
-              onClick={generateDescription} disabled={describing}>
-              <Sparkles className="h-3 w-3 mr-1" /> {describing ? "Writing…" : "Generate with AI"}
+              onClick={openDescribeDialog}>
+              <Sparkles className="h-3 w-3 mr-1" /> Generate with AI
             </Button>
           </div>
           <Input value={keywords} onChange={(e) => setKeywords(e.target.value)}
@@ -1183,6 +1280,17 @@ function ProductForm({ form, setField, onSubmit, editingId, onCancel, categories
         {editingId && <Button type="button" variant="outline" size="lg" onClick={onCancel}>Cancel</Button>}
       </div>
     </form>
+    <AiDescribeDialog
+      open={describeOpen}
+      onOpenChange={setDescribeOpen}
+      name={form.name}
+      category={form.category}
+      colors={form.colors.map((c) => c.label)}
+      keywords={keywords}
+      onKeywordsChange={setKeywords}
+      onUse={(text) => { setField("description", text); toast.success("Description applied ✨"); }}
+    />
+    </>
   );
 }
 
