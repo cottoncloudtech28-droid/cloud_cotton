@@ -40,6 +40,19 @@ const SPEC_TYPES: { value: SpecFieldType; label: string }[] = [
 const slugifyKey = (s: string) =>
   s.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
+// One-click Yes/No spec presets for common bottle/drinkware features. Clicking a chip
+// adds it as a boolean toggle field (skipped if that feature is already present).
+const SPEC_PRESETS = [
+  "Leak-proof",
+  "Insulated",
+  "Stainless steel",
+  "Rechargeable",
+  "Battery operated",
+  "Wired",
+  "Glass",
+  "Ceramic",
+];
+
 const toSlug = (v: string) => v.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
 const dataUrlToBlob = (dataUrl: string): Blob => {
@@ -85,7 +98,16 @@ function SpecFieldsEditor({ fields, onChange }: { fields: SpecField[]; onChange:
   const add = () =>
     onChange([...fields, { key: "", label: "", type: "boolean", options: [], unit: "", sort_order: fields.length }]);
 
+  const addPreset = (label: string) => {
+    const key = slugifyKey(label);
+    // Skip if this feature is already present (matched by key or existing label).
+    if (fields.some((f) => (f.key || slugifyKey(f.label)) === key)) return;
+    onChange([...fields, { key, label, type: "boolean", options: [], unit: "", sort_order: fields.length }]);
+  };
+
   const remove = (i: number) => onChange(fields.filter((_, idx) => idx !== i));
+
+  const usedKeys = new Set(fields.map((f) => f.key || slugifyKey(f.label)));
 
   return (
     <div className="space-y-3">
@@ -125,6 +147,25 @@ function SpecFieldsEditor({ fields, onChange }: { fields: SpecField[]; onChange:
           ))}
         </div>
       )}
+      <div className="space-y-1.5">
+        <p className="text-xs text-muted-foreground">Quick-add common Yes/No toggles:</p>
+        <div className="flex flex-wrap gap-1.5">
+          {SPEC_PRESETS.map((label) => {
+            const added = usedKeys.has(slugifyKey(label));
+            return (
+              <button key={label} type="button" onClick={() => addPreset(label)} disabled={added}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs transition-colors flex items-center gap-1",
+                  added
+                    ? "border-border bg-muted text-muted-foreground cursor-not-allowed"
+                    : "border-border bg-background hover:border-primary hover:text-primary"
+                )}>
+                <Plus className="h-3 w-3" /> {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <Button type="button" variant="outline" size="sm" className="border-dashed" onClick={add}>
         <Plus className="h-4 w-4 mr-1.5" /> Add specification field
       </Button>

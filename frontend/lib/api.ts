@@ -104,6 +104,26 @@ export async function getProducts(params?: {
   return apiFetch(`/api/products${query ? `?${query}` : ""}`);
 }
 
+// Admin product-management list — server-side search/filter/sort/pagination.
+export async function getAdminProducts(params?: {
+  q?: string;
+  cat?: string;
+  status?: "all" | "active" | "inactive";
+  sort?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ products: Product[]; total: number; page: number; limit: number }> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  if (params?.cat && params.cat !== "all") qs.set("cat", params.cat);
+  if (params?.status && params.status !== "all") qs.set("status", params.status);
+  if (params?.sort) qs.set("sort", params.sort);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  const query = qs.toString();
+  return apiFetch(`/api/products/admin${query ? `?${query}` : ""}`);
+}
+
 export async function getProductFacets(params?: {
   cat?: string;
   q?: string;

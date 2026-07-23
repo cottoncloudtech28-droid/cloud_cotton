@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,13 +35,14 @@ import { formatDescription } from "@/lib/formatText";
 import {
   Pencil, Trash2, Plus, Upload, X, ImagePlus, Tag, Ruler,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Package, Eye, EyeOff, Wand2, Sparkles, Star,
-  ZoomIn, ZoomOut, Download, RefreshCw,
+  ZoomIn, ZoomOut, Download, RefreshCw, Search,
 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { DescriptionToolbar } from "@/components/admin/DescriptionEditor";
-import { apiFetch, uploadFile, getCategories, bulkDeleteProducts, bulkEditProducts } from "@/lib/api";
+import { apiFetch, uploadFile, getCategories, getAdminProducts, bulkDeleteProducts, bulkEditProducts } from "@/lib/api";
+import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/lib/utils";
 import type { Product, ProductSize, ProductColor, ProductCharacter, Category, SpecField, ProductSpec } from "@/lib/types";
 
@@ -340,7 +341,7 @@ function ColorRows({ colors, onChange, images = [] }: { colors: ProductColor[]; 
                   <button key={url + idx} type="button" title={active ? "Linked to this color — click to unlink" : "Click to link to this color"}
                     onClick={() => toggleImage(i, url)}
                     className={cn(
-                      "h-10 w-10 rounded-md overflow-hidden border-2 transition-colors",
+                      "h-16 w-16 rounded-md overflow-hidden border-2 transition-colors",
                       active ? "border-primary ring-2 ring-primary/40" : "border-border opacity-50 hover:opacity-100"
                     )}>
                     <img src={url} alt="" className="h-full w-full object-cover" />
@@ -397,7 +398,7 @@ function CharacterRows({ characters, onChange, images = [] }: { characters: Prod
                   <button key={url + idx} type="button" title={active ? "Linked to this character/design — click to unlink" : "Click to link to this character/design"}
                     onClick={() => toggleImage(i, url)}
                     className={cn(
-                      "h-10 w-10 rounded-md overflow-hidden border-2 transition-colors",
+                      "h-16 w-16 rounded-md overflow-hidden border-2 transition-colors",
                       active ? "border-primary ring-2 ring-primary/40" : "border-border opacity-50 hover:opacity-100"
                     )}>
                     <img src={url} alt="" className="h-full w-full object-cover" />
@@ -1531,6 +1532,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1540,25 +1542,57 @@ export default function AdminPage() {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkEditForm, setBulkEditForm] = useState({ category: "", price: "", stock: "", discount_percent: "", visibility: "" });
 
+  // ── Search / filter / sort / pagination ─────────────────────────────────────
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 350);
+  const [catFilter, setCatFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasFilters = debouncedSearch !== "" || catFilter !== "all" || statusFilter !== "all";
+
   useEffect(() => {
     if (loading) return;
     if (!user) router.push(`/auth?redirect=${encodeURIComponent("/admin")}`);
   }, [user, loading, router]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setItemsLoading(true);
     try {
-      const data = await apiFetch("/api/products/all");
-      setItems(data ?? []);
+      const data = await getAdminProducts({
+        q: debouncedSearch || undefined,
+        cat: catFilter,
+        status: statusFilter,
+        sort: sortBy,
+        page,
+        limit: PAGE_SIZE,
+      });
+      // If a deletion emptied the current (non-first) page, step back one page.
+      if ((data.products ?? []).length === 0 && (data.total ?? 0) > 0 && page > 1) {
+        setPage((p) => Math.max(1, p - 1));
+        return;
+      }
+      setItems(data.products ?? []);
+      setTotal(data.total ?? 0);
     } catch (e: any) { toast.error(e.message); }
     finally { setItemsLoading(false); }
-  };
+  }, [debouncedSearch, catFilter, statusFilter, sortBy, page]);
 
   useEffect(() => {
     if (!isAdmin) return;
     load();
+  }, [isAdmin, load]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
     getCategories().then(setCategories).catch(() => {});
   }, [isAdmin]);
+
+  // Reset to the first page whenever a filter/search/sort narrows the result set,
+  // so we never end up stranded on a now-empty page.
+  const resetToFirstPage = () => setPage(1);
 
   const reset = () => { setForm(emptyForm); setEditingId(null); setDrawerOpen(false); };
 
@@ -1715,7 +1749,7 @@ export default function AdminPage() {
               <div>
                 <h1 className="text-4xl font-bold">Products</h1>
                 <p className="text-muted-foreground mt-1">
-                  {itemsLoading ? "Loading…" : `${items.length} product${items.length !== 1 ? "s" : ""} in catalog`}
+                  {itemsLoading ? "Loading…" : `${total} product${total !== 1 ? "s" : ""}${hasFilters ? " match your filters" : " in catalog"}`}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -1728,15 +1762,65 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Search / filter toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, SKU, category or tag…"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); resetToFirstPage(); }}
+                  className="pl-9 h-10"
+                />
+                {search && (
+                  <button type="button" onClick={() => { setSearch(""); resetToFirstPage(); }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <select value={catFilter}
+                onChange={(e) => { setCatFilter(e.target.value); resetToFirstPage(); }}
+                className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+                <option value="all">All categories</option>
+                {categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+              </select>
+              <select value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value as "all" | "active" | "inactive"); resetToFirstPage(); }}
+                className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+                <option value="all">All status</option>
+                <option value="active">Visible</option>
+                <option value="inactive">Hidden</option>
+              </select>
+              <select value={sortBy}
+                onChange={(e) => { setSortBy(e.target.value); resetToFirstPage(); }}
+                className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="name-asc">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
+                <option value="price-asc">Price low–high</option>
+                <option value="price-desc">Price high–low</option>
+                <option value="stock-asc">Stock low–high</option>
+                <option value="stock-desc">Stock high–low</option>
+              </select>
+              {hasFilters && (
+                <Button variant="ghost" size="sm"
+                  onClick={() => { setSearch(""); setCatFilter("all"); setStatusFilter("all"); resetToFirstPage(); }}>
+                  Clear filters
+                </Button>
+              )}
+            </div>
+
             {/* Product list */}
             <div className="space-y-2">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   {items.length > 0 && (
-                    <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} aria-label="Select all products" />
+                    <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} aria-label="Select all products on this page" />
                   )}
                   <h2 className="text-xl font-semibold">
-                    All products ({itemsLoading ? "…" : items.length})
+                    {hasFilters ? "Results" : "All products"} ({itemsLoading ? "…" : total})
                   </h2>
                 </div>
                 {selectedIds.size > 0 && (
@@ -1759,12 +1843,22 @@ export default function AdminPage() {
                   ))}
                 </div>
               ) : items.length === 0 ? (
-                <Card className="p-12 text-center">
-                  <p className="text-muted-foreground mb-4">No products yet.</p>
-                  <Button onClick={() => { setForm({ ...emptyForm, sku: generateSku(emptyForm.category) }); setEditingId(null); setDrawerOpen(true); }}>
-                    <Plus className="h-4 w-4 mr-2" /> Add your first product
-                  </Button>
-                </Card>
+                hasFilters ? (
+                  <Card className="p-12 text-center">
+                    <p className="text-muted-foreground mb-4">No products match your search or filters.</p>
+                    <Button variant="outline"
+                      onClick={() => { setSearch(""); setCatFilter("all"); setStatusFilter("all"); resetToFirstPage(); }}>
+                      Clear filters
+                    </Button>
+                  </Card>
+                ) : (
+                  <Card className="p-12 text-center">
+                    <p className="text-muted-foreground mb-4">No products yet.</p>
+                    <Button onClick={() => { setForm({ ...emptyForm, sku: generateSku(emptyForm.category) }); setEditingId(null); setDrawerOpen(true); }}>
+                      <Plus className="h-4 w-4 mr-2" /> Add your first product
+                    </Button>
+                  </Card>
+                )
               ) : items.map((p) => {
                 const imgSrc = p.images?.[0] ?? p.image_url;
                 const isExpanded = expandedId === p.id;
@@ -1838,6 +1932,26 @@ export default function AdminPage() {
                 );
               })}
             </div>
+
+            {/* Pagination */}
+            {!itemsLoading && total > PAGE_SIZE && (
+              <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-1">Page {page} of {totalPages}</span>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </div>

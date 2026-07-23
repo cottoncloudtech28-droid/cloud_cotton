@@ -268,11 +268,58 @@ router.get("/facets", async (req, res) => {
   }
 });
 
-// GET /api/products/all  — admin, includes inactive
+// GET /api/products/all  — admin, includes inactive (full dump, no pagination).
+// Used by pages that need the entire catalog at once (inventory, purchase orders).
 router.get("/all", verifyToken, requireAdmin, async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
     res.json(products.map(mapDoc));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// GET /api/products/admin  — admin product-management list: server-side search,
+// category/status filtering, sorting and pagination so the admin table scales.
+router.get("/admin", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { q, cat, status, sort, page, limit } = req.query;
+    const filter = {};
+    if (cat && cat !== "all") filter.category = cat;
+    if (status === "active") filter.is_active = true;
+    else if (status === "inactive") filter.is_active = false;
+    if (q && q.trim()) {
+      const escaped = q.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.$or = [
+        { name:     { $regex: escaped, $options: "i" } },
+        { sku:      { $regex: escaped, $options: "i" } },
+        { category: { $regex: escaped, $options: "i" } },
+        { tags:     { $in: [new RegExp(escaped, "i")] } },
+      ];
+    }
+
+    const sortMap = {
+      newest:       { createdAt: -1 },
+      oldest:       { createdAt: 1 },
+      "name-asc":   { name: 1 },
+      "name-desc":  { name: -1 },
+      "price-asc":  { price: 1 },
+      "price-desc": { price: -1 },
+      "stock-asc":  { stock: 1 },
+      "stock-desc": { stock: -1 },
+    };
+    const sortObj = sortMap[sort] || { createdAt: -1 };
+
+    const pageNum  = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip     = (pageNum - 1) * limitNum;
+
+    const [products, total] = await Promise.all([
+      Product.find(filter).sort(sortObj).skip(skip).limit(limitNum),
+      Product.countDocuments(filter),
+    ]);
+
+    res.json({ products: products.map(mapDoc), total, page: pageNum, limit: limitNum });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
