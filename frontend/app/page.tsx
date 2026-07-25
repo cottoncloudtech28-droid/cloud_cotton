@@ -146,7 +146,7 @@ export default function Home() {
         >
           ✨
         </motion.span>{" "}
-        Free shipping on orders above ₹1,499 &nbsp;·&nbsp; New arrivals every week{" "}
+        Free shipping on orders above ₹1,500 &nbsp;·&nbsp; New arrivals every week{" "}
         <motion.span
           className="inline-block"
           {...(!prefersReducedMotion && {
@@ -247,7 +247,7 @@ export default function Home() {
               {categoriesLoading ? (
                 Array.from({ length: 9 }).map((_, i) => (
                   <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2 w-[88px] md:w-[112px]">
-                    <Skeleton className="h-20 w-20 md:h-28 md:w-28 rounded-[45%_55%_60%_40%/55%_35%_65%_45%]" />
+                    <Skeleton className="h-20 w-20 md:h-28 md:w-28 rounded-full" />
                     <Skeleton className="h-4 w-16 rounded-full" />
                   </div>
                 ))
@@ -262,17 +262,12 @@ export default function Home() {
                       "from-emerald-200 via-green-100 to-lime-50",
                       "from-fuchsia-200 via-pink-100 to-purple-50",
                     ];
-                    const blobShape = i % 2 === 0
-                      ? "rounded-[42%_58%_65%_35%/55%_35%_65%_45%]"
-                      : "rounded-[60%_40%_35%_65%/45%_60%_40%_55%]";
-                    const tilt = i % 3 === 0 ? "rotate-[-5deg]" : i % 3 === 1 ? "rotate-[5deg]" : "rotate-[-2deg]";
-
                     return (
                       <motion.div
                         key={c.slug}
                         variants={gridItem}
                         className="flex-shrink-0 snap-center"
-                        whileHover={{ y: -6, scale: 1.06, rotate: 0 }}
+                        whileHover={{ y: -6, scale: 1.06 }}
                         transition={{ type: "spring", stiffness: 300, damping: 15 }}
                       >
                         <Link
@@ -281,12 +276,9 @@ export default function Home() {
                         >
                           <div
                             className={cn(
-                              "relative h-20 w-20 md:h-28 md:w-28 bg-gradient-to-br overflow-hidden flex items-center justify-center transition-bounce",
+                              "relative h-20 w-20 md:h-28 md:w-28 bg-gradient-to-br overflow-hidden flex items-center justify-center transition-bounce rounded-full",
                               "shadow-[0_10px_28px_-10px_rgba(120,70,150,0.35)] group-hover:shadow-[0_16px_36px_-10px_rgba(120,70,150,0.45)]",
-                              palette[i % palette.length],
-                              blobShape,
-                              tilt,
-                              "group-hover:rotate-0"
+                              palette[i % palette.length]
                             )}
                           >
                             {c.banner_url ? (
@@ -294,8 +286,8 @@ export default function Home() {
                                 src={c.banner_url}
                                 alt={c.name}
                                 fill
-                                sizes="(max-width: 768px) 80px, 112px"
-                                className="object-cover scale-110 group-hover:scale-125 transition-bounce"
+                                sizes="(max-width: 768px) 160px, 224px"
+                                className="object-cover group-hover:scale-105 transition-bounce"
                               />
                             ) : (
                               <span className="text-4xl md:text-5xl drop-shadow-sm">{c.emoji}</span>
@@ -318,7 +310,7 @@ export default function Home() {
                       href="/shop"
                       className="group flex flex-col items-center gap-2 w-[104px] md:w-[132px]"
                     >
-                      <div className="h-24 w-24 md:h-32 md:w-32 grid place-items-center bg-gradient-primary text-primary-foreground rounded-[55%_45%_40%_60%/50%_60%_40%_50%] rotate-[3deg] group-hover:rotate-0 shadow-[0_10px_28px_-8px_rgba(120,70,150,0.5)] transition-bounce">
+                      <div className="h-24 w-24 md:h-32 md:w-32 grid place-items-center bg-gradient-primary text-primary-foreground rounded-full shadow-[0_10px_28px_-8px_rgba(120,70,150,0.5)] transition-bounce">
                         <ShoppingBag className="h-7 w-7 md:h-9 md:w-9" />
                       </div>
                       <span className="rounded-full bg-gradient-primary text-primary-foreground px-3 py-1 text-[10px] md:text-xs font-bold text-center shadow-sm transition-bounce">

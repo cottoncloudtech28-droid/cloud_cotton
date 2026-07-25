@@ -654,7 +654,7 @@ export default function ProductDetailClient() {
             {/* Trust badges */}
             <div className="grid grid-cols-2 gap-3 pt-1">
               {[
-                { icon: Truck, label: "Free shipping", sub: "orders above ₹1,499" },
+                { icon: Truck, label: "Free shipping", sub: "orders above ₹1,500" },
                 { icon: Shield, label: "Secure checkout", sub: "100% safe" },
               ].map(({ icon: I, label, sub }) => (
                 <div key={label} className="flex flex-col items-center text-center p-3 rounded-lg bg-muted gap-1.5 border border-border">
@@ -735,7 +735,7 @@ export default function ProductDetailClient() {
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
                   <p>📦 Orders dispatched within 1–3 business days.</p>
                   <p>🚚 Standard delivery: 3–7 business days across India.</p>
-                  <p>🎉 Free shipping on orders above ₹1,499.</p>
+                  <p>🎉 Free shipping on orders above ₹1,500.</p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

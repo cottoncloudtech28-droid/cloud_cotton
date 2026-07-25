@@ -24,7 +24,7 @@ router.get("/shipping-rate", async (req, res) => {
   if (!pincode || !/^\d{6}$/.test(String(pincode)))
     return res.status(400).json({ message: "Valid 6-digit pincode required" });
 
-  const freeThreshold = +(process.env.FREE_SHIPPING_THRESHOLD || "1499");
+  const freeThreshold = +(process.env.FREE_SHIPPING_THRESHOLD || "1500");
   const isCod         = String(cod) === "1";
 
   // If Shiprocket not fully configured, return free shipping as fallback

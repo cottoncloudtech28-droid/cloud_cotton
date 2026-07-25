@@ -11,12 +11,12 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
-import { placeOrder, getSavedAddresses, addSavedAddress, createRazorpayOrder, verifyRazorpayPayment, getShippingRate, getPaymentSettings } from "@/lib/api";
+import { placeOrder, getSavedAddresses, addSavedAddress, createRazorpayOrder, verifyRazorpayPayment, getShippingRate, getPaymentSettings, validatePromoCode } from "@/lib/api";
 import type { CourierOption, ShippingRateResult } from "@/lib/api";
 import type { Address, SavedAddress } from "@/lib/types";
 import ProductCard from "@/components/shop/ProductCard";
 import { getProducts } from "@/lib/api";
-import { Trash2, ShoppingBag, MapPin, Package, Plus, Star, CreditCard, Truck, ChevronDown, ChevronUp, ImageOff } from "lucide-react";
+import { Trash2, ShoppingBag, MapPin, Package, Plus, Star, CreditCard, Truck, ChevronDown, ChevronUp, ImageOff, Tag, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { pixelInitiateCheckout } from "@/lib/metaPixel";
 
@@ -75,12 +75,18 @@ export default function CartPage() {
   const [showCourierPicker, setShowCourierPicker] = useState(false);
   const [quickPincode, setQuickPincode] = useState("");
 
+  // Promo code
+  const [promoInput, setPromoInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+
   const addressRef = useRef<HTMLDivElement>(null);
   const quickPincodeRedirected = useRef(false);
   const verifyingRef = useRef(false);
   const [finalizing, setFinalizing] = useState(false);
 
-  const FREE_THRESHOLD = 1499;
+  const FREE_THRESHOLD = 1500;
 
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -255,7 +261,48 @@ export default function CartPage() {
 
   const isFreeShipping = shippingResult?.free_shipping || total >= FREE_THRESHOLD;
   const resolvedShipping = isFreeShipping ? 0 : (selectedCourier?.total_charge ?? 0);
-  const grandTotal = total + resolvedShipping;
+  const discount = appliedPromo?.discount ?? 0;
+  const grandTotal = Math.max(0, total + resolvedShipping - discount);
+
+  const applyPromo = async () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    if (!user) { router.push(`/auth?redirect=${encodeURIComponent("/cart")}`); return; }
+    setPromoError("");
+    setPromoLoading(true);
+    try {
+      const res = await validatePromoCode(code, total);
+      if (res.valid) {
+        setAppliedPromo({ code: res.code!, discount: res.discount ?? 0 });
+        setPromoInput("");
+        toast.success(res.message || "Promo code applied");
+      } else {
+        setPromoError(res.message || "Invalid promo code");
+      }
+    } catch (e: any) {
+      setPromoError(e.message || "Couldn't apply promo code");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoError("");
+  };
+
+  // Re-validate an applied promo whenever the subtotal changes (item added/removed/qty
+  // changed) so the discount stays accurate and drops off if the cart no longer qualifies.
+  useEffect(() => {
+    if (!appliedPromo) return;
+    validatePromoCode(appliedPromo.code, total)
+      .then((res) => {
+        if (res.valid) setAppliedPromo({ code: res.code!, discount: res.discount ?? 0 });
+        else { setAppliedPromo(null); setPromoError(res.message || "Promo code no longer applies"); }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
 
   // GST estimate (prices are inclusive; back-calculate taxable value)
   const gstEstimate = (() => {
@@ -290,7 +337,7 @@ export default function CartPage() {
       }));
 
       if (paymentMethod === "cod") {
-        const order = await placeOrder({ items: orderItems, address: activeAddr, total: grandTotal, shipping_charge: resolvedShipping });
+        const order = await placeOrder({ items: orderItems, address: activeAddr, total: grandTotal, shipping_charge: resolvedShipping, promo_code: appliedPromo?.code ?? null });
         // Cart is cleared on the confirmation page itself, once the order has
         // actually loaded there — never here, so a slow/interrupted navigation
         // can't strand the user on an empty-cart view.
@@ -333,6 +380,7 @@ export default function CartPage() {
                 address: activeAddr,
                 total: grandTotal,
                 shipping_charge: resolvedShipping,
+                promo_code: appliedPromo?.code ?? null,
               });
               router.push(`/order/${order.id}?fresh=1`);
             } catch (e: any) {
@@ -754,6 +802,62 @@ export default function CartPage() {
                 </div>
                 <p className="text-[10px] text-muted-foreground/70 pt-0.5">All prices are GST-inclusive. Tax invoice will be issued after order.</p>
               </div>
+
+              {/* Promo code */}
+              <div className="border-t border-border pt-3 space-y-2">
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-green-700 truncate">{appliedPromo.code} applied</p>
+                        <p className="text-[11px] text-green-600">You saved ₹{discount}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={removePromo}
+                      className="text-green-700 hover:text-destructive shrink-0"
+                      title="Remove promo code"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          value={promoInput}
+                          onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }}
+                          placeholder="Promo code"
+                          className="h-9 pl-8 text-sm uppercase tracking-wide rounded-full"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="h-9 rounded-full px-4 text-sm shrink-0"
+                        disabled={promoLoading || !promoInput.trim()}
+                        onClick={applyPromo}
+                      >
+                        {promoLoading ? "…" : "Apply"}
+                      </Button>
+                    </div>
+                    {promoError && <p className="text-xs text-destructive">{promoError}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Discount line */}
+              {discount > 0 && (
+                <div className="flex justify-between text-sm text-green-600 font-medium">
+                  <span>Discount {appliedPromo ? `(${appliedPromo.code})` : ""}</span>
+                  <span>−₹{discount}</span>
+                </div>
+              )}
 
               <div className="border-t border-border pt-3 flex justify-between font-bold text-base">
                 <span>Total</span>

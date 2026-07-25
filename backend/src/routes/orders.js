@@ -6,6 +6,7 @@ const Order = require("../models/Order");
 const Product = require("../models/Product");
 const User = require("../models/User");
 const StockLog = require("../models/StockLog");
+const PromoCode = require("../models/PromoCode");
 const { verifyToken, requireAdmin } = require("../middleware/auth");
 const sr = require("../services/shiprocket");
 const { sendOrderConfirmationEmail, sendAdminOrderNotification } = require("../lib/mailer");
@@ -219,6 +220,28 @@ async function adjustVariantStock(product, { size, color, character }, delta, { 
   }
 }
 
+// Cart subtotal from normalized items (GST-inclusive final prices) — recomputed
+// server-side so a promo discount can never be validated against a spoofed subtotal.
+function computeSubtotal(normalizedItems) {
+  return normalizedItems.reduce((s, it) => {
+    const final = +(it.price * (1 - (it.discount_percent || 0) / 100)).toFixed(2);
+    return s + final * it.qty;
+  }, 0);
+}
+
+// Validate a promo code against the customer + server-computed subtotal.
+// Returns { code, discount, doc }; throws { status, message } if the code is invalid.
+async function resolvePromo(promoCode, normalizedItems, userId) {
+  if (!promoCode) return { code: null, discount: 0, doc: null };
+  const code = String(promoCode).trim().toUpperCase();
+  const doc = await PromoCode.findOne({ code });
+  if (!doc) throw { status: 400, message: "Invalid promo code" };
+  const subtotal = Math.round(computeSubtotal(normalizedItems));
+  const { ok, reason } = doc.checkValidity(userId, subtotal);
+  if (!ok) throw { status: 400, message: reason };
+  return { code, discount: doc.discountFor(subtotal), doc };
+}
+
 function normalizeItems(resolved) {
   return resolved.map(({ product, size, color, character, item }) => ({
     productId: product._id.toString(),
@@ -251,7 +274,7 @@ async function decrementStock(resolved, order, userId) {
 
 // POST /api/orders  — place COD order (authenticated)
 router.post("/", verifyToken, async (req, res) => {
-  const { items, address, total, shipping_charge = 0 } = req.body;
+  const { items, address, total, shipping_charge = 0, promo_code = null } = req.body;
   if (!Array.isArray(items) || items.length === 0)
     return res.status(400).json({ message: "Order must have at least one item" });
   if (!address?.fullName || !address?.phone || !address?.line1 || !address?.city || !address?.state || !address?.pincode)
@@ -265,6 +288,14 @@ router.post("/", verifyToken, async (req, res) => {
   }
 
   const normalizedItems = normalizeItems(resolved);
+
+  let promo;
+  try {
+    promo = await resolvePromo(promo_code, normalizedItems, req.user.userId);
+  } catch (e) {
+    return res.status(e.status || 400).json({ message: e.message });
+  }
+
   const Settings = require("../models/Settings");
   const gstCfg = await Settings.findOne({ key: "gst" }).lean();
   const sellerState = gstCfg?.value?.state || "";
@@ -278,6 +309,8 @@ router.post("/", verifyToken, async (req, res) => {
       address,
       total,
       shipping_charge: Math.round(Number(shipping_charge) || 0),
+      promo_code: promo.code,
+      discount_amount: promo.discount,
       payment_method: "cod",
       payment_status: "pending",
       gst_breakdown,
@@ -286,6 +319,7 @@ router.post("/", verifyToken, async (req, res) => {
     return res.status(500).json({ message: e.message });
   }
 
+  if (promo.doc) promo.doc.recordRedemption(req.user.userId).catch(() => {}); // fire-and-forget
   await decrementStock(resolved, order, req.user.userId);
   tryAutoPushShiprocket(order, req.user.userId); // fire-and-forget
   sendOrderEmails(order, req.user.userId); // fire-and-forget
@@ -317,7 +351,7 @@ router.post("/razorpay/create-order", verifyToken, async (req, res) => {
 
 // POST /api/orders/razorpay/verify  — verify Razorpay payment + create DB order
 router.post("/razorpay/verify", verifyToken, async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, items, address, total, shipping_charge = 0 } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, items, address, total, shipping_charge = 0, promo_code = null } = req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
     return res.status(400).json({ message: "Missing payment verification fields" });
@@ -351,6 +385,14 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
   }
 
   const normalizedItems = normalizeItems(resolved);
+
+  let promoRzp;
+  try {
+    promoRzp = await resolvePromo(promo_code, normalizedItems, req.user.userId);
+  } catch (e) {
+    return res.status(e.status || 400).json({ message: e.message });
+  }
+
   const SettingsRzp = require("../models/Settings");
   const gstCfgRzp = await SettingsRzp.findOne({ key: "gst" }).lean();
   const sellerStateRzp = gstCfgRzp?.value?.state || "";
@@ -364,6 +406,8 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
       address,
       total,
       shipping_charge: Math.round(Number(shipping_charge) || 0),
+      promo_code: promoRzp.code,
+      discount_amount: promoRzp.discount,
       payment_method: "razorpay",
       payment_status: "paid",
       razorpay_order_id,
@@ -375,6 +419,7 @@ router.post("/razorpay/verify", verifyToken, async (req, res) => {
     return res.status(500).json({ message: e.message });
   }
 
+  if (promoRzp.doc) promoRzp.doc.recordRedemption(req.user.userId).catch(() => {}); // fire-and-forget
   await decrementStock(resolved, order, req.user.userId);
   tryAutoPushShiprocket(order, req.user.userId); // fire-and-forget
   sendOrderEmails(order, req.user.userId); // fire-and-forget

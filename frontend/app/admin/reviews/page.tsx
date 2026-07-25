@@ -19,8 +19,9 @@ import {
   Star, CheckCircle2, XCircle, Clock, Trash2, RefreshCw, Search,
   ChevronDown, MessageSquare, ShieldCheck, User, Plus, PackageSearch,
 } from "lucide-react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { apiFetch, searchSuggestions } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -339,11 +340,7 @@ export default function AdminReviewsPage() {
       <div className="min-h-screen flex w-full">
         <AdminSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <Navbar />
-          <div className="h-10 flex items-center border-b px-2">
-            <SidebarTrigger />
-            <span className="ml-2 text-sm text-muted-foreground">Admin / Reviews</span>
-          </div>
+          <AdminHeader />
 
           <main className="container py-8 space-y-6">
             {/* Header */}

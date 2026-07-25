@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import Navbar from "@/components/shop/Navbar";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getAdminCustomers, updateCustomerRole } from "@/lib/api";
 import { Search, Users, ChevronLeft, ChevronRight, Shield, ShoppingBag, AlertTriangle } from "lucide-react";
@@ -112,11 +112,7 @@ export default function CustomersPage() {
       <div className="min-h-screen flex w-full">
         <AdminSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <Navbar />
-          <div className="h-10 flex items-center border-b px-2">
-            <SidebarTrigger />
-            <span className="ml-2 text-sm text-muted-foreground">Admin / Customers</span>
-          </div>
+          <AdminHeader />
           <main className="container py-8 space-y-6">
 
             {/* Header */}

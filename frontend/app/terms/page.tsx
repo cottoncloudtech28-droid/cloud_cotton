@@ -45,7 +45,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-xl font-bold mb-2">5. Shipping &amp; delivery</h2>
-            <p>Please refer to our <a href="/shipping" className="text-primary underline underline-offset-2">Shipping Policy</a> for timelines, carriers, and charges. Free delivery on orders above ₹1,499. Delivery timelines are estimates and not guaranteed. We are not liable for delays caused by the courier partner or factors beyond our control (weather, holidays, etc.).</p>
+            <p>Please refer to our <a href="/shipping" className="text-primary underline underline-offset-2">Shipping Policy</a> for timelines, carriers, and charges. Free delivery on orders above ₹1,500. Delivery timelines are estimates and not guaranteed. We are not liable for delays caused by the courier partner or factors beyond our control (weather, holidays, etc.).</p>
           </section>
 
           <section>

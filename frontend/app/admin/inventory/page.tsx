@@ -7,7 +7,6 @@ import {
   PieChart, Pie, Legend, LineChart, Line, CartesianGrid,
 } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
-import Navbar from "@/components/shop/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -19,8 +18,9 @@ import {
   RefreshCw, Save, ChevronRight, ChevronLeft, Download,
   Upload, X, TrendingUp, Zap, FileText,
 } from "lucide-react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import {
   apiFetch, getLowStockProducts, getStockLogs, bulkUpdateStock,
@@ -337,11 +337,7 @@ export default function InventoryPage() {
       <div className="min-h-screen flex w-full">
         <AdminSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <Navbar />
-          <div className="h-10 flex items-center border-b px-2">
-            <SidebarTrigger />
-            <span className="ml-2 text-sm text-muted-foreground">Admin / Inventory</span>
-          </div>
+          <AdminHeader />
           <main className="container py-8 space-y-8">
 
             {/* Header */}

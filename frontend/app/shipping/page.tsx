@@ -30,11 +30,11 @@ export default function ShippingPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   <tr className="bg-card">
-                    <td className="px-4 py-3">Below ₹1,499</td>
+                    <td className="px-4 py-3">Below ₹1,500</td>
                     <td className="px-4 py-3">Standard shipping charges apply</td>
                   </tr>
                   <tr className="bg-green-50">
-                    <td className="px-4 py-3 font-semibold text-green-700">₹1,499 and above</td>
+                    <td className="px-4 py-3 font-semibold text-green-700">₹1,500 and above</td>
                     <td className="px-4 py-3 font-semibold text-green-700">FREE delivery 🎉</td>
                   </tr>
                 </tbody>

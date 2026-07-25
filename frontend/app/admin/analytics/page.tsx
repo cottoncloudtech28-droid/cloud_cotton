@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import Navbar from "@/components/shop/Navbar";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getOrderAnalytics } from "@/lib/api";
 import {
@@ -80,11 +80,7 @@ export default function AnalyticsPage() {
       <div className="min-h-screen flex w-full">
         <AdminSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <Navbar />
-          <div className="h-10 flex items-center border-b px-2">
-            <SidebarTrigger />
-            <span className="ml-2 text-sm text-muted-foreground">Admin / Analytics</span>
-          </div>
+          <AdminHeader />
           <main className="container py-8 space-y-8">
 
             {/* Header */}

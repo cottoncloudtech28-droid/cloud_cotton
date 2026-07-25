@@ -217,6 +217,12 @@ function OrderConfirmationContent() {
                 <span className="text-green-600 font-medium">FREE</span>
               </div>
             )}
+            {(order.discount_amount ?? 0) > 0 && (
+              <div className="flex justify-between text-green-600 font-medium">
+                <span>Discount {order.promo_code ? `(${order.promo_code})` : ""}</span>
+                <span>−₹{order.discount_amount}</span>
+              </div>
+            )}
             <div className="flex justify-between font-extrabold text-base pt-0.5">
               <span>Total {isPaid ? "paid" : "on delivery"}</span>
               <span>₹{order.total}</span>

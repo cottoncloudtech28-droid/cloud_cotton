@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import Navbar from "@/components/shop/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,8 +17,9 @@ import {
   Plus, RefreshCw, ShoppingCart, Trash2, ChevronDown, ChevronUp,
   CheckCircle2, Send, X, Eye, Package,
 } from "lucide-react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import {
   apiFetch, getSuppliers, getPurchaseOrders, createPurchaseOrder,
@@ -215,11 +215,7 @@ export default function PurchaseOrdersPage() {
       <div className="min-h-screen flex w-full">
         <AdminSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <Navbar />
-          <div className="h-10 flex items-center border-b px-2">
-            <SidebarTrigger />
-            <span className="ml-2 text-sm text-muted-foreground">Admin / Purchase Orders</span>
-          </div>
+          <AdminHeader />
           <main className="container py-8 space-y-6">
 
             {/* Header */}

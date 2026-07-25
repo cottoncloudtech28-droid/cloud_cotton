@@ -53,6 +53,8 @@ const orderSchema = new mongoose.Schema(
     address: { type: addressSchema, required: true },
     total: { type: Number, required: true },
     shipping_charge: { type: Number, default: 0 },
+    promo_code: { type: String, default: null },
+    discount_amount: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],

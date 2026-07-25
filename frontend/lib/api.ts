@@ -1,7 +1,7 @@
 import type {
   Product, Order, OrderItem, Address, SavedAddress, Category, StockLog,
   Supplier, PurchaseOrder, RestockRecommendation, PublicOrderTrack, ShiprocketTracking,
-  GstSettings, NotificationSettings,
+  GstSettings, NotificationSettings, PromoCode, PromoValidation,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -170,6 +170,7 @@ export async function placeOrder(payload: {
   address: Address;
   total: number;
   shipping_charge?: number;
+  promo_code?: string | null;
 }): Promise<Order> {
   return apiFetch("/api/orders", { method: "POST", body: JSON.stringify(payload) });
 }
@@ -241,11 +242,52 @@ export async function verifyRazorpayPayment(payload: {
   address: Address;
   total: number;
   shipping_charge?: number;
+  promo_code?: string | null;
 }): Promise<Order> {
   return apiFetch("/api/orders/razorpay/verify", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+// ── Promo codes ───────────────────────────────────────────────────────────────
+export async function validatePromoCode(code: string, subtotal: number): Promise<PromoValidation> {
+  return apiFetch("/api/promocodes/validate", {
+    method: "POST",
+    body: JSON.stringify({ code, subtotal }),
+  });
+}
+
+export async function getPromoCodes(): Promise<PromoCode[]> {
+  return apiFetch("/api/promocodes");
+}
+
+export type PromoCodeInput = {
+  code?: string;
+  description?: string;
+  type: "percent" | "flat";
+  value: number;
+  min_order?: number;
+  max_discount?: number | null;
+  per_customer_limit?: number;
+  is_active?: boolean;
+  expires_at?: string | null;
+};
+
+export async function createPromoCode(data: PromoCodeInput): Promise<PromoCode> {
+  return apiFetch("/api/promocodes", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updatePromoCode(id: string, data: PromoCodeInput): Promise<PromoCode> {
+  return apiFetch(`/api/promocodes/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function togglePromoCode(id: string, is_active: boolean): Promise<PromoCode> {
+  return apiFetch(`/api/promocodes/${id}/toggle`, { method: "PATCH", body: JSON.stringify({ is_active }) });
+}
+
+export async function deletePromoCode(id: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/promocodes/${id}`, { method: "DELETE" });
 }
 
 // ── Wishlist ─────────────────────────────────────────────────────────────────

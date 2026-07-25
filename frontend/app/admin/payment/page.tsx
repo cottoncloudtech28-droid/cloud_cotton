@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { getPaymentSettings, updatePaymentSettings } from "@/lib/api";
 import { Card } from "@/components/ui/card";
@@ -10,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { toast } from "sonner";
-import { CreditCard, ArrowLeft, Truck, Info, Save } from "lucide-react";
+import { CreditCard, Truck, Info, Save } from "lucide-react";
 
 export default function PaymentSettingsPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -66,16 +66,7 @@ export default function PaymentSettingsPage() {
       <div className="flex min-h-screen w-full bg-muted/30">
         <AdminSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="flex items-center gap-3 px-6 py-4 bg-card border-b border-border">
-            <SidebarTrigger />
-            <Link href="/admin" className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
-              <h1 className="text-lg font-bold">Payment Settings</h1>
-            </div>
-          </header>
+          <AdminHeader />
 
           <main className="flex-1 p-6 space-y-6 max-w-2xl">
 

@@ -51,6 +51,7 @@ app.use("/api/purchase-orders", require("./routes/purchaseorders"));
 app.use("/api/shiprocket", require("./routes/shiprocket"));
 app.use("/api/settings", require("./routes/settings"));
 app.use("/api/reviews", require("./routes/reviews"));
+app.use("/api/promocodes", require("./routes/promocodes"));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

@@ -1,10 +1,9 @@
 "use client";
 
-import Navbar from "@/components/shop/Navbar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Shown while auth/admin status is resolving on admin pages — mirrors the
-// real sidebar + navbar + content layout so there's no layout jump once
+// real sidebar + admin header + content layout so there's no layout jump once
 // the actual page mounts.
 export function AdminPageSkeleton() {
   return (
@@ -16,7 +15,11 @@ export function AdminPageSkeleton() {
         ))}
       </div>
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
+        <div className="h-14 px-6 flex items-center gap-3 border-b border-border bg-card">
+          <Skeleton className="h-7 w-7 rounded-lg" />
+          <Skeleton className="h-5 w-40 rounded" />
+          <Skeleton className="ml-auto h-8 w-28 rounded-full" />
+        </div>
         <main className="container py-8 space-y-6">
           <Skeleton className="h-10 w-64 rounded" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

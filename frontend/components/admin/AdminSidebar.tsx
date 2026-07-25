@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, Upload, LayoutGrid, BarChart2, Truck, ShoppingCart, ClipboardList, TrendingUp, Users, Receipt, Star, CreditCard, Mail } from "lucide-react";
+import { Package, Upload, LayoutGrid, BarChart2, Truck, ShoppingCart, ClipboardList, TrendingUp, Users, Receipt, Star, CreditCard, Mail, Ticket } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,7 +14,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const items = [
+// Single source of truth for admin navigation — consumed by both the sidebar and
+// the AdminHeader (which derives the current page's title/icon from the route).
+export const ADMIN_NAV = [
   { title: "Analytics", url: "/admin/analytics", icon: TrendingUp },
   { title: "Products", url: "/admin", icon: Package },
   { title: "Inventory", url: "/admin/inventory", icon: BarChart2 },
@@ -22,13 +24,16 @@ const items = [
   { title: "Customers", url: "/admin/customers", icon: Users },
   { title: "Bulk Upload", url: "/admin/bulk", icon: Upload },
   { title: "Categories", url: "/admin/categories", icon: LayoutGrid },
+  { title: "Promo Codes", url: "/admin/promos", icon: Ticket },
   { title: "Suppliers", url: "/admin/suppliers", icon: Truck },
   { title: "Purchase Orders", url: "/admin/purchase-orders", icon: ShoppingCart },
   { title: "GST & Compliance", url: "/admin/gst", icon: Receipt },
   { title: "Payment Settings", url: "/admin/payment", icon: CreditCard },
   { title: "Notifications", url: "/admin/notifications", icon: Mail },
   { title: "Reviews", url: "/admin/reviews", icon: Star },
-];
+] as const;
+
+const items = ADMIN_NAV;
 
 export function AdminSidebar() {
   const pathname = usePathname();

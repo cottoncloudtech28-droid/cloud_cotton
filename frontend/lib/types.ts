@@ -234,9 +234,38 @@ export interface Order {
   buyer_gstin?: string | null;
   gst_breakdown?: GstBreakdown | null;
   shipping_charge?: number;
+  promo_code?: string | null;
+  discount_amount?: number;
   user?: { id: string; email: string; name: string } | string;
   createdAt: string;
   updatedAt?: string;
+}
+
+// ── Promo codes ────────────────────────────────────────────────────────────────
+export interface PromoCode {
+  id: string;
+  code: string;
+  description: string;
+  type: "percent" | "flat";
+  value: number;
+  min_order: number;
+  max_discount: number | null;
+  per_customer_limit: number;
+  is_active: boolean;
+  expires_at: string | null;
+  used_count: number;
+  customers_used: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PromoValidation {
+  valid: boolean;
+  code?: string;
+  type?: "percent" | "flat";
+  value?: number;
+  discount?: number;
+  message: string;
 }
 
 export interface ShiprocketTrackActivity {
