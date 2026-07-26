@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import Navbar from "@/components/shop/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,10 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Pencil, X, Upload, Plus, Trash2, Eye, EyeOff, Sparkles } from "lucide-react";
 import { Reorder } from "framer-motion";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
+
 import { getCategories, updateCategory, deleteCategory, reorderCategories, setCategoryVisibility, uploadFile, apiFetch } from "@/lib/api";
 import type { Category, SpecField, SpecFieldType } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -544,28 +540,8 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  if (loading) return <AdminPageSkeleton />;
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen">
-        <Navbar />
-        <main className="container py-12">
-          <Card className="p-8 text-center max-w-lg mx-auto">
-            <h1 className="text-2xl font-bold mb-2">Admin access required 🔐</h1>
-            <p className="text-muted-foreground">Your account ({user?.email}) is not an admin.</p>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AdminHeader />
+    <>
           <main className="container py-8 space-y-6">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -618,9 +594,6 @@ export default function AdminCategoriesPage() {
               </div>
             )}
           </main>
-        </div>
-      </div>
-
       {/* ── Add / edit category drawer ────────────────────────────── */}
       <Sheet open={drawerOpen} onOpenChange={(open) => { if (!open) setDrawerOpen(false); }}>
         <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
@@ -639,6 +612,6 @@ export default function AdminCategoriesPage() {
           </ScrollArea>
         </SheetContent>
       </Sheet>
-    </SidebarProvider>
+    </>
   );
 }

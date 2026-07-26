@@ -14,9 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Truck, RefreshCw, Phone, Mail, Globe, MapPin, User } from "lucide-react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getSuppliers, createSupplier, updateSupplier, deleteSupplier } from "@/lib/api";
 import type { Supplier } from "@/lib/types";
@@ -131,106 +128,100 @@ export default function SuppliersPage() {
   if (!isAdmin) return null;
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AdminHeader />
-          <main className="container py-8 space-y-6">
+    <>
+      <main className="container py-8 space-y-6">
 
-            {/* Header */}
-            <div className="flex items-end justify-between flex-wrap gap-3">
-              <div>
-                <h1 className="text-4xl font-bold">Suppliers</h1>
-                <p className="text-muted-foreground mt-1">Manage your vendor and supplier contacts</p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={loadSuppliers} disabled={fetching}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? "animate-spin" : ""}`} /> Refresh
-                </Button>
-                <Button onClick={openCreate}>
-                  <Plus className="h-4 w-4 mr-2" /> Add supplier
-                </Button>
-              </div>
-            </div>
-
-            {/* Table */}
-            {fetching ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
-              </div>
-            ) : suppliers.length === 0 ? (
-              <Card className="p-12 text-center space-y-3">
-                <Truck className="h-12 w-12 text-muted-foreground/40 mx-auto" />
-                <h2 className="text-lg font-semibold">No suppliers yet</h2>
-                <p className="text-muted-foreground text-sm">Add your first supplier to start tracking purchase orders.</p>
-                <Button onClick={openCreate} className="mt-2">
-                  <Plus className="h-4 w-4 mr-2" /> Add supplier
-                </Button>
-              </Card>
-            ) : (
-              <div className="border border-border rounded-xl overflow-hidden">
-                {/* Header row */}
-                <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 bg-muted text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  <span className="col-span-3">Name</span>
-                  <span className="col-span-2">Contact</span>
-                  <span className="col-span-2">Email</span>
-                  <span className="col-span-2">Phone</span>
-                  <span className="col-span-2">Status</span>
-                  <span className="col-span-1" />
-                </div>
-                {suppliers.map((s) => (
-                  <div key={s.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 px-4 py-3.5 items-center border-t border-border hover:bg-accent/30 transition-colors">
-                    <div className="md:col-span-3 min-w-0">
-                      <p className="font-medium text-sm truncate">{s.name}</p>
-                      {s.address && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
-                          <MapPin className="h-3 w-3 shrink-0" /> {s.address}
-                        </p>
-                      )}
-                    </div>
-                    <div className="md:col-span-2 text-sm text-muted-foreground truncate">
-                      {s.contactPerson ? (
-                        <span className="flex items-center gap-1">
-                          <User className="h-3.5 w-3.5 shrink-0" /> {s.contactPerson}
-                        </span>
-                      ) : "—"}
-                    </div>
-                    <div className="md:col-span-2 text-sm truncate">
-                      {s.email ? (
-                        <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-primary hover:underline">
-                          <Mail className="h-3.5 w-3.5 shrink-0" /> {s.email}
-                        </a>
-                      ) : "—"}
-                    </div>
-                    <div className="md:col-span-2 text-sm text-muted-foreground truncate">
-                      {s.phone ? (
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3.5 w-3.5 shrink-0" /> {s.phone}
-                        </span>
-                      ) : "—"}
-                    </div>
-                    <div className="md:col-span-2">
-                      <Badge className={s.isActive ? "bg-green-100 text-green-700 border-green-200 border" : "bg-gray-100 text-gray-600 border border-gray-200"}>
-                        {s.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    <div className="md:col-span-1 flex gap-1 justify-end">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(s)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-          </main>
+        {/* Header */}
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-4xl font-bold">Suppliers</h1>
+            <p className="text-muted-foreground mt-1">Manage your vendor and supplier contacts</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={loadSuppliers} disabled={fetching}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? "animate-spin" : ""}`} /> Refresh
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-2" /> Add supplier
+            </Button>
+          </div>
         </div>
-      </div>
+
+        {/* Table */}
+        {fetching ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          </div>
+        ) : suppliers.length === 0 ? (
+          <Card className="p-12 text-center space-y-3">
+            <Truck className="h-12 w-12 text-muted-foreground/40 mx-auto" />
+            <h2 className="text-lg font-semibold">No suppliers yet</h2>
+            <p className="text-muted-foreground text-sm">Add your first supplier to start tracking purchase orders.</p>
+            <Button onClick={openCreate} className="mt-2">
+              <Plus className="h-4 w-4 mr-2" /> Add supplier
+            </Button>
+          </Card>
+        ) : (
+          <div className="border border-border rounded-xl overflow-hidden">
+            {/* Header row */}
+            <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 bg-muted text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <span className="col-span-3">Name</span>
+              <span className="col-span-2">Contact</span>
+              <span className="col-span-2">Email</span>
+              <span className="col-span-2">Phone</span>
+              <span className="col-span-2">Status</span>
+              <span className="col-span-1" />
+            </div>
+            {suppliers.map((s) => (
+              <div key={s.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 px-4 py-3.5 items-center border-t border-border hover:bg-accent/30 transition-colors">
+                <div className="md:col-span-3 min-w-0">
+                  <p className="font-medium text-sm truncate">{s.name}</p>
+                  {s.address && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
+                      <MapPin className="h-3 w-3 shrink-0" /> {s.address}
+                    </p>
+                  )}
+                </div>
+                <div className="md:col-span-2 text-sm text-muted-foreground truncate">
+                  {s.contactPerson ? (
+                    <span className="flex items-center gap-1">
+                      <User className="h-3.5 w-3.5 shrink-0" /> {s.contactPerson}
+                    </span>
+                  ) : "—"}
+                </div>
+                <div className="md:col-span-2 text-sm truncate">
+                  {s.email ? (
+                    <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-primary hover:underline">
+                      <Mail className="h-3.5 w-3.5 shrink-0" /> {s.email}
+                    </a>
+                  ) : "—"}
+                </div>
+                <div className="md:col-span-2 text-sm text-muted-foreground truncate">
+                  {s.phone ? (
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3.5 w-3.5 shrink-0" /> {s.phone}
+                    </span>
+                  ) : "—"}
+                </div>
+                <div className="md:col-span-2">
+                  <Badge className={s.isActive ? "bg-green-100 text-green-700 border-green-200 border" : "bg-gray-100 text-gray-600 border border-gray-200"}>
+                    {s.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <div className="md:col-span-1 flex gap-1 justify-end">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(s)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </main>
 
       {/* Add/Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -314,6 +305,6 @@ export default function SuppliersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+    </>
   );
 }

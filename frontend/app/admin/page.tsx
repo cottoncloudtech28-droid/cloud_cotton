@@ -36,10 +36,6 @@ import {
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Package, Eye, EyeOff, Wand2, Sparkles, Star,
   ZoomIn, ZoomOut, Download, RefreshCw, Search,
 } from "lucide-react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import Navbar from "@/components/shop/Navbar";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { DescriptionToolbar } from "@/components/admin/DescriptionEditor";
 import { apiFetch, uploadFile, getCategories, getAdminProducts, bulkDeleteProducts, bulkEditProducts } from "@/lib/api";
@@ -1718,240 +1714,219 @@ export default function AdminPage() {
 
   if (loading) return <AdminPageSkeleton />;
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen">
-        <Navbar />
-        <main className="container py-12">
-          <Card className="p-8 text-center max-w-lg mx-auto">
-            <h1 className="text-2xl font-bold mb-2">Admin access required 🔐</h1>
-            <p className="text-muted-foreground mb-4">Your account ({user?.email}) is signed in but is not an admin.</p>
-            <p className="text-xs text-muted-foreground break-all">User ID: {user?.id}</p>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AdminHeader />
-          <main className="container py-8 space-y-8">
+    <>
+      <main className="container py-8 space-y-8">
 
-            {/* Header */}
-            <div className="flex items-end justify-between flex-wrap gap-3">
-              <div>
-                <h1 className="text-4xl font-bold">Products</h1>
-                <p className="text-muted-foreground mt-1">
-                  {itemsLoading ? "Loading…" : `${total} product${total !== 1 ? "s" : ""}${hasFilters ? " match your filters" : " in catalog"}`}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="lg" onClick={() => router.push("/admin/bulk")}>
-                  <Upload className="h-4 w-4 mr-2" /> Bulk Upload
-                </Button>
-                <Button size="lg" onClick={() => { setForm({ ...emptyForm, sku: generateSku(emptyForm.category) }); setEditingId(null); setDrawerOpen(true); }}>
-                  <Plus className="h-4 w-4 mr-2" /> Add product
-                </Button>
-              </div>
+        {/* Header */}
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-4xl font-bold">Products</h1>
+            <p className="text-muted-foreground mt-1">
+              {itemsLoading ? "Loading…" : `${total} product${total !== 1 ? "s" : ""}${hasFilters ? " match your filters" : " in catalog"}`}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="lg" onClick={() => router.push("/admin/bulk")}>
+              <Upload className="h-4 w-4 mr-2" /> Bulk Upload
+            </Button>
+            <Button size="lg" onClick={() => { setForm({ ...emptyForm, sku: generateSku(emptyForm.category) }); setEditingId(null); setDrawerOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" /> Add product
+            </Button>
+          </div>
+        </div>
+
+        {/* Search / filter toolbar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, SKU, category or tag…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); resetToFirstPage(); }}
+              className="pl-9 h-10"
+            />
+            {search && (
+              <button type="button" onClick={() => { setSearch(""); resetToFirstPage(); }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <select value={catFilter}
+            onChange={(e) => { setCatFilter(e.target.value); resetToFirstPage(); }}
+            className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+            <option value="all">All categories</option>
+            {categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+          </select>
+          <select value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value as "all" | "active" | "inactive"); resetToFirstPage(); }}
+            className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+            <option value="all">All status</option>
+            <option value="active">Visible</option>
+            <option value="inactive">Hidden</option>
+          </select>
+          <select value={sortBy}
+            onChange={(e) => { setSortBy(e.target.value); resetToFirstPage(); }}
+            className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="name-asc">Name A–Z</option>
+            <option value="name-desc">Name Z–A</option>
+            <option value="price-asc">Price low–high</option>
+            <option value="price-desc">Price high–low</option>
+            <option value="stock-asc">Stock low–high</option>
+            <option value="stock-desc">Stock high–low</option>
+          </select>
+          {hasFilters && (
+            <Button variant="ghost" size="sm"
+              onClick={() => { setSearch(""); setCatFilter("all"); setStatusFilter("all"); resetToFirstPage(); }}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+
+        {/* Product list */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              {items.length > 0 && (
+                <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} aria-label="Select all products on this page" />
+              )}
+              <h2 className="text-xl font-semibold">
+                {hasFilters ? "Results" : "All products"} ({itemsLoading ? "…" : total})
+              </h2>
             </div>
-
-            {/* Search / filter toolbar */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[220px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, SKU, category or tag…"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); resetToFirstPage(); }}
-                  className="pl-9 h-10"
-                />
-                {search && (
-                  <button type="button" onClick={() => { setSearch(""); resetToFirstPage(); }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+                <Button variant="outline" size="sm" onClick={() => setBulkEditOpen(true)}>
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit selected
+                </Button>
+                <Button variant="outline" size="sm" className="text-destructive" onClick={bulkDelete}>
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete selected
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
               </div>
-              <select value={catFilter}
-                onChange={(e) => { setCatFilter(e.target.value); resetToFirstPage(); }}
-                className="h-10 rounded-md border border-input bg-background px-2 text-sm">
-                <option value="all">All categories</option>
-                {categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-              </select>
-              <select value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value as "all" | "active" | "inactive"); resetToFirstPage(); }}
-                className="h-10 rounded-md border border-input bg-background px-2 text-sm">
-                <option value="all">All status</option>
-                <option value="active">Visible</option>
-                <option value="inactive">Hidden</option>
-              </select>
-              <select value={sortBy}
-                onChange={(e) => { setSortBy(e.target.value); resetToFirstPage(); }}
-                className="h-10 rounded-md border border-input bg-background px-2 text-sm">
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="name-asc">Name A–Z</option>
-                <option value="name-desc">Name Z–A</option>
-                <option value="price-asc">Price low–high</option>
-                <option value="price-desc">Price high–low</option>
-                <option value="stock-asc">Stock low–high</option>
-                <option value="stock-desc">Stock high–low</option>
-              </select>
-              {hasFilters && (
-                <Button variant="ghost" size="sm"
+            )}
+          </div>
+          {itemsLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 rounded-xl" />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            hasFilters ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground mb-4">No products match your search or filters.</p>
+                <Button variant="outline"
                   onClick={() => { setSearch(""); setCatFilter("all"); setStatusFilter("all"); resetToFirstPage(); }}>
                   Clear filters
                 </Button>
-              )}
-            </div>
-
-            {/* Product list */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  {items.length > 0 && (
-                    <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} aria-label="Select all products on this page" />
-                  )}
-                  <h2 className="text-xl font-semibold">
-                    {hasFilters ? "Results" : "All products"} ({itemsLoading ? "…" : total})
-                  </h2>
-                </div>
-                {selectedIds.size > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
-                    <Button variant="outline" size="sm" onClick={() => setBulkEditOpen(true)}>
-                      <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit selected
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-destructive" onClick={bulkDelete}>
-                      <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete selected
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
+              </Card>
+            ) : (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground mb-4">No products yet.</p>
+                <Button onClick={() => { setForm({ ...emptyForm, sku: generateSku(emptyForm.category) }); setEditingId(null); setDrawerOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" /> Add your first product
+                </Button>
+              </Card>
+            )
+          ) : items.map((p) => {
+            const imgSrc = p.images?.[0] ?? p.image_url;
+            const isExpanded = expandedId === p.id;
+            return (
+              <Card key={p.id} className="overflow-hidden">
+                {/* Row – click to expand */}
+                <div
+                  className="p-4 flex items-center gap-4 cursor-pointer hover:bg-muted/40 transition-colors select-none"
+                  onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                >
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} aria-label={`Select ${p.name}`} />
                   </div>
-                )}
-              </div>
-              {itemsLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-24 rounded-xl" />
-                  ))}
-                </div>
-              ) : items.length === 0 ? (
-                hasFilters ? (
-                  <Card className="p-12 text-center">
-                    <p className="text-muted-foreground mb-4">No products match your search or filters.</p>
-                    <Button variant="outline"
-                      onClick={() => { setSearch(""); setCatFilter("all"); setStatusFilter("all"); resetToFirstPage(); }}>
-                      Clear filters
-                    </Button>
-                  </Card>
-                ) : (
-                  <Card className="p-12 text-center">
-                    <p className="text-muted-foreground mb-4">No products yet.</p>
-                    <Button onClick={() => { setForm({ ...emptyForm, sku: generateSku(emptyForm.category) }); setEditingId(null); setDrawerOpen(true); }}>
-                      <Plus className="h-4 w-4 mr-2" /> Add your first product
-                    </Button>
-                  </Card>
-                )
-              ) : items.map((p) => {
-                const imgSrc = p.images?.[0] ?? p.image_url;
-                const isExpanded = expandedId === p.id;
-                return (
-                  <Card key={p.id} className="overflow-hidden">
-                    {/* Row – click to expand */}
-                    <div
-                      className="p-4 flex items-center gap-4 cursor-pointer hover:bg-muted/40 transition-colors select-none"
-                      onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                    >
-                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-                        <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} aria-label={`Select ${p.name}`} />
-                      </div>
-                      <div className="h-14 w-14 rounded-xl bg-muted overflow-hidden shrink-0 border border-border">
-                        {imgSrc
-                          ? <img src={imgSrc} alt={p.name} className="h-full w-full object-cover" />
-                          : <div className="h-full w-full flex items-center justify-center">
-                              <Package className="h-5 w-5 text-muted-foreground/40" />
-                            </div>
-                        }
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold truncate">{p.name}</p>
-                          {!p.is_active && <Badge variant="outline" className="text-xs">hidden</Badge>}
-                          {p.discount_percent > 0 && (
-                            <Badge className="bg-destructive text-destructive-foreground text-xs">
-                              -{p.discount_percent}%
-                            </Badge>
-                          )}
-                          {p.sku && (
-                            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                              {p.sku}
-                            </span>
-                          )}
+                  <div className="h-14 w-14 rounded-xl bg-muted overflow-hidden shrink-0 border border-border">
+                    {imgSrc
+                      ? <img src={imgSrc} alt={p.name} className="h-full w-full object-cover" />
+                      : <div className="h-full w-full flex items-center justify-center">
+                          <Package className="h-5 w-5 text-muted-foreground/40" />
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          ₹{p.price} · {p.category} · stock {p.stock}
-                          {p.sizes && p.sizes.length > 0 && ` (${p.sizes.length} sizes)`}
-                          {p.tags && p.tags.length > 0 && ` · ${p.tags.slice(0, 3).map(t => `#${t}`).join(" ")}`}
-                        </p>
-                      </div>
+                    }
+                  </div>
 
-                      {/* Quick actions — stop propagation so they don't toggle expand */}
-                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" onClick={() => toggle(p)} className="text-xs hidden sm:flex">
-                          {p.is_active ? "Hide" : "Show"}
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => edit(p)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => remove(p.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-
-                      <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold truncate">{p.name}</p>
+                      {!p.is_active && <Badge variant="outline" className="text-xs">hidden</Badge>}
+                      {p.discount_percent > 0 && (
+                        <Badge className="bg-destructive text-destructive-foreground text-xs">
+                          -{p.discount_percent}%
+                        </Badge>
+                      )}
+                      {p.sku && (
+                        <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                          {p.sku}
+                        </span>
+                      )}
                     </div>
+                    <p className="text-sm text-muted-foreground">
+                      ₹{p.price} · {p.category} · stock {p.stock}
+                      {p.sizes && p.sizes.length > 0 && ` (${p.sizes.length} sizes)`}
+                      {p.tags && p.tags.length > 0 && ` · ${p.tags.slice(0, 3).map(t => `#${t}`).join(" ")}`}
+                    </p>
+                  </div>
 
-                    {/* Expanded detail panel */}
-                    {isExpanded && (
-                      <ProductDetailPanel
-                        p={p}
-                        onEdit={() => edit(p)}
-                        onToggle={() => toggle(p)}
-                        onDelete={() => remove(p.id)}
-                      />
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
+                  {/* Quick actions — stop propagation so they don't toggle expand */}
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" onClick={() => toggle(p)} className="text-xs hidden sm:flex">
+                      {p.is_active ? "Hide" : "Show"}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => edit(p)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => remove(p.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
 
-            {/* Pagination */}
-            {!itemsLoading && total > PAGE_SIZE && (
-              <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
-                <p className="text-sm text-muted-foreground">
-                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                  </Button>
-                  <span className="text-sm text-muted-foreground px-1">Page {page} of {totalPages}</span>
-                  <Button variant="outline" size="sm" disabled={page >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                    Next <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                 </div>
-              </div>
-            )}
-          </main>
+
+                {/* Expanded detail panel */}
+                {isExpanded && (
+                  <ProductDetailPanel
+                    p={p}
+                    onEdit={() => edit(p)}
+                    onToggle={() => toggle(p)}
+                    onDelete={() => remove(p.id)}
+                  />
+                )}
+              </Card>
+            );
+          })}
         </div>
-      </div>
+
+        {/* Pagination */}
+        {!itemsLoading && total > PAGE_SIZE && (
+          <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              </Button>
+              <span className="text-sm text-muted-foreground px-1">Page {page} of {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                Next <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </main>
 
       {/* ── Add / Edit product drawer ───────────────────────────────── */}
       <Sheet open={drawerOpen} onOpenChange={(open) => { if (!open) reset(); }}>
@@ -2041,6 +2016,6 @@ export default function AdminPage() {
           </ScrollArea>
         </SheetContent>
       </Sheet>
-    </SidebarProvider>
+    </>
   );
 }

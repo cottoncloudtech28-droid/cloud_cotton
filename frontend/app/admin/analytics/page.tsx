@@ -7,10 +7,6 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getOrderAnalytics } from "@/lib/api";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -52,10 +48,7 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof getOrderAnalytics>> | null>(null);
   const [fetching, setFetching] = useState(true);
 
-  useEffect(() => {
-    if (loading) return;
-    if (!user) router.push(`/auth?redirect=${encodeURIComponent("/admin/analytics")}`);
-  }, [user, loading, router]);
+  // Auth redirect is handled by the admin layout
 
   const load = useCallback(async () => {
     if (!isAdmin) return;
@@ -72,16 +65,8 @@ export default function AnalyticsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <AdminPageSkeleton />;
-  if (!isAdmin) return null;
-
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AdminHeader />
-          <main className="container py-8 space-y-8">
+      <main className="container py-8 space-y-8">
 
             {/* Header */}
             <div className="flex items-end justify-between flex-wrap gap-4">
@@ -250,9 +235,6 @@ export default function AnalyticsPage() {
                 </Card>
               </>
             )}
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
+      </main>
   );
 }

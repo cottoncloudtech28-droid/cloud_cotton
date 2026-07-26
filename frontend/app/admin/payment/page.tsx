@@ -9,9 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import { toast } from "sonner";
 import { CreditCard, Truck, Info, Save } from "lucide-react";
 
@@ -49,25 +46,14 @@ export default function PaymentSettingsPage() {
 
   if (authLoading || loading) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AdminSidebar />
-          <div className="flex-1 p-6 space-y-4">
-            <Skeleton className="h-10 w-64 rounded-xl" />
-            <Skeleton className="h-40 rounded-3xl" />
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="flex-1 p-6 space-y-4">
+        <Skeleton className="h-10 w-64 rounded-xl" />
+        <Skeleton className="h-40 rounded-3xl" />
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-muted/30">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col">
-          <AdminHeader />
-
           <main className="flex-1 p-6 space-y-6 max-w-2xl">
 
             <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-sm text-blue-800">
@@ -130,8 +116,5 @@ export default function PaymentSettingsPage() {
             </Card>
 
           </main>
-        </div>
-      </div>
-    </SidebarProvider>
   );
 }

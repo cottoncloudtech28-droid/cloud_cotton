@@ -9,10 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { getAdminCustomers, updateCustomerRole } from "@/lib/api";
 import { Search, Users, ChevronLeft, ChevronRight, Shield, ShoppingBag, AlertTriangle } from "lucide-react";
 import {
@@ -104,15 +100,8 @@ export default function CustomersPage() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  if (loading) return <AdminPageSkeleton />;
-  if (!isAdmin) return null;
-
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AdminHeader />
+    <>
           <main className="container py-8 space-y-6">
 
             {/* Header */}
@@ -222,7 +211,7 @@ export default function CustomersPage() {
                           </Button>
                         </div>
                       </div>
-                    </Card>
+                </Card>
                   ))}
                 </div>
 
@@ -246,10 +235,10 @@ export default function CustomersPage() {
               </>
             )}
           </main>
-        </div>
-      </div>
+
+
       {/* Role change confirmation dialog */}
-      <Dialog open={!!confirmTarget} onOpenChange={(open) => { if (!open) { setConfirmTarget(null); setConfirmInput(""); } }}>
+      <Dialog open={!!confirmTarget} onOpenChange={(o) => { if (!o) { setConfirmTarget(null); setConfirmInput(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -305,6 +294,6 @@ export default function CustomersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+    </>
   );
 }

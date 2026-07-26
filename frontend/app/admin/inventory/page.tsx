@@ -18,10 +18,6 @@ import {
   RefreshCw, Save, ChevronRight, ChevronLeft, Download,
   Upload, X, TrendingUp, Zap, FileText,
 } from "lucide-react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import {
   apiFetch, getLowStockProducts, getStockLogs, bulkUpdateStock,
   getRestockRecommendations,
@@ -329,15 +325,7 @@ export default function InventoryPage() {
     { id: "export", label: "Export", icon: Download },
   ];
 
-  if (loading) return <AdminPageSkeleton />;
-  if (!isAdmin) return null;
-
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AdminHeader />
           <main className="container py-8 space-y-8">
 
             {/* Header */}
@@ -875,9 +863,6 @@ export default function InventoryPage() {
             )}
 
           </main>
-        </div>
-      </div>
-    </SidebarProvider>
   );
 }
 

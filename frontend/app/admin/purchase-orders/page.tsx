@@ -17,9 +17,6 @@ import {
   Plus, RefreshCw, ShoppingCart, Trash2, ChevronDown, ChevronUp,
   CheckCircle2, Send, X, Eye, Package,
 } from "lucide-react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import {
   apiFetch, getSuppliers, getPurchaseOrders, createPurchaseOrder,
@@ -211,187 +208,181 @@ export default function PurchaseOrdersPage() {
   if (!isAdmin) return null;
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AdminHeader />
-          <main className="container py-8 space-y-6">
+    <>
+      <main className="container py-8 space-y-6">
 
-            {/* Header */}
-            <div className="flex items-end justify-between flex-wrap gap-3">
-              <div>
-                <h1 className="text-4xl font-bold">Purchase Orders</h1>
-                <p className="text-muted-foreground mt-1">Track supplier orders and auto-restock inventory on receipt</p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={loadAll} disabled={fetching}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? "animate-spin" : ""}`} /> Refresh
-                </Button>
-                <Button onClick={() => setCreateOpen(true)} disabled={suppliers.length === 0}>
-                  <Plus className="h-4 w-4 mr-2" /> New PO
-                </Button>
-              </div>
-            </div>
+        {/* Header */}
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-4xl font-bold">Purchase Orders</h1>
+            <p className="text-muted-foreground mt-1">Track supplier orders and auto-restock inventory on receipt</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={loadAll} disabled={fetching}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? "animate-spin" : ""}`} /> Refresh
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} disabled={suppliers.length === 0}>
+              <Plus className="h-4 w-4 mr-2" /> New PO
+            </Button>
+          </div>
+        </div>
 
-            {suppliers.length === 0 && !fetching && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
-                No suppliers found. <a href="/admin/suppliers" className="font-semibold underline underline-offset-2">Add a supplier first</a> before creating purchase orders.
-              </div>
-            )}
+        {suppliers.length === 0 && !fetching && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
+            No suppliers found. <a href="/admin/suppliers" className="font-semibold underline underline-offset-2">Add a supplier first</a> before creating purchase orders.
+          </div>
+        )}
 
-            {/* Summary cards */}
-            {!fetching && (
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { label: "Draft", value: draftCount, color: "bg-gray-500" },
-                  { label: "Sent", value: sentCount, color: "bg-blue-500" },
-                  { label: "Received", value: receivedCount, color: "bg-green-600" },
-                ].map((s) => (
-                  <Card key={s.label} className="p-4 flex items-center gap-3">
-                    <div className={`h-2.5 w-2.5 rounded-full ${s.color}`} />
-                    <div>
-                      <p className="text-2xl font-bold">{s.value}</p>
-                      <p className="text-xs text-muted-foreground">{s.label}</p>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {/* PO list */}
-            {fetching ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
-              </div>
-            ) : pos.length === 0 ? (
-              <Card className="p-12 text-center space-y-3">
-                <ShoppingCart className="h-12 w-12 text-muted-foreground/40 mx-auto" />
-                <h2 className="text-lg font-semibold">No purchase orders yet</h2>
-                <p className="text-muted-foreground text-sm">Create a PO to track stock replenishment from your suppliers.</p>
-                <Button onClick={() => setCreateOpen(true)} disabled={suppliers.length === 0} className="mt-2">
-                  <Plus className="h-4 w-4 mr-2" /> New purchase order
-                </Button>
+        {/* Summary cards */}
+        {!fetching && (
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: "Draft", value: draftCount, color: "bg-gray-500" },
+              { label: "Sent", value: sentCount, color: "bg-blue-500" },
+              { label: "Received", value: receivedCount, color: "bg-green-600" },
+            ].map((s) => (
+              <Card key={s.label} className="p-4 flex items-center gap-3">
+                <div className={`h-2.5 w-2.5 rounded-full ${s.color}`} />
+                <div>
+                  <p className="text-2xl font-bold">{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                </div>
               </Card>
-            ) : (
-              <div className="space-y-3">
-                {pos.map((po) => {
-                  const cfg = statusConfig[po.status];
-                  const next = nextStatus[po.status];
-                  const isExpanded = expandedId === po.id;
-                  const supplierName = typeof po.supplier === "object" ? po.supplier.name : po.supplier;
+            ))}
+          </div>
+        )}
 
-                  return (
-                    <Card key={po.id} className="overflow-hidden">
-                      {/* PO row */}
-                      <div className="flex flex-wrap items-center gap-4 p-4">
-                        <div className="flex-1 min-w-[200px]">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono font-semibold text-sm">{po.poNumber}</span>
-                            <Badge variant="outline" className={`text-[10px] border ${cfg.className}`}>
-                              {cfg.label}
-                            </Badge>
+        {/* PO list */}
+        {fetching ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+          </div>
+        ) : pos.length === 0 ? (
+          <Card className="p-12 text-center space-y-3">
+            <ShoppingCart className="h-12 w-12 text-muted-foreground/40 mx-auto" />
+            <h2 className="text-lg font-semibold">No purchase orders yet</h2>
+            <p className="text-muted-foreground text-sm">Create a PO to track stock replenishment from your suppliers.</p>
+            <Button onClick={() => setCreateOpen(true)} disabled={suppliers.length === 0} className="mt-2">
+              <Plus className="h-4 w-4 mr-2" /> New purchase order
+            </Button>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {pos.map((po) => {
+              const cfg = statusConfig[po.status];
+              const next = nextStatus[po.status];
+              const isExpanded = expandedId === po.id;
+              const supplierName = typeof po.supplier === "object" ? po.supplier.name : po.supplier;
+
+              return (
+                <Card key={po.id} className="overflow-hidden">
+                  {/* PO row */}
+                  <div className="flex flex-wrap items-center gap-4 p-4">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-semibold text-sm">{po.poNumber}</span>
+                        <Badge variant="outline" className={`text-[10px] border ${cfg.className}`}>
+                          {cfg.label}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {supplierName} ·{" "}
+                        {po.items.length} item{po.items.length !== 1 ? "s" : ""} ·{" "}
+                        ₹{po.totalCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                        {po.expectedDelivery && ` · Due ${new Date(po.expectedDelivery).toLocaleDateString("en-IN")}`}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      {/* Next step button */}
+                      {next && po.status !== "cancelled" && (
+                        <Button size="sm" variant="outline"
+                          disabled={actionLoading === po.id}
+                          onClick={() => handleStatusChange(po, next.status)}>
+                          <next.icon className="h-3.5 w-3.5 mr-1.5" />
+                          {next.label}
+                        </Button>
+                      )}
+
+                      {/* Cancel button for non-terminal states */}
+                      {(po.status === "draft" || po.status === "sent") && (
+                        <Button size="sm" variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          disabled={actionLoading === po.id}
+                          onClick={() => handleCancel(po)}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+
+                      {/* Delete button for draft/cancelled only */}
+                      {(po.status === "draft" || po.status === "cancelled") && (
+                        <Button size="sm" variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          disabled={actionLoading === po.id}
+                          onClick={() => setDeleteTarget(po)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+
+                      {/* Expand toggle */}
+                      <Button size="sm" variant="ghost" onClick={() => setExpandedId(isExpanded ? null : po.id)}>
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Expanded items */}
+                  {isExpanded && (
+                    <div className="border-t border-border bg-muted/30 px-4 py-3 space-y-2">
+                      {po.notes && (
+                        <p className="text-xs text-muted-foreground italic mb-2">Note: {po.notes}</p>
+                      )}
+                      <div className="overflow-x-auto">
+                        <div className="min-w-[520px]">
+                          <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1">
+                            <span className="col-span-5">Product</span>
+                            <span className="col-span-2 text-center">Size</span>
+                            <span className="col-span-2 text-center">Qty</span>
+                            <span className="col-span-2 text-center">Unit cost</span>
+                            <span className="col-span-1 text-right">Subtotal</span>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-0.5">
-                            {supplierName} ·{" "}
-                            {po.items.length} item{po.items.length !== 1 ? "s" : ""} ·{" "}
-                            ₹{po.totalCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                            {po.expectedDelivery && ` · Due ${new Date(po.expectedDelivery).toLocaleDateString("en-IN")}`}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2 shrink-0">
-                          {/* Next step button */}
-                          {next && po.status !== "cancelled" && (
-                            <Button size="sm" variant="outline"
-                              disabled={actionLoading === po.id}
-                              onClick={() => handleStatusChange(po, next.status)}>
-                              <next.icon className="h-3.5 w-3.5 mr-1.5" />
-                              {next.label}
-                            </Button>
-                          )}
-
-                          {/* Cancel button for non-terminal states */}
-                          {(po.status === "draft" || po.status === "sent") && (
-                            <Button size="sm" variant="ghost"
-                              className="text-muted-foreground hover:text-destructive"
-                              disabled={actionLoading === po.id}
-                              onClick={() => handleCancel(po)}>
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-
-                          {/* Delete button for draft/cancelled only */}
-                          {(po.status === "draft" || po.status === "cancelled") && (
-                            <Button size="sm" variant="ghost"
-                              className="text-muted-foreground hover:text-destructive"
-                              disabled={actionLoading === po.id}
-                              onClick={() => setDeleteTarget(po)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-
-                          {/* Expand toggle */}
-                          <Button size="sm" variant="ghost" onClick={() => setExpandedId(isExpanded ? null : po.id)}>
-                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </Button>
+                          {po.items.map((item, i) => (
+                            <div key={i} className="grid grid-cols-12 gap-2 text-sm items-center px-1 py-1">
+                              <div className="col-span-5 min-w-0">
+                                <p className="truncate font-medium text-sm">{item.productName}</p>
+                                {item.sku && <p className="text-[10px] font-mono text-muted-foreground">{item.sku}</p>}
+                              </div>
+                              <span className="col-span-2 text-center text-muted-foreground">{item.size || "—"}</span>
+                              <span className="col-span-2 text-center font-semibold">{item.quantity}</span>
+                              <span className="col-span-2 text-center text-muted-foreground">
+                                ₹{item.unitCost.toLocaleString("en-IN")}
+                              </span>
+                              <span className="col-span-1 text-right font-medium">
+                                ₹{(item.quantity * item.unitCost).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       </div>
-
-                      {/* Expanded items */}
-                      {isExpanded && (
-                        <div className="border-t border-border bg-muted/30 px-4 py-3 space-y-2">
-                          {po.notes && (
-                            <p className="text-xs text-muted-foreground italic mb-2">Note: {po.notes}</p>
-                          )}
-                          <div className="overflow-x-auto">
-                            <div className="min-w-[520px]">
-                              <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1">
-                                <span className="col-span-5">Product</span>
-                                <span className="col-span-2 text-center">Size</span>
-                                <span className="col-span-2 text-center">Qty</span>
-                                <span className="col-span-2 text-center">Unit cost</span>
-                                <span className="col-span-1 text-right">Subtotal</span>
-                              </div>
-                              {po.items.map((item, i) => (
-                                <div key={i} className="grid grid-cols-12 gap-2 text-sm items-center px-1 py-1">
-                                  <div className="col-span-5 min-w-0">
-                                    <p className="truncate font-medium text-sm">{item.productName}</p>
-                                    {item.sku && <p className="text-[10px] font-mono text-muted-foreground">{item.sku}</p>}
-                                  </div>
-                                  <span className="col-span-2 text-center text-muted-foreground">{item.size || "—"}</span>
-                                  <span className="col-span-2 text-center font-semibold">{item.quantity}</span>
-                                  <span className="col-span-2 text-center text-muted-foreground">
-                                    ₹{item.unitCost.toLocaleString("en-IN")}
-                                  </span>
-                                  <span className="col-span-1 text-right font-medium">
-                                    ₹{(item.quantity * item.unitCost).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex justify-end pt-2 border-t border-border/60">
-                            <span className="text-sm font-bold">
-                              Total: ₹{po.totalCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                            </span>
-                          </div>
-                          {po.receivedAt && (
-                            <p className="text-xs text-green-700 bg-green-50 rounded px-2 py-1">
-                              Received on {new Date(po.receivedAt).toLocaleDateString("en-IN", { dateStyle: "long" })} — stock updated automatically.
-                            </p>
-                          )}
-                        </div>
+                      <div className="flex justify-end pt-2 border-t border-border/60">
+                        <span className="text-sm font-bold">
+                          Total: ₹{po.totalCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                      {po.receivedAt && (
+                        <p className="text-xs text-green-700 bg-green-50 rounded px-2 py-1">
+                          Received on {new Date(po.receivedAt).toLocaleDateString("en-IN", { dateStyle: "long" })} — stock updated automatically.
+                        </p>
                       )}
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
-          </main>
-        </div>
-      </div>
+      </main>
 
       {/* ── Create PO dialog ────────────────────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -561,6 +552,6 @@ export default function PurchaseOrdersPage() {
         </DialogContent>
       </Dialog>
 
-    </SidebarProvider>
+    </>
   );
 }

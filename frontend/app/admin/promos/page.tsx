@@ -18,9 +18,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Info, Percent, IndianRupee } from "lucide-react";
 
@@ -157,31 +154,23 @@ export default function PromoCodesPage() {
 
   if (authLoading || loading) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AdminSidebar />
-          <div className="flex-1 p-6 space-y-4">
-            <Skeleton className="h-10 w-64 rounded-xl" />
-            <Skeleton className="h-32 rounded-3xl" />
-            <Skeleton className="h-32 rounded-3xl" />
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="flex-1 p-6 space-y-4">
+        <Skeleton className="h-10 w-64 rounded-xl" />
+        <Skeleton className="h-32 rounded-3xl" />
+        <Skeleton className="h-32 rounded-3xl" />
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-muted/30">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col">
-          <AdminHeader>
-            <Button onClick={openCreate} size="sm" className="rounded-full h-8 bg-gradient-primary text-primary-foreground border-0 gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> New code
-            </Button>
-          </AdminHeader>
-
+    <>
           <main className="flex-1 p-6 space-y-4 max-w-3xl">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Promo Codes</h1>
+              <Button onClick={openCreate} size="sm" className="rounded-full h-8 bg-gradient-primary text-primary-foreground border-0 gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> New code
+              </Button>
+            </div>
             <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-sm text-blue-800">
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <p>
@@ -238,9 +227,6 @@ export default function PromoCodesPage() {
               ))
             )}
           </main>
-        </div>
-      </div>
-
       {/* Create / edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
@@ -365,6 +351,6 @@ export default function PromoCodesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+    </>
   );
 }

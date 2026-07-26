@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import Navbar from "@/components/shop/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,9 +18,6 @@ import {
   Star, CheckCircle2, XCircle, Clock, Trash2, RefreshCw, Search,
   ChevronDown, MessageSquare, ShieldCheck, User, Plus, PackageSearch,
 } from "lucide-react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { apiFetch, searchSuggestions } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -321,292 +317,271 @@ export default function AdminReviewsPage() {
 
   if (loading) return <AdminPageSkeleton />;
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen">
-        <Navbar />
-        <main className="container py-12">
-          <Card className="p-8 text-center max-w-lg mx-auto">
-            <h1 className="text-2xl font-bold mb-2">Admin access required</h1>
-            <p className="text-muted-foreground">Your account is not an admin.</p>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AdminHeader />
-
-          <main className="container py-8 space-y-6">
-            {/* Header */}
-            <div className="flex items-end justify-between flex-wrap gap-3">
-              <div>
-                <h1 className="text-4xl font-bold">Reviews</h1>
-                <p className="text-muted-foreground mt-1">
-                  {listLoading ? "Loading…" : `${total} review${total !== 1 ? "s" : ""} total`}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={load} disabled={listLoading}>
-                  <RefreshCw className={cn("h-4 w-4 mr-2", listLoading && "animate-spin")} />
-                  Refresh
-                </Button>
-                <Button size="sm" onClick={openAdd} className="bg-gradient-primary text-primary-foreground border-0">
-                  <Plus className="h-4 w-4 mr-1.5" /> Add review
-                </Button>
-              </div>
-            </div>
-
-            {/* Filter tabs */}
-            <div className="flex gap-2 flex-wrap">
-              {(["all", "pending", "approved", "rejected"] as const).map((s) => {
-                const cfg = STATUS_CFG[s];
-                return (
-                  <button
-                    key={s}
-                    onClick={() => setStatusFilter(s)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors",
-                      statusFilter === s
-                        ? cfg.cls + " shadow-sm"
-                        : "bg-background text-muted-foreground border-border hover:bg-muted"
-                    )}
-                  >
-                    {cfg.icon} {cfg.label}
-                    {s !== "all" && counts[s] != null && (
-                      <span className="ml-0.5 text-xs opacity-70">({counts[s]})</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Search */}
-            <div className="flex gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={searchDraft}
-                  onChange={(e) => setSearchDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submitSearch()}
-                  placeholder="Search by content, name or email…"
-                  className="pl-9"
-                />
-              </div>
-              <Button variant="outline" onClick={submitSearch}>Search</Button>
-              {search && (
-                <Button variant="ghost" onClick={() => { setSearch(""); setSearchDraft(""); }}>
-                  Clear
-                </Button>
-              )}
-            </div>
-
-            {/* Bulk toolbar */}
-            {selected.size > 0 && (
-              <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5">
-                <span className="text-sm font-medium">{selected.size} selected</span>
-                <div className="flex gap-2 ml-auto">
-                  <Button size="sm" variant="outline" onClick={() => bulkAction("approve")}
-                    className="text-green-700 border-green-200 hover:bg-green-50">
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Approve
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => bulkAction("reject")}
-                    className="text-amber-700 border-amber-200 hover:bg-amber-50">
-                    <XCircle className="h-3.5 w-3.5 mr-1.5" /> Reject
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => bulkAction("delete")}
-                    className="text-destructive border-destructive/30 hover:bg-destructive/5">
-                    <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={clearSelect}>Clear</Button>
-                </div>
-              </div>
-            )}
-
-            {/* Select all / none */}
-            {reviews.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <button onClick={selected.size === reviews.length ? clearSelect : selectAll}
-                  className="hover:text-foreground underline underline-offset-2 transition-colors">
-                  {selected.size === reviews.length ? "Deselect all" : "Select all"}
-                </button>
-              </div>
-            )}
-
-            {/* List */}
-            {listLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 rounded-xl" />
-                ))}
-              </div>
-            ) : reviews.length === 0 ? (
-              <Card className="p-12 text-center">
-                <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">No reviews found.</p>
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {reviews.map((r) => {
-                  const isExpanded = expandedId === r.id;
-                  const cfg = STATUS_CFG[r.status];
-                  const img = productImage(r);
-                  return (
-                    <Card key={r.id} className="overflow-hidden">
-                      {/* Row */}
-                      <div
-                        className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/40 transition-colors select-none"
-                        onClick={() => setExpandedId(isExpanded ? null : r.id)}
-                      >
-                        {/* Checkbox */}
-                        <div
-                          className="mt-0.5 shrink-0"
-                          onClick={(e) => { e.stopPropagation(); toggleSelect(r.id); }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.has(r.id)}
-                            onChange={() => toggleSelect(r.id)}
-                            className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-
-                        {/* Product thumbnail */}
-                        <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden border border-border shrink-0">
-                          {img
-                            ? <img src={img} alt="" className="h-full w-full object-cover" />
-                            : <div className="h-full w-full flex items-center justify-center text-muted-foreground/30 text-xs">?</div>
-                          }
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Stars rating={r.rating} />
-                            <span className={cn("text-[10px] border px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1", cfg.cls)}>
-                              {cfg.icon} {cfg.label}
-                            </span>
-                            {r.verified_purchase && (
-                              <span className="text-[10px] flex items-center gap-0.5 text-blue-600 border border-blue-200 bg-blue-50 px-1.5 py-0.5 rounded-full">
-                                <ShieldCheck className="h-3 w-3" /> Verified
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm font-medium truncate mt-0.5">
-                            {r.title ?? <span className="text-muted-foreground italic">No title</span>}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {productName(r)} · by {reviewerName(r)} · {new Date(r.createdAt).toLocaleDateString("en-IN")}
-                          </p>
-                        </div>
-
-                        {/* Quick actions */}
-                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          {r.status !== "approved" && (
-                            <Button size="sm" variant="ghost"
-                              onClick={() => setStatus(r.id, "approved")}
-                              className="text-green-700 hover:bg-green-50 text-xs">
-                              Approve
-                            </Button>
-                          )}
-                          {r.status !== "rejected" && (
-                            <Button size="sm" variant="ghost"
-                              onClick={() => setStatus(r.id, "rejected")}
-                              className="text-red-600 hover:bg-red-50 text-xs">
-                              Reject
-                            </Button>
-                          )}
-                          <Button size="icon" variant="ghost" onClick={() => deleteReview(r.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-
-                        <ChevronDown className={cn(
-                          "h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200",
-                          isExpanded && "rotate-180"
-                        )} />
-                      </div>
-
-                      {/* Expanded detail */}
-                      {isExpanded && (
-                        <div className="border-t border-border bg-muted/30 px-5 py-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                          <div className="grid md:grid-cols-2 gap-6">
-                            {/* Left: review content */}
-                            <div className="space-y-3">
-                              <Stars rating={r.rating} size="lg" />
-                              {r.title && <p className="font-semibold text-lg">{r.title}</p>}
-                              <p className="text-sm text-foreground/80 whitespace-pre-line">{r.body || <span className="italic text-muted-foreground">No body text</span>}</p>
-
-                              <div className="pt-2 space-y-1 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-1.5">
-                                  <User className="h-3.5 w-3.5" />
-                                  <span>{reviewerName(r)}</span>
-                                  {reviewerEmail(r) && <span className="opacity-70">({reviewerEmail(r)})</span>}
-                                  {r.verified_purchase && (
-                                    <span className="flex items-center gap-0.5 text-blue-600 ml-1">
-                                      <ShieldCheck className="h-3 w-3" /> Verified purchase
-                                    </span>
-                                  )}
-                                </div>
-                                <div>Product: <span className="text-foreground font-medium">{productName(r)}</span></div>
-                                <div>Submitted: {new Date(r.createdAt).toLocaleString("en-IN")}</div>
-                              </div>
-                            </div>
-
-                            {/* Right: admin actions */}
-                            <div className="space-y-4">
-                              {r.admin_note && (
-                                <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800">
-                                  <p className="font-semibold mb-0.5">Admin note</p>
-                                  <p>{r.admin_note}</p>
-                                </div>
-                              )}
-
-                              <div className="flex gap-2 flex-wrap">
-                                {r.status !== "approved" && (
-                                  <Button size="sm" onClick={() => setStatus(r.id, "approved")}
-                                    className="bg-green-600 hover:bg-green-700 text-white">
-                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Approve
-                                  </Button>
-                                )}
-                                {r.status !== "rejected" && (
-                                  <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "rejected")}
-                                    className="text-red-600 border-red-200 hover:bg-red-50">
-                                    <XCircle className="h-3.5 w-3.5 mr-1.5" /> Reject
-                                  </Button>
-                                )}
-                                {r.status !== "pending" && (
-                                  <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "pending")}
-                                    className="text-amber-700 border-amber-200 hover:bg-amber-50">
-                                    <Clock className="h-3.5 w-3.5 mr-1.5" /> Reset to Pending
-                                  </Button>
-                                )}
-                                <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
-                                  Edit / Note
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => deleteReview(r.id)}
-                                  className="text-destructive border-destructive/30 hover:bg-destructive/5">
-                                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </main>
+    <>
+      <main className="container py-8 space-y-6">
+        {/* Header */}
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-4xl font-bold">Reviews</h1>
+            <p className="text-muted-foreground mt-1">
+              {listLoading ? "Loading…" : `${total} review${total !== 1 ? "s" : ""} total`}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={load} disabled={listLoading}>
+              <RefreshCw className={cn("h-4 w-4 mr-2", listLoading && "animate-spin")} />
+              Refresh
+            </Button>
+            <Button size="sm" onClick={openAdd} className="bg-gradient-primary text-primary-foreground border-0">
+              <Plus className="h-4 w-4 mr-1.5" /> Add review
+            </Button>
+          </div>
         </div>
-      </div>
+
+        {/* Filter tabs */}
+        <div className="flex gap-2 flex-wrap">
+          {(["all", "pending", "approved", "rejected"] as const).map((s) => {
+            const cfg = STATUS_CFG[s];
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors",
+                  statusFilter === s
+                    ? cfg.cls + " shadow-sm"
+                    : "bg-background text-muted-foreground border-border hover:bg-muted"
+                )}
+              >
+                {cfg.icon} {cfg.label}
+                {s !== "all" && counts[s] != null && (
+                  <span className="ml-0.5 text-xs opacity-70">({counts[s]})</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search */}
+        <div className="flex gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitSearch()}
+              placeholder="Search by content, name or email…"
+              className="pl-9"
+            />
+          </div>
+          <Button variant="outline" onClick={submitSearch}>Search</Button>
+          {search && (
+            <Button variant="ghost" onClick={() => { setSearch(""); setSearchDraft(""); }}>
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Bulk toolbar */}
+        {selected.size > 0 && (
+          <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5">
+            <span className="text-sm font-medium">{selected.size} selected</span>
+            <div className="flex gap-2 ml-auto">
+              <Button size="sm" variant="outline" onClick={() => bulkAction("approve")}
+                className="text-green-700 border-green-200 hover:bg-green-50">
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Approve
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => bulkAction("reject")}
+                className="text-amber-700 border-amber-200 hover:bg-amber-50">
+                <XCircle className="h-3.5 w-3.5 mr-1.5" /> Reject
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => bulkAction("delete")}
+                className="text-destructive border-destructive/30 hover:bg-destructive/5">
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+              </Button>
+              <Button size="sm" variant="ghost" onClick={clearSelect}>Clear</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Select all / none */}
+        {reviews.length > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <button onClick={selected.size === reviews.length ? clearSelect : selectAll}
+              className="hover:text-foreground underline underline-offset-2 transition-colors">
+              {selected.size === reviews.length ? "Deselect all" : "Select all"}
+            </button>
+          </div>
+        )}
+
+        {/* List */}
+        {listLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
+        ) : reviews.length === 0 ? (
+          <Card className="p-12 text-center">
+            <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">No reviews found.</p>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {reviews.map((r) => {
+              const isExpanded = expandedId === r.id;
+              const cfg = STATUS_CFG[r.status];
+              const img = productImage(r);
+              return (
+                <Card key={r.id} className="overflow-hidden">
+                  {/* Row */}
+                  <div
+                    className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/40 transition-colors select-none"
+                    onClick={() => setExpandedId(isExpanded ? null : r.id)}
+                  >
+                    {/* Checkbox */}
+                    <div
+                      className="mt-0.5 shrink-0"
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(r.id); }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.has(r.id)}
+                        onChange={() => toggleSelect(r.id)}
+                        className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+
+                    {/* Product thumbnail */}
+                    <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden border border-border shrink-0">
+                      {img
+                        ? <img src={img} alt="" className="h-full w-full object-cover" />
+                        : <div className="h-full w-full flex items-center justify-center text-muted-foreground/30 text-xs">?</div>
+                      }
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Stars rating={r.rating} />
+                        <span className={cn("text-[10px] border px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1", cfg.cls)}>
+                          {cfg.icon} {cfg.label}
+                        </span>
+                        {r.verified_purchase && (
+                          <span className="text-[10px] flex items-center gap-0.5 text-blue-600 border border-blue-200 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                            <ShieldCheck className="h-3 w-3" /> Verified
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium truncate mt-0.5">
+                        {r.title ?? <span className="text-muted-foreground italic">No title</span>}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {productName(r)} · by {reviewerName(r)} · {new Date(r.createdAt).toLocaleDateString("en-IN")}
+                      </p>
+                    </div>
+
+                    {/* Quick actions */}
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {r.status !== "approved" && (
+                        <Button size="sm" variant="ghost"
+                          onClick={() => setStatus(r.id, "approved")}
+                          className="text-green-700 hover:bg-green-50 text-xs">
+                          Approve
+                        </Button>
+                      )}
+                      {r.status !== "rejected" && (
+                        <Button size="sm" variant="ghost"
+                          onClick={() => setStatus(r.id, "rejected")}
+                          className="text-red-600 hover:bg-red-50 text-xs">
+                          Reject
+                        </Button>
+                      )}
+                      <Button size="icon" variant="ghost" onClick={() => deleteReview(r.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200",
+                      isExpanded && "rotate-180"
+                    )} />
+                  </div>
+
+                  {/* Expanded detail */}
+                  {isExpanded && (
+                    <div className="border-t border-border bg-muted/30 px-5 py-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        {/* Left: review content */}
+                        <div className="space-y-3">
+                          <Stars rating={r.rating} size="lg" />
+                          {r.title && <p className="font-semibold text-lg">{r.title}</p>}
+                          <p className="text-sm text-foreground/80 whitespace-pre-line">{r.body || <span className="italic text-muted-foreground">No body text</span>}</p>
+
+                          <div className="pt-2 space-y-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                              <User className="h-3.5 w-3.5" />
+                              <span>{reviewerName(r)}</span>
+                              {reviewerEmail(r) && <span className="opacity-70">({reviewerEmail(r)})</span>}
+                              {r.verified_purchase && (
+                                <span className="flex items-center gap-0.5 text-blue-600 ml-1">
+                                  <ShieldCheck className="h-3 w-3" /> Verified purchase
+                                </span>
+                              )}
+                            </div>
+                            <div>Product: <span className="text-foreground font-medium">{productName(r)}</span></div>
+                            <div>Submitted: {new Date(r.createdAt).toLocaleString("en-IN")}</div>
+                          </div>
+                        </div>
+
+                        {/* Right: admin actions */}
+                        <div className="space-y-4">
+                          {r.admin_note && (
+                            <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800">
+                              <p className="font-semibold mb-0.5">Admin note</p>
+                              <p>{r.admin_note}</p>
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 flex-wrap">
+                            {r.status !== "approved" && (
+                              <Button size="sm" onClick={() => setStatus(r.id, "approved")}
+                                className="bg-green-600 hover:bg-green-700 text-white">
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Approve
+                              </Button>
+                            )}
+                            {r.status !== "rejected" && (
+                              <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "rejected")}
+                                className="text-red-600 border-red-200 hover:bg-red-50">
+                                <XCircle className="h-3.5 w-3.5 mr-1.5" /> Reject
+                              </Button>
+                            )}
+                            {r.status !== "pending" && (
+                              <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "pending")}
+                                className="text-amber-700 border-amber-200 hover:bg-amber-50">
+                                <Clock className="h-3.5 w-3.5 mr-1.5" /> Reset to Pending
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
+                              Edit / Note
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => deleteReview(r.id)}
+                              className="text-destructive border-destructive/30 hover:bg-destructive/5">
+                              <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </main>
 
       {/* ── Edit sheet ───────────────────────────────────────────────── */}
       <Sheet open={sheetOpen} onOpenChange={(o) => { if (!o) setSheetOpen(false); }}>
@@ -766,6 +741,6 @@ export default function AdminReviewsPage() {
           </div>
         </SheetContent>
       </Sheet>
-    </SidebarProvider>
+    </>
   );
 }
