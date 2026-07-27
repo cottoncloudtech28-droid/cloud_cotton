@@ -336,7 +336,7 @@ export default function Home() {
           >
             <div>
               <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Just arrived</p>
-              <h2 className="text-2xl md:text-3xl font-bold">New Arrivals ✨</h2>
+              <h2 className="text-2xl md:text-3xl font-bold">New Arrivals 💜</h2>
             </div>
             <Link href="/shop?sort=newest" className="text-sm text-primary font-bold hover:underline shrink-0">View all →</Link>
           </motion.div>

@@ -207,8 +207,16 @@ type FormState = typeof emptyForm;
 // Combine a category's spec-field definitions with the admin-entered values into the
 // snapshotted ProductSpec[] we persist. Empty/unset values are dropped.
 function buildSpecs(specFields: SpecField[], values: Record<string, string | number | boolean>): ProductSpec[] {
+  // Deduplicate keys the same way SpecificationsSection does, so we read the right
+  // slot from form.specifications when multiple fields share the same raw key.
+  const keyCounts: Record<string, number> = {};
   return (specFields ?? [])
-    .map((f) => ({ key: f.key, label: f.label, type: f.type, unit: f.unit || "", value: values[f.key] }))
+    .map((f) => {
+      const base = f.key;
+      keyCounts[base] = (keyCounts[base] ?? 0) + 1;
+      const uk = keyCounts[base] === 1 ? base : `${base}-${keyCounts[base]}`;
+      return { key: f.key, label: f.label, type: f.type, unit: f.unit || "", value: values[uk] };
+    })
     .filter((s) => {
       if (s.type === "boolean") return s.value === true; // only store features the product actually has
       return s.value !== undefined && s.value !== null && String(s.value).trim() !== "";
@@ -901,6 +909,18 @@ function SpecificationsSection({ specFields, values, onChange }: {
 }) {
   if (!specFields || specFields.length === 0) return null;
   const sorted = [...specFields].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  // Deduplicate keys: if multiple fields share the same key, append "-2", "-3", etc.
+  // This prevents React duplicate-key warnings AND ensures each field reads/writes
+  // its own slot in form.specifications instead of sharing state.
+  const keyCounts: Record<string, number> = {};
+  const uniqueFields = sorted.map((f) => {
+    const base = f.key;
+    keyCounts[base] = (keyCounts[base] ?? 0) + 1;
+    const uniqueKey = keyCounts[base] === 1 ? base : `${base}-${keyCounts[base]}`;
+    return { ...f, _uniqueKey: uniqueKey };
+  });
+
   return (
     <>
       <Separator />
@@ -910,24 +930,25 @@ function SpecificationsSection({ specFields, values, onChange }: {
           <p className="text-xs text-muted-foreground mt-1">Based on the selected category. Manage these fields in Admin → Categories.</p>
         </div>
         <div className="space-y-3">
-          {sorted.map((f) => {
-            const v = values[f.key];
+          {uniqueFields.map((f) => {
+            const uk = f._uniqueKey;
+            const v = values[uk];
             if (f.type === "boolean") {
               return (
-                <div key={f.key} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+                <div key={uk} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
                   <Label className="cursor-pointer">{f.label}</Label>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-muted-foreground w-6 text-right">{v === true ? "Yes" : "No"}</span>
-                    <Switch checked={v === true} onCheckedChange={(c) => onChange(f.key, c)} />
+                    <Switch checked={v === true} onCheckedChange={(c) => onChange(uk, c)} />
                   </div>
                 </div>
               );
             }
             if (f.type === "select") {
               return (
-                <div key={f.key}>
+                <div key={uk}>
                   <Label>{f.label}</Label>
-                  <select value={(v as string) ?? ""} onChange={(e) => onChange(f.key, e.target.value)}
+                  <select value={(v as string) ?? ""} onChange={(e) => onChange(uk, e.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1.5">
                     <option value="">— Not specified —</option>
                     {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
@@ -937,19 +958,19 @@ function SpecificationsSection({ specFields, values, onChange }: {
             }
             if (f.type === "number") {
               return (
-                <div key={f.key}>
+                <div key={uk}>
                   <Label>{f.label}{f.unit ? <span className="text-muted-foreground font-normal"> ({f.unit})</span> : null}</Label>
                   <Input type="number" value={v === undefined || v === null ? "" : String(v)}
                     onFocus={(e) => e.target.select()}
-                    onChange={(e) => onChange(f.key, e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) => onChange(uk, e.target.value === "" ? "" : Number(e.target.value))}
                     placeholder="—" className="mt-1.5" />
                 </div>
               );
             }
             return (
-              <div key={f.key}>
+              <div key={uk}>
                 <Label>{f.label}</Label>
-                <Input value={(v as string) ?? ""} onChange={(e) => onChange(f.key, e.target.value)}
+                <Input value={(v as string) ?? ""} onChange={(e) => onChange(uk, e.target.value)}
                   placeholder="—" className="mt-1.5" />
               </div>
             );

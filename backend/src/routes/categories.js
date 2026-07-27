@@ -87,14 +87,18 @@ router.get("/:slug", async (req, res) => {
 // Normalise the spec_fields payload into clean field definitions.
 const sanitizeSpecFields = (fields) => {
   if (!Array.isArray(fields)) return undefined;
+  const keyCounts = {};
   return fields
     .filter((f) => f && f.label && String(f.label).trim())
     .map((f, i) => {
       const label = String(f.label).trim().slice(0, 60);
       const type = ["boolean", "text", "number", "select"].includes(f.type) ? f.type : "boolean";
-      const key = (f.key && String(f.key).trim())
+      let key = (f.key && String(f.key).trim())
         ? String(f.key).trim()
         : label.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || `field-${i}`;
+      // Deduplicate keys: if this key was already used, append a suffix.
+      keyCounts[key] = (keyCounts[key] ?? 0) + 1;
+      if (keyCounts[key] > 1) key = `${key}-${keyCounts[key]}`;
       return {
         key,
         label,
