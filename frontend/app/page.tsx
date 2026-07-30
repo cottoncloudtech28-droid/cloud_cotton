@@ -128,7 +128,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
 
       {/* ── ANNOUNCEMENT BAR ── */}
       <motion.div
@@ -160,7 +160,7 @@ export default function Home() {
 
       <Navbar />
 
-      <main>
+      <main className="flex-1">
 
         {/* ── HERO ── */}
         <section className="relative overflow-hidden">
@@ -235,7 +235,7 @@ export default function Home() {
               viewport={{ once: true, amount: 0.6 }}
             >
               <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Pick your vibe</p>
-              <h2 className="text-2xl md:text-3xl font-bold">Shop by Category <span className="inline-block">💖</span></h2>
+              <h2 className="text-2xl md:text-3xl font-bold">Shop by Category <span className="inline-block">💜</span></h2>
             </motion.div>
 
             <motion.div
@@ -336,7 +336,7 @@ export default function Home() {
           >
             <div>
               <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5 md:mb-1">Just arrived</p>
-              <h2 className="text-2xl md:text-3xl font-bold">New Arrivals 💜</h2>
+              <h2 className="text-2xl md:text-3xl font-bold">New Arrivals ✨</h2>
             </div>
             <Link href="/shop?sort=newest" className="text-sm text-primary font-bold hover:underline shrink-0">View all →</Link>
           </motion.div>

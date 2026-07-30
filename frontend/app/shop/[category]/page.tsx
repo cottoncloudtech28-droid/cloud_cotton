@@ -141,9 +141,9 @@ function CategoryContent() {
   if (!category) return null;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main>
+      <main className="flex-1">
 
         {/* ── Banner ─────────────────────────────────────────────────────── */}
         {category.banner_url ? (

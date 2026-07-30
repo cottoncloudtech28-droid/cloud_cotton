@@ -4,9 +4,9 @@ import { Cloud, Heart, Sparkles } from "lucide-react";
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="container py-12">
+      <main className="container py-12 flex-1">
         <div className="text-center mb-10">
           <Cloud className="mx-auto h-12 w-12 text-primary fill-primary/20" />
           <h1 className="text-4xl md:text-5xl font-extrabold uppercase mt-4 bg-gradient-primary bg-clip-text text-transparent">

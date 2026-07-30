@@ -106,9 +106,9 @@ function ShopContent() {
   const allTags = Array.from(new Set(products.flatMap((p) => p.tags ?? []))).sort();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="container py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <main className="container py-6 sm:py-8 space-y-6 sm:space-y-8 flex-1">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">

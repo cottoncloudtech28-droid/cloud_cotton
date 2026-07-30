@@ -296,7 +296,7 @@ export default function ProductDetailClient() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
 
       {/* ── STICKY MINI PRODUCT BAR ── */}
@@ -374,7 +374,7 @@ export default function ProductDetailClient() {
         </div>
       )}
 
-      <main className="container py-6 sm:py-8 space-y-10 sm:space-y-16">
+      <main className="container py-6 sm:py-8 space-y-10 sm:space-y-16 flex-1">
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">

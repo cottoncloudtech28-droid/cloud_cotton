@@ -9,61 +9,57 @@ export const metadata: Metadata = {
 
 export default function ReturnsPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="container py-12 max-w-2xl">
+      <main className="container py-12 max-w-2xl flex-1">
         <h1 className="text-4xl md:text-5xl font-extrabold uppercase bg-gradient-primary bg-clip-text text-transparent">
           Returns &amp; Refunds
         </h1>
 
-        <p className="mt-6 text-foreground/80 leading-relaxed">
-          We want every order to reach you picture-perfect. If something isn't right, here's how
-          returns, replacements and refunds work — please read carefully so we can sort it out for
-          you quickly. 💕
-        </p>
-
         <div className="mt-8 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed space-y-3">
           <p className="text-base font-semibold text-foreground">
-            A return or refund will not be valid for the reasons below:
+            Returns and refunds are currently not available.
+          </p>
+          <p className="text-sm">
+            We are working on our returns and refund policy. Please reach out to us directly if
+            you received a damaged or incorrect item — we will make it right.
+          </p>
+          <p className="text-sm">
+            Contact us at{" "}
+            <a href="mailto:hello@cottoncloud.co" className="text-primary font-medium underline underline-offset-2">
+              hello@cottoncloud.co
+            </a>{" "}
+            with your order number and a photo of the issue.
+          </p>
+        </div>
+
+        <div className="mt-6 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed space-y-3">
+          <p className="text-base font-semibold text-foreground">
+            Return and Refund policy will not be valid for the below reasons:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-sm">
-            <li>
-              You don't have an unboxing video recorded continuously from the very start to the
-              end of opening the parcel.
-            </li>
-            <li>
-              You don't email us your complete unboxing video for any claim within 2 days of the
-              product being delivered.
-            </li>
+            <li>If you don't have Unboxing Video from starting to end.</li>
+            <li>If you don't Email us your full video for any Claim within 2 days after product delivered.</li>
           </ul>
         </div>
 
         <div className="mt-6 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed space-y-3">
           <p className="text-base font-semibold text-foreground">
-            Replacements &amp; refunds
+            Replacements &amp; Refunds:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-sm">
             <li>
-              If a product arrives defective (Dead on Arrival) or damaged, we'll replace it with a
-              brand-new one. The item must be shipped back to Cotton Cloud Company with all original
-              packaging and accessories, and with no damage to any serial numbers.
+              If a product is received and is in defective condition (Dead On Arrival) or damaged,
+              the product will be replaced with a new product. The product has to be shipped back
+              to Cotton Cloud Company with all original packing and accessories with no damage to
+              serial numbers.
             </li>
             <li>
-              Once we receive the returned product, we dispatch your replacement the same day. We
-              strongly recommend making a full unboxing video, and please inform us immediately when
-              you receive any defective or damaged goods.
+              Once the product is received we will dispatch your product on the same day. It is
+              highly recommended to make a full unboxing video of the product. Inform us
+              immediately when you receive any defective or damaged goods when you receive it.
             </li>
           </ul>
-        </div>
-
-        <div className="mt-6 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed">
-          <p className="text-sm">
-            To raise a claim, email us at{" "}
-            <a href="mailto:hello@cottoncloud.co" className="text-primary font-medium underline underline-offset-2">
-              hello@cottoncloud.co
-            </a>{" "}
-            with your order number and your full unboxing video within 2 days of delivery.
-          </p>
         </div>
 
         <div className="mt-6 text-sm text-muted-foreground">
