@@ -2,6 +2,7 @@ import type {
   Product, Order, OrderItem, Address, SavedAddress, Category, StockLog,
   Supplier, PurchaseOrder, RestockRecommendation, PublicOrderTrack, ShiprocketTracking,
   GstSettings, NotificationSettings, PromoCode, PromoValidation,
+  PromptPreset, PromptGroup,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -288,6 +289,43 @@ export async function togglePromoCode(id: string, is_active: boolean): Promise<P
 
 export async function deletePromoCode(id: string): Promise<{ success: boolean }> {
   return apiFetch(`/api/promocodes/${id}`, { method: "DELETE" });
+}
+
+// ── AI prompt presets ─────────────────────────────────────────────────────────
+export async function getPromptPresets(): Promise<PromptPreset[]> {
+  return apiFetch("/api/prompts");
+}
+
+export type PromptPresetInput = {
+  group: PromptGroup;
+  label: string;
+  value: string;
+  sort_order?: number;
+  is_active?: boolean;
+};
+
+export async function createPromptPreset(data: PromptPresetInput): Promise<PromptPreset> {
+  return apiFetch("/api/prompts", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updatePromptPreset(id: string, data: Partial<PromptPresetInput>): Promise<PromptPreset> {
+  return apiFetch(`/api/prompts/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function togglePromptPreset(id: string, is_active: boolean): Promise<PromptPreset> {
+  return apiFetch(`/api/prompts/${id}/toggle`, { method: "PATCH", body: JSON.stringify({ is_active }) });
+}
+
+export async function deletePromptPreset(id: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/prompts/${id}`, { method: "DELETE" });
+}
+
+export async function reorderPromptPresets(order: { id: string; sort_order: number }[]): Promise<PromptPreset[]> {
+  return apiFetch("/api/prompts/reorder", { method: "PATCH", body: JSON.stringify({ order }) });
+}
+
+export async function restoreDefaultPromptPresets(): Promise<{ restored: number; presets: PromptPreset[] }> {
+  return apiFetch("/api/prompts/restore-defaults", { method: "POST" });
 }
 
 // ── Wishlist ─────────────────────────────────────────────────────────────────

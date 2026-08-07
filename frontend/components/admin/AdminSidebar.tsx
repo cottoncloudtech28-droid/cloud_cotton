@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, Upload, LayoutGrid, BarChart2, Truck, ShoppingCart, ClipboardList, TrendingUp, Users, Receipt, Star, CreditCard, Mail, Ticket } from "lucide-react";
+import { Package, Upload, LayoutGrid, BarChart2, Truck, ShoppingCart, ClipboardList, TrendingUp, Users, Receipt, Star, CreditCard, Mail, Ticket, Wand2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +24,7 @@ export const ADMIN_NAV = [
   { title: "Customers", url: "/admin/customers", icon: Users },
   { title: "Bulk Upload", url: "/admin/bulk", icon: Upload },
   { title: "Categories", url: "/admin/categories", icon: LayoutGrid },
+  { title: "AI Prompts", url: "/admin/prompts", icon: Wand2 },
   { title: "Promo Codes", url: "/admin/promos", icon: Ticket },
   { title: "Suppliers", url: "/admin/suppliers", icon: Truck },
   { title: "Purchase Orders", url: "/admin/purchase-orders", icon: ShoppingCart },

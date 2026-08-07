@@ -52,6 +52,7 @@ app.use("/api/shiprocket", require("./routes/shiprocket"));
 app.use("/api/settings", require("./routes/settings"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/promocodes", require("./routes/promocodes"));
+app.use("/api/prompts", require("./routes/prompts"));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

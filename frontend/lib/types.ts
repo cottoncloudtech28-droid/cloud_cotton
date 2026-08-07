@@ -268,6 +268,23 @@ export interface PromoValidation {
   message: string;
 }
 
+// ── AI prompt presets ─────────────────────────────────────────────────────────
+// Reusable image-editing prompts managed from /admin/prompts and shown as
+// clickable chips in the product editor and bulk upload page.
+export type PromptGroup = "background" | "angle" | "style";
+
+export interface PromptPreset {
+  id: string;
+  group: PromptGroup;
+  label: string;
+  /** Prompt text. In the "style" group, "{product}" is replaced with the product name. */
+  value: string;
+  sort_order: number;
+  is_active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface ShiprocketTrackActivity {
   date: string;
   status: string;

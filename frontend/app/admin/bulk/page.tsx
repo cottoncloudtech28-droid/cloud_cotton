@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Upload, Wand2, Trash2, Sparkles, RotateCcw } from "lucide-react";
 import { DescriptionToolbar } from "@/components/admin/DescriptionEditor";
 import { apiFetch, uploadFile, getCategories } from "@/lib/api";
+import { usePromptPresets } from "@/hooks/usePromptPresets";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
 
@@ -23,34 +24,6 @@ type Row = {
   price: string; category: string; stock: string; colorsText: string; charactersText: string;
   bgPrompt: string; anglePrompt: string; provider: "openai" | "gemini";
 };
-
-const PRESET_BACKGROUNDS = [
-  { label: "Cozy bookshelf nook", value: "Place the product in front of a warm wooden bookshelf filled with neatly stacked books in muted pastel spines, a small terracotta pot with a succulent and a vintage desk globe softly blurred to the sides, warm daylight falling from the left, the product sits on a light wood surface in the foreground in sharp focus and perfectly centered, cozy reading-nook lifestyle aesthetic, soft natural shadow beneath the product, background gently out of focus so the product stays the clear hero" },
-  { label: "Kids' playroom", value: "Place the product on a soft pastel-toned play table inside a cozy kids' playroom, blurred plush toys (a bunny and teddy bears) and wooden alphabet blocks softly out of focus behind it, sheer white curtains and a blush-pink armchair further back, warm natural daylight, dreamy soft-focus lifestyle scene, the product itself stays sharp, centered and clearly the focal point" },
-  { label: "Teen bedroom fairy lights", value: "Place the product on a white marble side table in a cozy bedroom scene, a wall behind draped with warm blurred fairy lights and softly out-of-focus framed photo prints, gentle golden bokeh glow, evening ambient lighting, dreamy kawaii teen-bedroom aesthetic, the product stays sharp, centered and the clear focal point against the softly blurred background" },
-  { label: "Café counter with greenery", value: "Place the product on a warm marble café counter, softly blurred hanging potted plants and a blurred café interior with warm pendant lighting and out-of-focus patrons in the background, natural daylight spilling in from a nearby window, lifestyle editorial coffee-shop aesthetic, the product stays in sharp focus and centered in the foreground" },
-  { label: "Marble luxury shelf", value: "Place the product on a polished white Carrara marble surface with soft grey veining, an elegant blurred backdrop of a champagne-gold wall and a single softly out-of-focus fresh orchid stem to one side, refined directional lighting with a subtle reflection under the product, upscale boutique luxury aesthetic, the product stays sharp, centered and clearly the premium focal point" },
-  { label: "Scandinavian shelf", value: "Place the product on a pale birch-wood floating shelf against a matte off-white wall, a softly blurred trailing green pothos plant and a small ceramic vase out of focus to the sides, bright airy diffused daylight, clean minimalist Scandinavian interior aesthetic, gentle natural shadow beneath the product, the product stays sharp, centered and the clear focal point" },
-  { label: "Garden picnic", value: "Place the product on a soft checkered cotton picnic blanket spread over sunlit grass, softly blurred wildflowers, a woven wicker basket and dappled greenery out of focus behind it, warm golden-hour sunlight with gentle lens flare, cheerful outdoor lifestyle aesthetic, the product stays sharp, centered and clearly in focus in the foreground" },
-  { label: "Coastal beach", value: "Place the product on smooth pale sand near a calm turquoise shoreline, softly blurred rolling waves, a few scattered seashells and beach grass out of focus behind it, bright airy sunlight with a fresh breezy feel, relaxed coastal summer aesthetic, soft natural shadow on the sand, the product stays sharp, centered and the clear hero of the scene" },
-  { label: "Cozy Christmas", value: "Place the product on a rustic wooden surface beside a softly blurred decorated Christmas tree with warm twinkling lights, pine sprigs, a red ribbon and out-of-focus wrapped gifts behind it, warm cozy golden bokeh, festive holiday lifestyle aesthetic, the product stays sharp, centered and the clear hero against the softly blurred holiday background" },
-  { label: "Home office desk", value: "Place the product on a clean light-oak desk beside a softly blurred laptop, a small potted succulent, a stack of notebooks and a warm desk lamp out of focus behind it, bright natural daylight from a nearby window, tidy modern work-from-home aesthetic, gentle shadow beneath the product, the product stays sharp, centered and clearly in focus" },
-  { label: "Boho macramé", value: "Place the product on a woven jute surface against a softly blurred cream macramé wall hanging, trailing green plants and warm terracotta pottery out of focus to the sides, warm earthy natural daylight, relaxed bohemian lifestyle aesthetic, soft natural shadow beneath the product, the product stays sharp, centered and the clear focal point" },
-  { label: "School stationery bokeh", value: "Place the product against a minimalist, premium school-inspired background with soft neutral and pastel colors — off-white, warm beige, light sage green, muted sky blue and soft gray — only subtle educational elements like a neatly stacked notebook, a pencil, a small backpack or simple geometric shapes kept distant and softly blurred, realistic shallow depth of field with smooth bokeh, soft diffused natural lighting, matte textures, modern Scandinavian-inspired aesthetic, uncluttered premium commercial composition, a spacious clean central area around the product, ultra-realistic, 8K, no people, no text, no logos, no watermark, the product stays sharp, centered and the clear focal point" },
-  { label: "School luxury catalog", value: "Place the product against a minimalist, premium school-inspired background with soft neutral and pastel colors — off-white, warm beige, light sage green, muted sky blue and soft gray — only subtle educational elements like a neatly stacked notebook, a pencil, a small backpack or simple geometric shapes kept distant and softly blurred, realistic shallow depth of field with smooth bokeh, soft diffused natural lighting, matte textures, modern Scandinavian-inspired aesthetic, uncluttered premium commercial composition, a spacious clean central area around the product, ultra-realistic, 8K, no people, no text, no logos, no watermark, the product stays sharp, centered and the clear focal point, luxury e-commerce product photography, seamless gradient backdrop, soft shadows, subtle depth, elegant negative space, muted color palette, refined minimalism, high-end brand aesthetic" },
-  { label: "Modern gym interior", value: "Place the product in a high-end modern gym interior with sleek workout equipment, dumbbells, barbells, benches, mirrors, rubber flooring and industrial concrete textures softly blurred behind it with realistic shallow depth of field and bokeh, subtle LED lighting, dramatic yet balanced cool gray, black and metallic tones accented with subtle blue or warm amber highlights, luxurious, energetic and professional feel, ultra-realistic, 8K, studio-quality soft cinematic lighting, a clean well-lit central area around the product, no people, no text, no logos, the product stays sharp, centered and the clear focal point" },
-  { label: "Moody luxury gym", value: "Place the product in a high-end modern gym interior with sleek workout equipment, dumbbells, barbells, benches, mirrors, rubber flooring and industrial concrete textures softly blurred behind it with realistic shallow depth of field and bokeh, subtle LED lighting, dramatic yet balanced cool gray, black and metallic tones accented with subtle blue or warm amber highlights, luxurious, energetic and professional feel, ultra-realistic, 8K, studio-quality soft cinematic lighting, a clean well-lit central area around the product, no people, no text, no logos, the product stays sharp, centered and the clear focal point, moody atmosphere, black matte walls, soft volumetric light, premium fitness club ambiance, cinematic bokeh, luxury commercial product photography style" },
-  { label: "Bright fitness studio", value: "Place the product in a high-end modern gym interior with sleek workout equipment, dumbbells, barbells, benches, mirrors, rubber flooring and industrial concrete textures softly blurred behind it with realistic shallow depth of field and bokeh, subtle LED lighting, dramatic yet balanced cool gray, black and metallic tones accented with subtle blue or warm amber highlights, luxurious, energetic and professional feel, ultra-realistic, 8K, studio-quality soft cinematic lighting, a clean well-lit central area around the product, no people, no text, no logos, the product stays sharp, centered and the clear focal point, bright modern fitness studio with natural daylight, white and gray interiors, minimal aesthetic, soft background blur, clean commercial advertising style" },
-];
-
-const PRESET_ANGLES = [
-  { label: "Front", value: "Show the product from a clean straight-on front angle, centered, e-commerce style" },
-  { label: "3/4 view", value: "Show the product from a flattering 3/4 angle, slightly elevated, soft shadow" },
-  { label: "Top-down", value: "Show the product from a top-down flat lay angle, perfectly centered" },
-  { label: "Close-up detail", value: "Show a tight close-up of the product highlighting its texture and fine detail, shallow depth of field, sharp focus on the material" },
-  { label: "Low angle hero", value: "Show the product from a slightly low hero angle looking up, making it feel bold and premium, soft shadow and even lighting" },
-  { label: "Side profile", value: "Show the product from a clean side profile angle, centered, revealing its full silhouette, e-commerce style" },
-];
 
 // Combine what the user has already typed with a clicked preset so presets add to
 // (rather than wipe) any custom text. Avoids duplicating a preset that's already there.
@@ -128,6 +101,9 @@ export default function BulkUploadPage() {
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
+  // Preset chips are managed from /admin/prompts.
+  const { backgrounds, angles } = usePromptPresets();
+
   useEffect(() => {
     if (!loading && !user) router.push(`/auth?redirect=${encodeURIComponent("/admin/bulk")}`);
   }, [user, loading, router]);
@@ -144,7 +120,7 @@ export default function BulkUploadPage() {
       if (!f.type.startsWith("image/")) continue;
       const dataUrl = await fileToDataUrl(f);
       const baseName = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", descKeywords: "", price: "", category: defaultCategory, stock: "10", colorsText: "", charactersText: "", bgPrompt: PRESET_BACKGROUNDS[0].value, anglePrompt: "", provider: "openai" });
+      next.push({ id: crypto.randomUUID(), file: f, originalDataUrl: dataUrl, currentDataUrl: dataUrl, editing: false, describing: false, analyzing: false, name: baseName, description: "", descKeywords: "", price: "", category: defaultCategory, stock: "10", colorsText: "", charactersText: "", bgPrompt: backgrounds[0]?.value ?? "", anglePrompt: "", provider: "openai" });
     }
     setRows((r) => [...r, ...next]);
   };
@@ -201,12 +177,12 @@ export default function BulkUploadPage() {
         body: JSON.stringify({
           image_base64: row.originalDataUrl,
           categories: categories.map((c) => c.slug),
-          backgrounds: PRESET_BACKGROUNDS.map((p) => p.label),
-          angles: PRESET_ANGLES.map((p) => p.label),
+          backgrounds: backgrounds.map((p) => p.label),
+          angles: angles.map((p) => p.label),
         }),
       });
-      const bg = PRESET_BACKGROUNDS.find((p) => p.label === data.background)?.value;
-      const angle = PRESET_ANGLES.find((p) => p.label === data.angle)?.value;
+      const bg = backgrounds.find((p) => p.label === data.background)?.value;
+      const angle = angles.find((p) => p.label === data.angle)?.value;
       update(row.id, {
         name: data.name || row.name,
         category: categories.some((c) => c.slug === data.category) ? data.category : row.category,
@@ -364,8 +340,8 @@ export default function BulkUploadPage() {
                         <div>
                           <Label className="text-xs">Background</Label>
                           <div className="flex flex-wrap gap-1 mb-2">
-                            {PRESET_BACKGROUNDS.map((p) => (
-                              <Badge key={p.label} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => update(r.id, { bgPrompt: appendPrompt(r.bgPrompt, p.value) })}>{p.label}</Badge>
+                            {backgrounds.map((p) => (
+                              <Badge key={p.id} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => update(r.id, { bgPrompt: appendPrompt(r.bgPrompt, p.value) })}>{p.label}</Badge>
                             ))}
                           </div>
                           <p className="text-[11px] text-muted-foreground mb-1.5">Pick a preset to fill in a detailed prompt, then edit it or add your own details before applying.</p>
@@ -377,8 +353,8 @@ export default function BulkUploadPage() {
                         <div>
                           <Label className="text-xs">Angle / framing</Label>
                           <div className="flex flex-wrap gap-1 mb-2">
-                            {PRESET_ANGLES.map((p) => (
-                              <Badge key={p.label} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => update(r.id, { anglePrompt: appendPrompt(r.anglePrompt, p.value) })}>{p.label}</Badge>
+                            {angles.map((p) => (
+                              <Badge key={p.id} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => update(r.id, { anglePrompt: appendPrompt(r.anglePrompt, p.value) })}>{p.label}</Badge>
                             ))}
                           </div>
                           <p className="text-[11px] text-muted-foreground mb-1.5">Pick a preset or type your own framing instructions — you can combine both.</p>
