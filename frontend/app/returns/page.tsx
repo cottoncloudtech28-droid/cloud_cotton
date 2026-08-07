@@ -35,16 +35,6 @@ export default function ReturnsPage() {
 
         <div className="mt-6 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed space-y-3">
           <p className="text-base font-semibold text-foreground">
-            Return and Refund policy will not be valid for the below reasons:
-          </p>
-          <ul className="list-disc pl-5 space-y-2 text-sm">
-            <li>If you don't have Unboxing Video from starting to end.</li>
-            <li>If you don't Email us your full video for any Claim within 2 days after product delivered.</li>
-          </ul>
-        </div>
-
-        <div className="mt-6 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed space-y-3">
-          <p className="text-base font-semibold text-foreground">
             Replacements &amp; Refunds:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-sm">
@@ -55,10 +45,20 @@ export default function ReturnsPage() {
               serial numbers.
             </li>
             <li>
-              Once the product is received we will dispatch your product on the same day. It is
+              Once the product is received, we will dispatch your product on the same day. It is
               highly recommended to make a full unboxing video of the product. Inform us
-              immediately when you receive any defective or damaged goods when you receive it.
+              immediately when you receive any defective or damaged goods when you receive them.
             </li>
+          </ul>
+        </div>
+
+        <div className="mt-6 p-6 rounded-3xl bg-muted border border-border text-foreground/80 leading-relaxed space-y-3">
+          <p className="text-base font-semibold text-foreground">
+            Return and Refund policy will not be valid for the below reasons:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-sm">
+            <li>If you don't have an unboxing Video from start to end.</li>
+            <li>If you don't email us your full video for any claim within 2 days after the product has been delivered.</li>
           </ul>
         </div>
 
